@@ -1,14 +1,25 @@
+# Nuxt dev/build outputs
+.output
+.data
+.nuxt
+.nitro
+.cache
+dist
+.wrangler
+.vercel
+
 .idea/
 .vscode/
 .DS_Store
 .env
+.env.*
+!.env.example
 *.pyc
 __pycache__/
 .pytest_cache/
 .venv/
 venv/
 node_modules/
-frontend/dist/
-pgdata/
+pgvector_data/
 data/
 *.log

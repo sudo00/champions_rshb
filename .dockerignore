@@ -5,8 +5,11 @@
 **/.pytest_cache
 **/.venv
 **/node_modules
-frontend/dist
-pgdata
+**/.nuxt
+**/.nitro
+**/.output
+**/.data
+pgvector_data
 data
 *.md
 .DS_Store

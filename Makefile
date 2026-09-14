@@ -1,55 +1,66 @@
 ENV_DEV := build_env/.env.dev
 ENV_PROD := build_env/.env.prod
-COMPOSE := docker compose
+COMPOSE_DEV := docker compose --env-file $(ENV_DEV) -f docker-compose.yml -f docker-compose.dev.yml
+COMPOSE_PROD := docker compose --env-file $(ENV_PROD) -f docker-compose.yml
 
-.PHONY: help install install-frontend install-backend build dev prod up down ddown logs restart test
+.PHONY: help install install-app install-frontend install-backend install-worker build dev prod up down ddown logs restart test
 
 help:
-	@echo "make install           — собрать образы (зависимости ставятся внутри Docker)"
-	@echo "make install-frontend  — npm install локально в ./frontend"
-	@echo "make install-backend   — pip install локально для api и worker"
-	@echo "make dev               — поднять DEV окружение (сборка + up -d)"
+	@echo "make install           — npm/pip install внутри контейнеров app и worker"
+	@echo "make install-app       — npm install в контейнере app (не в образе)"
+	@echo "make install-frontend  — то же, что install-app"
+	@echo "make install-backend   — то же, что install-app"
+	@echo "make install-worker    — pip install в контейнере worker"
+	@echo "make build             — собрать Docker-образы"
+	@echo "make dev               — собрать образы (без npm) и поднять контейнеры"
 	@echo "make prod              — поднять PROD окружение (сборка + up -d)"
 	@echo "make up                — поднять DEV без пересборки"
 	@echo "make down              — остановить контейнеры проекта"
 	@echo "make ddown             — остановить контейнеры и удалить тома"
 	@echo "make logs              — логи всех сервисов"
 	@echo "make restart           — перезапустить DEV"
-	@echo "make test              — pytest в контейнере backend"
+	@echo "make test              — vitest в контейнере app"
 
-install: build
+install: install-app install-worker
 
 build:
-	$(COMPOSE) --env-file $(ENV_DEV) build
+	$(COMPOSE_DEV) build
 
-install-frontend:
-	cd frontend && npm install
+install-app:
+	$(COMPOSE_DEV) up -d db s3 rabbitmq
+	$(COMPOSE_DEV) up -d --no-deps app
+	$(COMPOSE_DEV) exec -T app npm install
+	$(COMPOSE_DEV) restart app
+	-$(COMPOSE_DEV) restart worker
 
-install-backend:
-	python3 -m pip install -r backend/api/requirements.txt
-	python3 -m pip install -r backend/worker/requirements.txt
+install-frontend: install-app
+
+install-backend: install-app
+
+install-worker: up
+	$(COMPOSE_DEV) exec -T worker pip install --no-cache-dir -r requirements.txt
 
 dev:
-	$(COMPOSE) --env-file $(ENV_DEV) up -d --build
+	$(COMPOSE_DEV) up -d --build
 
 prod:
-	$(COMPOSE) --env-file $(ENV_PROD) up -d --build
+	$(COMPOSE_PROD) up -d --build
 
 up:
-	$(COMPOSE) --env-file $(ENV_DEV) up -d
+	$(COMPOSE_DEV) up -d
 
 down:
-	$(COMPOSE) --env-file $(ENV_DEV) down
+	$(COMPOSE_DEV) down
 
 ddown:
-	$(COMPOSE) --env-file $(ENV_DEV) down -v
+	$(COMPOSE_DEV) down -v
 
 logs:
-	$(COMPOSE) --env-file $(ENV_DEV) logs -f
+	$(COMPOSE_DEV) logs -f
 
 restart:
-	$(COMPOSE) --env-file $(ENV_DEV) down
-	$(COMPOSE) --env-file $(ENV_DEV) up -d --build
+	$(COMPOSE_DEV) down
+	$(COMPOSE_DEV) up -d --build
 
 test:
-	$(COMPOSE) --env-file $(ENV_DEV) exec backend pytest -q
+	$(COMPOSE_DEV) exec -T app npm test
