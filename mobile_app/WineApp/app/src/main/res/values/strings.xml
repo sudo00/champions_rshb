@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Винный сканер</string>
+
+    <string name="age_gate_title">Подтверждение возраста</string>
+    <string name="age_gate_message">Вам должно быть не менее 18 лет для использования этого приложения</string>
+    <string name="age_gate_confirm">Мне есть 18+</string>
+    <string name="age_gate_deny">Выйти</string>
+
+    <string name="scanner_title">Сканировать этикетку</string>
+    <string name="scanner_capture">Снять</string>
+    <string name="scanner_gallery">Галерея</string>
+    <string name="scanner_flash_on">Вспышка вкл</string>
+    <string name="scanner_flash_off">Вспышка выкл</string>
+    <string name="scanner_processing">Обработка…</string>
+
+    <string name="search_title">Поиск вин</string>
+    <string name="search_hint">Поиск по названию, региону или сорту</string>
+    <string name="search_no_results">Вина не найдены</string>
+    <string name="search_no_results_for">Вина не найдены по запросу «%s»</string>
+    <string name="search_recent">Недавние запросы</string>
+    <string name="search_empty">Найдите вино по названию, региону или сорту винограда</string>
+    <string name="search_load_more">Загрузить ещё</string>
+    <string name="search_clear">Очистить</string>
+    <string name="search_all">Все</string>
+    <string name="search_red">Красные</string>
+    <string name="search_white">Белые</string>
+    <string name="search_rose">Розовые</string>
+    <string name="search_sparkling">Игристые</string>
+
+    <string name="detail_price">Цена</string>
+    <string name="detail_region">Регион</string>
+    <string name="detail_variety">Сорт</string>
+    <string name="detail_year">Год</string>
+    <string name="detail_description">Описание</string>
+    <string name="detail_pairing">С чем подавать</string>
+    <string name="detail_alcohol">Крепость</string>
+    <string name="detail_reviews">отзывов</string>
+    <string name="detail_save">Сохранить</string>
+    <string name="detail_share">Поделиться</string>
+
+    <string name="sommelier_title">AI-сомелье</string>
+    <string name="sommelier_hint">Спросите о сочетаниях, регионах и т.д.</string>
+    <string name="sommelier_empty">Задайте мне любой вопрос о вине!</string>
+    <string name="sommelier_send">Отправить</string>
+    <string name="sommelier_greeting">Я — AI-сомелье. Могу помочь с рекомендациями вин, гастрономическими сочетаниями, информацией о регионах и многим другим. Что хотите узнать?</string>
+
+    <string name="notfound_title">Вино не найдено</string>
+    <string name="notfound_message">Мы не смогли определить это вино. Попробуйте снова или выполните поиск вручную.</string>
+    <string name="notfound_retry">Повторить сканирование</string>
+    <string name="notfound_search">Поиск вручную</string>
+
+    <string name="error_network">Ошибка сети. Проверьте подключение к интернету.</string>
+    <string name="error_unknown">Что-то пошло не так. Попробуйте снова.</string>
+    <string name="error_scan">Ошибка сканирования</string>
+    <string name="error_search">Ошибка поиска</string>
+    <string name="error_load_details">Не удалось загрузить данные о вине</string>
+    <string name="error_save_history">Не удалось сохранить в историю</string>
+
+    <string name="history_title">История сканирований</string>
+    <string name="history_empty">Сканирований пока нет</string>
+
+    <string name="nav_scanner">Сканер</string>
+    <string name="nav_search">Поиск</string>
+    <string name="nav_sommelier">Сомелье</string>
+
+    <string name="retry">Повторить</string>
+    <string name="loading">Загрузка…</string>
+</resources>

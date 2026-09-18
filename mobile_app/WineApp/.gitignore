@@ -1,0 +1,33 @@
+# Gradle
+.gradle/
+build/
+gradle/wrapper/gradle-wrapper.jar
+
+# Local configuration
+local.properties
+*.iml
+.idea/
+*.iws
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Kotlin
+*.kt~
+
+# Compose
+compose_build/
+
+# Hilt
+app/build/generated/hilt/
+
+# Room
+app/build/generated/ap_generated_sources/
+
+# Temp files
+*.tmp
+*.temp
