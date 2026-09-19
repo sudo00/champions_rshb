@@ -59,10 +59,15 @@ import java.io.File
 import java.io.FileOutputStream
 
 @Composable
-fun ScannerScreen() {
+fun ScannerScreen(
+    onNavigateToDetail: (String) -> Unit = {},
+    onNavigateToScanResult: (confidence: Float, mainWineId: String, alternativeIds: String) -> Unit = { _, _, _ -> },
+    onNavigateBack: () -> Unit = {}
+) {
     val viewModel: ScannerViewModel = hiltViewModel()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val state by viewModel.state.collectAsState()
 
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -90,6 +95,30 @@ fun ScannerScreen() {
     LaunchedEffect(Unit) {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    LaunchedEffect(state) {
+        when (val current = state) {
+            is ScannerState.Success -> {
+                val result = current.result
+                val allWines = result.matches
+                val mainWine = result.wine
+                val mainWineId = mainWine?.id
+                if (mainWineId == null) {
+                    viewModel.resetToReady()
+                    return@LaunchedEffect
+                }
+                if (allWines.size <= 1) {
+                    viewModel.resetToReady()
+                    onNavigateToDetail(mainWineId)
+                } else {
+                    val altIds = allWines.filter { it.id != mainWineId }.joinToString("-") { it.id }
+                    viewModel.resetToReady()
+                    onNavigateToScanResult(result.confidence, mainWineId, altIds)
+                }
+            }
+            else -> {}
         }
     }
 

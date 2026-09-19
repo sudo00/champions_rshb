@@ -3,14 +3,28 @@ package com.wineapp.presentation.sommelier
 import com.wineapp.presentation.common.BaseState
 import com.wineapp.presentation.common.BaseIntent
 
+data class WineContext(
+    val wineId: String,
+    val wineName: String,
+    val region: String? = null,
+    val variety: String? = null,
+    val vintage: Int? = null,
+    val rating: Float? = null,
+    val style: String? = null
+)
+
 sealed interface SommelierState : BaseState {
-    data class Idle(val messages: List<ChatMessage> = emptyList()) : SommelierState
-    data class Loading(val messages: List<ChatMessage>) : SommelierState
-    data class Error(val message: String, val messages: List<ChatMessage>) : SommelierState
+    data class Idle(
+        val messages: List<ChatMessage> = emptyList(),
+        val wineContext: WineContext? = null
+    ) : SommelierState
+    data class Loading(val messages: List<ChatMessage>, val wineContext: WineContext? = null) : SommelierState
+    data class Error(val message: String, val messages: List<ChatMessage>, val wineContext: WineContext? = null) : SommelierState
 }
 
 sealed interface SommelierIntent : BaseIntent {
     data class SendMessage(val text: String) : SommelierIntent
+    data class SetWineContext(val wineContext: WineContext) : SommelierIntent
     data object ClearChat : SommelierIntent
 }
 

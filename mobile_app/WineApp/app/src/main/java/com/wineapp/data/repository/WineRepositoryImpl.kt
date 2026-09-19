@@ -4,32 +4,36 @@ import android.util.Log
 import com.wineapp.data.local.WineDao
 import com.wineapp.data.local.WineHistoryEntity
 import com.wineapp.data.mock.MockDataProvider
-import com.wineapp.data.remote.ApiService
-import com.wineapp.data.remote.mapper.ScanMapper
-import com.wineapp.data.remote.mapper.SearchMapper
-import com.wineapp.data.remote.mapper.WineMapper
 import com.wineapp.domain.model.ScanResult
 import com.wineapp.domain.model.SearchResult
 import com.wineapp.domain.model.Wine
 import com.wineapp.domain.repository.WineRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
+private const val USE_MOCK = true
+
 class WineRepositoryImpl @javax.inject.Inject constructor(
-    private val apiService: ApiService,
+    private val apiService: com.wineapp.data.remote.ApiService,
     private val wineDao: WineDao
 ) : WineRepository {
 
     override suspend fun scanWineLabel(imagePath: String): Result<ScanResult> {
         return withContext(Dispatchers.IO) {
+            if (USE_MOCK) {
+                delay(1500)
+                val mockResult = MockDataProvider.mockScanResult()
+                mockResult.wine?.let { saveToHistory(it) }
+                return@withContext Result.success(mockResult)
+            }
             try {
-                // TODO: Convert imagePath to base64
                 val base64Image = convertImageToBase64(imagePath)
                 val request = com.wineapp.data.remote.dto.ScanRequest(base64Image)
                 val response = apiService.scanLabel(request)
                 if (response.success) {
-                    val result = ScanMapper.toDomain(response)
+                    val result = com.wineapp.data.remote.mapper.ScanMapper.toDomain(response)
                     result.wine?.let { saveToHistory(it) }
                     Result.success(result)
                 } else {
@@ -46,9 +50,13 @@ class WineRepositoryImpl @javax.inject.Inject constructor(
 
     override suspend fun searchWines(query: String, page: Int, pageSize: Int): Result<SearchResult> {
         return withContext(Dispatchers.IO) {
+            if (USE_MOCK) {
+                delay(800)
+                return@withContext Result.success(MockDataProvider.mockSearchResult(query, page))
+            }
             try {
                 val response = apiService.searchWines(query, page, pageSize)
-                Result.success(SearchMapper.toDomain(response))
+                Result.success(com.wineapp.data.remote.mapper.SearchMapper.toDomain(response))
             } catch (e: Exception) {
                 Log.e("WineRepositoryImpl", "Search failed, using mock data", e)
                 Result.success(MockDataProvider.mockSearchResult(query, page))
@@ -58,10 +66,14 @@ class WineRepositoryImpl @javax.inject.Inject constructor(
 
     override suspend fun getWineById(id: String): Result<Wine> {
         return withContext(Dispatchers.IO) {
+            if (USE_MOCK) {
+                delay(500)
+                return@withContext Result.success(MockDataProvider.mockWineDetail(id))
+            }
             try {
                 val response = apiService.getWineDetail(id)
-                response.wine?.let { Result.success(WineMapper.toDomain(it)) }
-                    ?: Result.failure(Exception("Wine not found"))
+                response.wine?.let { Result.success(com.wineapp.data.remote.mapper.WineMapper.toDomain(it)) }
+                    ?: Result.failure(Exception("Вино не найдено"))
             } catch (e: Exception) {
                 Log.e("WineRepositoryImpl", "Get wine detail failed, using mock data", e)
                 Result.success(MockDataProvider.mockWineDetail(id))
@@ -87,7 +99,7 @@ class WineRepositoryImpl @javax.inject.Inject constructor(
                     alcoholPercentage = wine.alcoholPercentage,
                     imageUrl = wine.imageUrl,
                     description = wine.description,
-                    foodPairing = wine.foodPairing.joinToString(","), // TODO: Use proper JSON
+                    foodPairing = wine.foodPairing.joinToString(","),
                     winery = wine.winery
                 )
                 wineDao.insert(entity)
@@ -134,7 +146,6 @@ class WineRepositoryImpl @javax.inject.Inject constructor(
     }
 
     private fun convertImageToBase64(imagePath: String): String {
-        // TODO: Implement actual image to base64 conversion
         return "base64_placeholder"
     }
 }

@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.WineBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -57,17 +58,23 @@ import com.wineapp.presentation.common.ErrorMessage
 import com.wineapp.presentation.common.LoadingOverlay
 
 @Composable
-fun DetailScreenContent(viewModel: DetailViewModel, wineId: String) {
+fun DetailScreenContent(
+    viewModel: DetailViewModel,
+    wineId: String,
+    onNavigateToSommelier: (wineId: String, wineName: String, region: String?, variety: String?, vintage: Int?, rating: Float?, style: String?) -> Unit = { _, _, _, _, _, _, _ -> }
+) {
     val state by viewModel.state.collectAsState()
 
     val view = LocalView.current
     val surfaceColor = MaterialTheme.colorScheme.surface
     SideEffect {
-        val window = (view.context as android.app.Activity).window
-        window.statusBarColor = Color.Black.copy(alpha = 0.5f).toArgb()
-        window.navigationBarColor = surfaceColor.toArgb()
-        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
-        WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = true
+        (view.context as? android.app.Activity)?.let { activity ->
+            val window = activity.window
+            window.statusBarColor = Color.Black.copy(alpha = 0.5f).toArgb()
+            window.navigationBarColor = surfaceColor.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = true
+        }
     }
 
     LaunchedEffect(wineId) {
@@ -78,14 +85,27 @@ fun DetailScreenContent(viewModel: DetailViewModel, wineId: String) {
         when (val current = state) {
             is DetailState.Loading -> LoadingOverlay()
             is DetailState.Error -> ErrorMessage(message = current.message, onRetry = { viewModel.sendIntent(DetailIntent.Retry) })
-            is DetailState.Success -> DetailContent(wine = current.wine, viewModel = viewModel)
+            is DetailState.Success -> DetailContent(
+                wine = current.wine,
+                viewModel = viewModel,
+                onNavigateToSommelier = { wine ->
+                    onNavigateToSommelier(
+                        wine.id, wine.name, wine.region, wine.variety,
+                        wine.vintage, wine.rating, wine.style
+                    )
+                }
+            )
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DetailContent(wine: Wine, viewModel: DetailViewModel) {
+fun DetailContent(
+    wine: Wine,
+    viewModel: DetailViewModel,
+    onNavigateToSommelier: (Wine) -> Unit = {}
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
@@ -227,6 +247,18 @@ fun DetailContent(wine: Wine, viewModel: DetailViewModel) {
                         Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                         Text(stringResource(R.string.detail_share))
                     }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = { onNavigateToSommelier(wine) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                ) {
+                    Icon(Icons.Default.WineBar, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                    Text(stringResource(R.string.detail_ask_sommelier))
                 }
             }
         }

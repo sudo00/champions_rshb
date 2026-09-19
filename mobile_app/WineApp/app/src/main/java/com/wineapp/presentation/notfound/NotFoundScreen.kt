@@ -39,11 +39,13 @@ fun NotFoundScreen(
     val view = LocalView.current
     val surfaceColor = MaterialTheme.colorScheme.surface
     SideEffect {
-        val window = (view.context as android.app.Activity).window
-        window.statusBarColor = surfaceColor.toArgb()
-        window.navigationBarColor = surfaceColor.toArgb()
-        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = true
-        WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = true
+        (view.context as? android.app.Activity)?.let { activity ->
+            val window = activity.window
+            window.statusBarColor = surfaceColor.toArgb()
+            window.navigationBarColor = surfaceColor.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = true
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = true
+        }
     }
     NotFoundScreenContent(
         onRetry = onRetry,

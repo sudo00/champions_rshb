@@ -14,6 +14,11 @@
     <string name="scanner_flash_off">Вспышка выкл</string>
     <string name="scanner_processing">Обработка…</string>
 
+    <string name="scan_result_title">Результат сканирования</string>
+    <string name="scan_result_confidence">Точность определения</string>
+    <string name="scan_result_best_match">Лучшее совпадение</string>
+    <string name="scan_result_alternatives">Возможные варианты</string>
+
     <string name="search_title">Поиск вин</string>
     <string name="search_hint">Поиск по названию, региону или сорту</string>
     <string name="search_no_results">Вина не найдены</string>
@@ -38,12 +43,20 @@
     <string name="detail_reviews">отзывов</string>
     <string name="detail_save">Сохранить</string>
     <string name="detail_share">Поделиться</string>
+    <string name="detail_ask_sommelier">Спросить сомелье</string>
 
     <string name="sommelier_title">AI-сомелье</string>
     <string name="sommelier_hint">Спросите о сочетаниях, регионах и т.д.</string>
     <string name="sommelier_empty">Задайте мне любой вопрос о вине!</string>
     <string name="sommelier_send">Отправить</string>
     <string name="sommelier_greeting">Я — AI-сомелье. Могу помочь с рекомендациями вин, гастрономическими сочетаниями, информацией о регионах и многим другим. Что хотите узнать?</string>
+    <string name="sommelier_wine_context">Вы спрашиваете о вине:</string>
+    <string name="sommelier_suggested_title">Возможные вопросы:</string>
+    <string name="sommelier_q_pairing">С чем подавать это вино?</string>
+    <string name="sommelier_q_analogues">Какие есть аналоги дешевле?</string>
+    <string name="sommelier_q_region">Расскажите о регионе</string>
+    <string name="sommelier_q_aging">Сколько стоит выдерживать?</string>
+    <string name="sommelier_q_temp">При какой температуре подавать?</string>
 
     <string name="notfound_title">Вино не найдено</string>
     <string name="notfound_message">Мы не смогли определить это вино. Попробуйте снова или выполните поиск вручную.</string>

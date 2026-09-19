@@ -71,5 +71,9 @@ class ScannerViewModel @Inject constructor(
         updateState(ScannerState.Ready())
     }
 
+    fun resetToReady() {
+        updateState(ScannerState.Ready())
+    }
+
     fun getFlashMode(): Int = cameraHelper.getFlashMode()
 }

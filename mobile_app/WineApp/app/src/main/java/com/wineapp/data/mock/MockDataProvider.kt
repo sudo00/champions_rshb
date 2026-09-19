@@ -117,11 +117,15 @@ object MockDataProvider {
         )
     )
 
-    fun mockScanResult(): ScanResult = ScanResult(
-        wine = wines.random(),
-        confidence = 0.87f + Math.random().toFloat() * 0.1f,
-        matches = wines.shuffled().take(3)
-    )
+    fun mockScanResult(): ScanResult {
+        val main = wines.random()
+        val others = wines.filter { it.id != main.id }.shuffled().take(3)
+        return ScanResult(
+            wine = main,
+            confidence = 0.87f + Math.random().toFloat() * 0.1f,
+            matches = listOf(main) + others
+        )
+    }
 
     fun mockSearchResult(query: String, page: Int = 1): SearchResult {
         val filtered = wines.filter {
