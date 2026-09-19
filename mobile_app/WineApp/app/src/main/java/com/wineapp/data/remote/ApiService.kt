@@ -3,6 +3,8 @@ package com.wineapp.data.remote
 import com.wineapp.data.remote.dto.ScanRequest
 import com.wineapp.data.remote.dto.ScanResponse
 import com.wineapp.data.remote.dto.SearchResponse
+import com.wineapp.data.remote.dto.SommelierChatRequest
+import com.wineapp.data.remote.dto.SommelierChatResponse
 import com.wineapp.data.remote.dto.WineDetailResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -23,4 +25,7 @@ interface ApiService {
 
     @GET("v1/wines/{id}")
     suspend fun getWineDetail(@Path("id") id: String): WineDetailResponse
+
+    @POST("v1/sommelier/chat")
+    suspend fun sommelierChat(@Body request: SommelierChatRequest): SommelierChatResponse
 }

@@ -1,5 +1,6 @@
 ﻿package com.wineapp.presentation.sommelier
 
+import com.wineapp.domain.model.WineContext
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable

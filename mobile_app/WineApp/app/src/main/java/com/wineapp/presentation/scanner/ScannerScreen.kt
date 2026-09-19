@@ -10,18 +10,25 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -30,26 +37,29 @@ import androidx.compose.material.icons.filled.FlashAuto
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.LifecycleOwner
@@ -171,14 +181,16 @@ fun ScannerScreenContent(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Camera Preview using AndroidView
         AndroidView(
-            factory = { PreviewView(context).apply {
-                layoutParams = android.view.ViewGroup.LayoutParams(
-                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                    android.view.ViewGroup.LayoutParams.MATCH_PARENT
-                )
-            } },
+            factory = { ctx ->
+                PreviewView(ctx).apply {
+                    layoutParams = android.view.ViewGroup.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                    scaleType = PreviewView.ScaleType.FILL_CENTER
+                }
+            },
             update = { previewView ->
                 if (viewModel.cameraHelper.previewView != previewView) {
                     viewModel.cameraHelper.bindToLifecycle(lifecycleOwner, previewView)
@@ -187,10 +199,27 @@ fun ScannerScreenContent(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Scanner Frame Overlay
         ScannerFrameOverlay(modifier = Modifier.fillMaxSize())
 
-        // Bottom Controls
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 72.dp),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            Text(
+                text = stringResource(com.wineapp.R.string.scanner_title),
+                color = Color.White,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier
+                    .background(
+                        Color.Black.copy(alpha = 0.45f),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
+                    )
+                    .padding(horizontal = 20.dp, vertical = 10.dp)
+            )
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -204,22 +233,17 @@ fun ScannerScreenContent(
                 onCaptureClick = {
                     viewModel.cameraHelper.takePicture(
                         onSuccess = { file -> viewModel.sendIntent(ScannerIntent.CapturePhoto(file.absolutePath)) },
-                        onError = { /* Capture error */ }
+                        onError = { }
                     )
                 },
                 onFlashClick = { viewModel.sendIntent(ScannerIntent.ToggleFlash) }
             )
         }
 
-        // State Overlays
         when (val current = state) {
             is ScannerState.Processing -> LoadingOverlay(message = stringResource(com.wineapp.R.string.scanner_processing))
-            is ScannerState.Success -> {
-                // Navigation will be handled by parent via callbacks
-            }
-            is ScannerState.NotFound -> {
-                // Navigation will be handled by parent via callbacks
-            }
+            is ScannerState.Success -> { }
+            is ScannerState.NotFound -> { }
             is ScannerState.Error -> ErrorMessage(message = current.message, onRetry = { viewModel.sendIntent(ScannerIntent.RetryScan) })
             else -> {}
         }
@@ -228,74 +252,78 @@ fun ScannerScreenContent(
 
 @Composable
 fun ScannerFrameOverlay(modifier: Modifier = Modifier) {
+    val infiniteTransition = rememberInfiniteTransition()
+    val scanLineY by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2500),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scanLine"
+    )
+
     Box(
         modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
         val frameSize = 280.dp
-        Box(
-            modifier = Modifier
-                .size(frameSize)
-                .background(
-                    Color.Transparent,
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
-                )
-                .border(3.dp, MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
-        ) {
-            val primaryColor = MaterialTheme.colorScheme.primary
-            // Corner indicators
-            Box(modifier = Modifier.align(Alignment.TopStart).size(24.dp).padding(8.dp)) {
-                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-                    drawPath(
-                        color = primaryColor,
-                        path = androidx.compose.ui.graphics.Path().apply {
-                            moveTo(0f, size.height * 0.3f)
-                            lineTo(0f, 0f)
-                            lineTo(size.width * 0.3f, 0f)
-                        },
-                        style = Stroke(width = 4.dp.toPx())
-                    )
-                }
+        val bracketLength = 36.dp
+        val bracketWidth = 3.5f.dp
+        val primaryColor = MaterialTheme.colorScheme.primary
+
+        Box(modifier = Modifier.size(frameSize)) {
+            val scrimAlpha = 0.45f
+            val innerGap = bracketWidth
+
+            // Scrim layers around the frame
+            Box(modifier = Modifier.fillMaxWidth().align(Alignment.TopStart).height(innerGap).background(Color.Black.copy(alpha = scrimAlpha)))
+            Box(modifier = Modifier.fillMaxWidth().align(Alignment.BottomStart).height(innerGap).background(Color.Black.copy(alpha = scrimAlpha)))
+            Box(modifier = Modifier.align(Alignment.TopStart).width(innerGap).height(frameSize).background(Color.Black.copy(alpha = scrimAlpha)))
+            Box(modifier = Modifier.align(Alignment.TopEnd).width(innerGap).height(frameSize).background(Color.Black.copy(alpha = scrimAlpha)))
+
+            // Corner brackets
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val sw = bracketWidth.toPx()
+                val len = bracketLength.toPx()
+                val half = sw / 2
+                val gap = 2.dp.toPx()
+
+                // Top-left
+                drawLine(primaryColor, Offset(half, half + len), Offset(half, half + gap), sw, cap = StrokeCap.Round)
+                drawLine(primaryColor, Offset(half + gap, half), Offset(half + len, half), sw, cap = StrokeCap.Round)
+                // Top-right
+                drawLine(primaryColor, Offset(size.width - half - len, half), Offset(size.width - half - gap, half), sw, cap = StrokeCap.Round)
+                drawLine(primaryColor, Offset(size.width - half, half + gap), Offset(size.width - half, half + len), sw, cap = StrokeCap.Round)
+                // Bottom-left
+                drawLine(primaryColor, Offset(half, size.height - half - len), Offset(half, size.height - half - gap), sw, cap = StrokeCap.Round)
+                drawLine(primaryColor, Offset(half + gap, size.height - half), Offset(half + len, size.height - half), sw, cap = StrokeCap.Round)
+                // Bottom-right
+                drawLine(primaryColor, Offset(size.width - half, size.height - half - len), Offset(size.width - half, size.height - half - gap), sw, cap = StrokeCap.Round)
+                drawLine(primaryColor, Offset(size.width - half - gap, size.height - half), Offset(size.width - half - len, size.height - half), sw, cap = StrokeCap.Round)
             }
-            Box(modifier = Modifier.align(Alignment.TopEnd).size(24.dp).padding(8.dp)) {
-                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-                    drawPath(
-                        color = primaryColor,
-                        path = androidx.compose.ui.graphics.Path().apply {
-                            moveTo(size.width * 0.7f, 0f)
-                            lineTo(size.width, 0f)
-                            lineTo(size.width, size.height * 0.3f)
-                        },
-                        style = Stroke(width = 4.dp.toPx())
+
+            // Scan line
+            val frameSizePx = with(androidx.compose.ui.platform.LocalDensity.current) { frameSize.toPx() }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = innerGap)
+                    .height(2.dp)
+                    .align(Alignment.CenterStart)
+                    .graphicsLayer { translationY = (scanLineY - 0.5f) * frameSizePx }
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                primaryColor.copy(alpha = 0.4f),
+                                primaryColor.copy(alpha = 0.9f),
+                                primaryColor.copy(alpha = 0.4f),
+                                Color.Transparent
+                            )
+                        )
                     )
-                }
-            }
-            Box(modifier = Modifier.align(Alignment.BottomStart).size(24.dp).padding(8.dp)) {
-                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-                    drawPath(
-                        color = primaryColor,
-                        path = androidx.compose.ui.graphics.Path().apply {
-                            moveTo(0f, size.height * 0.7f)
-                            lineTo(0f, size.height)
-                            lineTo(size.width * 0.3f, size.height)
-                        },
-                        style = Stroke(width = 4.dp.toPx())
-                    )
-                }
-            }
-            Box(modifier = Modifier.align(Alignment.BottomEnd).size(24.dp).padding(8.dp)) {
-                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-                    drawPath(
-                        color = primaryColor,
-                        path = androidx.compose.ui.graphics.Path().apply {
-                            moveTo(size.width * 0.7f, size.height)
-                            lineTo(size.width, size.height)
-                            lineTo(size.width, size.height * 0.7f)
-                        },
-                        style = Stroke(width = 4.dp.toPx())
-                    )
-                }
-            }
+            )
         }
     }
 }
@@ -307,36 +335,73 @@ fun ScannerControls(
     onCaptureClick: () -> Unit,
     onFlashClick: () -> Unit
 ) {
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(24.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        IconButton(onClick = onGalleryClick) {
-            Icon(Icons.Default.PhotoLibrary, contentDescription = stringResource(com.wineapp.R.string.scanner_gallery), tint = Color.White, modifier = Modifier.size(28.dp))
-        }
-
-        Button(
-            onClick = onCaptureClick,
-            modifier = Modifier.size(72.dp),
-            shape = CircleShape,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.White,
-                contentColor = MaterialTheme.colorScheme.primary
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.65f))
+                )
             )
+            .padding(horizontal = 32.dp, vertical = 28.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.Circle, contentDescription = stringResource(com.wineapp.R.string.scanner_capture), modifier = Modifier.size(40.dp))
-        }
-
-        IconButton(onClick = onFlashClick) {
-            val icon = when (flashMode) {
-                androidx.camera.core.ImageCapture.FLASH_MODE_ON -> Icons.Default.FlashOn
-                androidx.camera.core.ImageCapture.FLASH_MODE_AUTO -> Icons.Default.FlashAuto
-                else -> Icons.Default.FlashOff
+            IconButton(onClick = onGalleryClick) {
+                Icon(
+                    Icons.Default.PhotoLibrary,
+                    contentDescription = stringResource(com.wineapp.R.string.scanner_gallery),
+                    tint = Color.White.copy(alpha = 0.9f),
+                    modifier = Modifier.size(28.dp)
+                )
             }
-            Icon(icon, contentDescription = stringResource(if (flashMode == androidx.camera.core.ImageCapture.FLASH_MODE_OFF) com.wineapp.R.string.scanner_flash_off else com.wineapp.R.string.scanner_flash_on), tint = Color.White, modifier = Modifier.size(28.dp))
+
+            Surface(
+                onClick = onCaptureClick,
+                shape = CircleShape,
+                color = Color.White,
+                modifier = Modifier.size(76.dp),
+                shadowElevation = 8.dp
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.White,
+                        modifier = Modifier.size(64.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Circle,
+                                contentDescription = stringResource(com.wineapp.R.string.scanner_capture),
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            IconButton(onClick = onFlashClick) {
+                val icon = when (flashMode) {
+                    androidx.camera.core.ImageCapture.FLASH_MODE_ON -> Icons.Default.FlashOn
+                    androidx.camera.core.ImageCapture.FLASH_MODE_AUTO -> Icons.Default.FlashAuto
+                    else -> Icons.Default.FlashOff
+                }
+                Icon(
+                    icon,
+                    contentDescription = stringResource(
+                        if (flashMode == androidx.camera.core.ImageCapture.FLASH_MODE_OFF)
+                            com.wineapp.R.string.scanner_flash_off
+                        else
+                            com.wineapp.R.string.scanner_flash_on
+                    ),
+                    tint = Color.White.copy(alpha = 0.9f),
+                    modifier = Modifier.size(28.dp)
+                )
+            }
         }
     }
 }
@@ -346,6 +411,7 @@ fun ScannerControls(
 private fun ScannerControlsPreview() {
     com.wineapp.ui.theme.WineAppTheme {
         Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1A1A1A))) {
+            ScannerFrameOverlay(modifier = Modifier.fillMaxSize())
             Column(
                 modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars),
                 verticalArrangement = Arrangement.Bottom,

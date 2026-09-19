@@ -6,7 +6,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import com.wineapp.data.local.AppDatabase
 import com.wineapp.data.local.WineDao
 import com.wineapp.data.remote.ApiService
+import com.wineapp.data.repository.SommelierRepositoryImpl
 import com.wineapp.data.repository.WineRepositoryImpl
+import com.wineapp.domain.repository.SommelierRepository
 import com.wineapp.domain.repository.WineRepository
 import dagger.Module
 import dagger.Provides
@@ -77,6 +79,12 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideWineRepository(impl: WineRepositoryImpl): WineRepository {
+        return impl
+    }
+
+    @Provides
+    @Singleton
+    fun provideSommelierRepository(impl: SommelierRepositoryImpl): SommelierRepository {
         return impl
     }
 }

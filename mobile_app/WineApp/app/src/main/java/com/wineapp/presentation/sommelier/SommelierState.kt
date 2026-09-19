@@ -1,17 +1,8 @@
 package com.wineapp.presentation.sommelier
 
+import com.wineapp.domain.model.WineContext
 import com.wineapp.presentation.common.BaseState
 import com.wineapp.presentation.common.BaseIntent
-
-data class WineContext(
-    val wineId: String,
-    val wineName: String,
-    val region: String? = null,
-    val variety: String? = null,
-    val vintage: Int? = null,
-    val rating: Float? = null,
-    val style: String? = null
-)
 
 sealed interface SommelierState : BaseState {
     data class Idle(

@@ -1,18 +1,16 @@
 package com.wineapp.presentation.search
 
-import android.app.Activity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
@@ -50,9 +48,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.wineapp.R
 import com.wineapp.data.mock.MockDataProvider
 import com.wineapp.domain.model.Wine
-import com.wineapp.presentation.common.EmptyState
-import com.wineapp.presentation.common.ErrorMessage
-import com.wineapp.presentation.common.LoadingOverlay
 import com.wineapp.presentation.common.WineAppTopAppBar
 import com.wineapp.presentation.common.WineCard
 import com.wineapp.ui.theme.WineAppTheme
@@ -95,11 +90,13 @@ fun SearchScreenContent(
     val view = LocalView.current
     val surfaceColor = MaterialTheme.colorScheme.surface
     SideEffect {
-        val window = (view.context as Activity).window
-        window.statusBarColor = surfaceColor.toArgb()
-        window.navigationBarColor = surfaceColor.toArgb()
-        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = true
-        WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = true
+        (view.context as? android.app.Activity)?.let { activity ->
+            val window = activity.window
+            window.statusBarColor = surfaceColor.toArgb()
+            window.navigationBarColor = surfaceColor.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = true
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = true
+        }
     }
 
     Scaffold(
@@ -112,47 +109,82 @@ fun SearchScreenContent(
                     }
                 }
             )
-        },
-        modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars)
+        }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                TextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text(stringResource(R.string.search_hint)) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    trailingIcon = {
-                        if (query.isNotBlank()) {
-                            IconButton(onClick = { query = "" }) {
-                                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.search_clear))
-                            }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp)
+        ) {
+            // Search field
+            TextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, bottom = 12.dp),
+                placeholder = {
+                    Text(
+                        stringResource(R.string.search_hint),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                trailingIcon = {
+                    if (query.isNotBlank()) {
+                        IconButton(onClick = { query = "" }) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = stringResource(R.string.search_clear),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                    },
-                    singleLine = true,
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    ),
-                    shape = MaterialTheme.shapes.large
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    cursorColor = MaterialTheme.colorScheme.primary
                 )
-            }
+            )
 
-            androidx.compose.foundation.layout.Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            // Filter chips
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 WineFilter.entries.forEach { filter ->
                     FilterChip(
                         selected = selectedFilter == filter,
                         onClick = { selectedFilter = filter },
-                        label = { Text(stringResource(filter.labelRes)) },
+                        label = {
+                            Text(
+                                stringResource(filter.labelRes),
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primary,
                             selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            borderColor = MaterialTheme.colorScheme.outlineVariant,
+                            selectedBorderColor = MaterialTheme.colorScheme.primary,
+                            enabled = true,
+                            selected = selectedFilter == filter
                         )
                     )
                 }
@@ -164,48 +196,107 @@ fun SearchScreenContent(
                 }
             }
 
-            Box(modifier = Modifier.fillMaxSize()) {
-                when (val current = state) {
-                    is SearchState.Idle -> {
-                        EmptyState(
-                            icon = Icons.Default.Search,
-                            title = stringResource(R.string.search_title),
-                            message = stringResource(R.string.search_empty)
-                        )
-                    }
-                    is SearchState.Loading -> {
-                        if (!current.isLoadMore) {
-                            LoadingOverlay()
-                        } else {
-                            val wines = (state as? SearchState.Success)?.result?.wines ?: emptyList()
-                            SearchResultsList(
-                                wines = wines,
-                                isLoading = true,
-                                onItemClick = { onNavigateToDetail(it.id) }
+            // Content
+            when (val current = state) {
+                is SearchState.Idle -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            Text(
+                                stringResource(R.string.search_title),
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                stringResource(R.string.search_empty),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 32.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         }
                     }
-                    is SearchState.Success -> {
+                }
+                is SearchState.Loading -> {
+                    if (!current.isLoadMore) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    } else {
+                        val wines = (state as? SearchState.Success)?.result?.wines ?: emptyList()
                         SearchResultsList(
-                            wines = current.result.wines,
-                            isLoading = false,
-                            hasMore = current.result.hasMore,
-                            onItemClick = { onNavigateToDetail(it.id) },
-                            onLoadMore = { viewModel.sendIntent(SearchIntent.LoadMore) }
+                            wines = wines,
+                            isLoading = true,
+                            onItemClick = { onNavigateToDetail(it.id) }
                         )
                     }
-                    is SearchState.Empty -> {
-                        EmptyState(
-                            icon = Icons.Default.SearchOff,
-                            title = stringResource(R.string.search_no_results),
-                            message = stringResource(R.string.search_no_results_for, current.query)
-                        )
+                }
+                is SearchState.Success -> {
+                    SearchResultsList(
+                        wines = current.result.wines,
+                        isLoading = false,
+                        hasMore = current.result.hasMore,
+                        onItemClick = { onNavigateToDetail(it.id) },
+                        onLoadMore = { viewModel.sendIntent(SearchIntent.LoadMore) }
+                    )
+                }
+                is SearchState.Empty -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.SearchOff,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            Text(
+                                stringResource(R.string.search_no_results),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                stringResource(R.string.search_no_results_for, current.query),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
                     }
-                    is SearchState.Error -> {
-                        ErrorMessage(
-                            message = current.message,
-                            onRetry = { viewModel.sendIntent(SearchIntent.Search(query)) }
-                        )
+                }
+                is SearchState.Error -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                current.message,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            androidx.compose.material3.TextButton(
+                                onClick = { viewModel.sendIntent(SearchIntent.Search(query)) }
+                            ) {
+                                Text(stringResource(R.string.retry))
+                            }
+                        }
                     }
                 }
             }
@@ -223,10 +314,10 @@ fun SearchResultsList(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        contentPadding = PaddingValues(vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(wines) { wine ->
+        items(wines, key = { it.id }) { wine ->
             WineCard(wine = wine, onClick = { onItemClick(wine) })
         }
         if (isLoading || hasMore) {
@@ -256,18 +347,6 @@ private fun SearchScreenPreview() {
             wines = MockDataProvider.wines,
             isLoading = false,
             hasMore = false,
-            onItemClick = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, heightDp = 800, name = "Загрузка")
-@Composable
-private fun SearchScreenLoadingPreview() {
-    WineAppTheme {
-        SearchResultsList(
-            wines = MockDataProvider.wines.take(3),
-            isLoading = true,
             onItemClick = {}
         )
     }
