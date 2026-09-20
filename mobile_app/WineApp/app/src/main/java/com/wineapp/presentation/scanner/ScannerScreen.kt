@@ -2,11 +2,10 @@ package com.wineapp.presentation.scanner
 
 import android.Manifest
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.view.PreviewView
@@ -63,15 +62,14 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.LifecycleOwner
+import com.wineapp.data.file.CameraHelper
 import com.wineapp.presentation.common.ErrorMessage
 import com.wineapp.presentation.common.LoadingOverlay
-import java.io.File
-import java.io.FileOutputStream
 
 @Composable
 fun ScannerScreen(
-    onNavigateToDetail: (String) -> Unit = {},
-    onNavigateToScanResult: (confidence: Float, mainWineId: String, alternativeIds: String) -> Unit = { _, _, _ -> },
+    onNavigateToDetail: (wineId: String, photoPath: String?) -> Unit = { _, _ -> },
+    onNavigateToScanResult: (confidence: Float, mainWineId: String, alternativeIds: String, photoPath: String?) -> Unit = { _, _, _, _ -> },
     onNavigateBack: () -> Unit = {}
 ) {
     val viewModel: ScannerViewModel = hiltViewModel()
@@ -88,8 +86,7 @@ fun ScannerScreen(
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             result.data?.data?.let { uri ->
-                val file = copyUriToFile(context, uri)
-                file?.let { viewModel.sendIntent(ScannerIntent.ProcessImage(it.absolutePath)) }
+                viewModel.sendIntent(ScannerIntent.GalleryImagePicked(uri.toString()))
             }
         }
     }
@@ -101,6 +98,8 @@ fun ScannerScreen(
             galleryLauncher.launch(Intent(Intent.ACTION_PICK).apply { type = "image/*" })
         }
     }
+
+    BackHandler { onNavigateBack() }
 
     LaunchedEffect(Unit) {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
@@ -121,11 +120,11 @@ fun ScannerScreen(
                 }
                 if (allWines.size <= 1) {
                     viewModel.resetToReady()
-                    onNavigateToDetail(mainWineId)
+                    onNavigateToDetail(mainWineId, current.imagePath)
                 } else {
                     val altIds = allWines.filter { it.id != mainWineId }.joinToString("-") { it.id }
                     viewModel.resetToReady()
-                    onNavigateToScanResult(result.confidence, mainWineId, altIds)
+                    onNavigateToScanResult(result.confidence, mainWineId, altIds, current.imagePath)
                 }
             }
             else -> {}
@@ -136,8 +135,12 @@ fun ScannerScreen(
         onDispose { viewModel.cameraHelper.shutdown() }
     }
     ScannerScreenContent(
-        viewModel = viewModel,
+        state = state,
+        cameraHelper = viewModel.cameraHelper,
         lifecycleOwner = lifecycleOwner,
+        onToggleFlash = { viewModel.sendIntent(ScannerIntent.ToggleFlash) },
+        onTakePicture = { path -> viewModel.sendIntent(ScannerIntent.CapturePhoto(path))},
+        onRetry = { viewModel.sendIntent(ScannerIntent.RetryScan) },
         onGalleryClick = {
             val storagePermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 Manifest.permission.READ_MEDIA_IMAGES
@@ -153,27 +156,16 @@ fun ScannerScreen(
     )
 }
 
-private fun copyUriToFile(context: Context, uri: Uri): File? {
-    return try {
-        val inputStream = context.contentResolver.openInputStream(uri) ?: return null
-        val tempFile = File.createTempFile("gallery_", ".jpg", context.cacheDir)
-        val outputStream = FileOutputStream(tempFile)
-        inputStream.copyTo(outputStream)
-        inputStream.close()
-        outputStream.close()
-        tempFile
-    } catch (e: Exception) {
-        null
-    }
-}
-
 @Composable
 fun ScannerScreenContent(
-    viewModel: ScannerViewModel,
+    state: ScannerState,
+    cameraHelper: CameraHelper,
     lifecycleOwner: LifecycleOwner,
-    onGalleryClick: () -> Unit
+    onGalleryClick: () -> Unit,
+    onTakePicture: (String) -> Unit,
+    onToggleFlash: () -> Unit,
+    onRetry: () -> Unit,
 ) {
-    val state by viewModel.state.collectAsState()
     val context = LocalContext.current
     val flashMode = when (val s = state) {
         is ScannerState.Ready -> s.flashMode
@@ -192,8 +184,8 @@ fun ScannerScreenContent(
                 }
             },
             update = { previewView ->
-                if (viewModel.cameraHelper.previewView != previewView) {
-                    viewModel.cameraHelper.bindToLifecycle(lifecycleOwner, previewView)
+                if (cameraHelper.previewView != previewView) {
+                    cameraHelper.bindToLifecycle(lifecycleOwner, previewView)
                 }
             },
             modifier = Modifier.fillMaxSize()
@@ -231,12 +223,12 @@ fun ScannerScreenContent(
                 flashMode = flashMode,
                 onGalleryClick = onGalleryClick,
                 onCaptureClick = {
-                    viewModel.cameraHelper.takePicture(
-                        onSuccess = { file -> viewModel.sendIntent(ScannerIntent.CapturePhoto(file.absolutePath)) },
+                    cameraHelper.takePicture(
+                        onSuccess = { file -> onTakePicture(file.absolutePath) },
                         onError = { }
                     )
                 },
-                onFlashClick = { viewModel.sendIntent(ScannerIntent.ToggleFlash) }
+                onFlashClick = onToggleFlash,
             )
         }
 
@@ -244,7 +236,7 @@ fun ScannerScreenContent(
             is ScannerState.Processing -> LoadingOverlay(message = stringResource(com.wineapp.R.string.scanner_processing))
             is ScannerState.Success -> { }
             is ScannerState.NotFound -> { }
-            is ScannerState.Error -> ErrorMessage(message = current.message, onRetry = { viewModel.sendIntent(ScannerIntent.RetryScan) })
+            is ScannerState.Error -> ErrorMessage(message = current.message, onRetry = onRetry)
             else -> {}
         }
     }

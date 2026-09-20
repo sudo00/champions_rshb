@@ -60,35 +60,3 @@ data class VarietyDto(val name: String)
 data class StyleDto(val name: String)
 @Serializable
 data class WineryDto(val name: String)
-
-// --- Sommelier Chat DTOs ---
-
-@Serializable
-data class SommelierChatRequest(
-    val messages: List<SommelierChatMessageDto>,
-    val wineContext: SommelierWineContextDto? = null
-)
-
-@Serializable
-data class SommelierChatMessageDto(
-    val role: String,
-    val content: String
-)
-
-@Serializable
-data class SommelierWineContextDto(
-    val wineId: String,
-    val wineName: String,
-    val region: String? = null,
-    val variety: String? = null,
-    val vintage: Int? = null,
-    val rating: Float? = null,
-    val style: String? = null
-)
-
-@Serializable
-data class SommelierChatResponse(
-    val success: Boolean,
-    val message: SommelierChatMessageDto?,
-    val error: String? = null
-)

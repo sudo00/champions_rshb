@@ -26,18 +26,22 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.WineBar
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -58,6 +62,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -70,6 +75,7 @@ import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.wineapp.R
 import com.wineapp.presentation.common.WineAppTopAppBar
+import com.wineapp.util.ShareHelper
 
 @Composable
 fun SommelierScreen(
@@ -80,6 +86,8 @@ fun SommelierScreen(
     wineVintage: Int? = null,
     wineRating: Float? = null,
     wineStyle: String? = null,
+    photoPath: String? = null,
+    confidence: Float = 1.0f,
     onNavigateBack: () -> Unit = {}
 ) {
     val viewModel: SommelierViewModel = hiltViewModel()
@@ -103,7 +111,10 @@ fun SommelierScreen(
 
     SommelierScreenContent(
         viewModel = viewModel,
-        onNavigateBack = onNavigateBack
+        onNavigateBack = {
+            viewModel.sendIntent(SommelierIntent.SaveAndExit(photoPath, confidence))
+            onNavigateBack()
+        }
     )
 }
 
@@ -139,7 +150,34 @@ fun SommelierScreenContent(
             WineAppTopAppBar(
                 title = stringResource(R.string.sommelier_title),
                 showBack = showBackButton,
-                onBack = onNavigateBack
+                onBack = onNavigateBack,
+                actions = {
+                    val messages = when (val current = state) {
+                        is SommelierState.Idle -> current.messages
+                        is SommelierState.Loading -> current.messages
+                        is SommelierState.Error -> current.messages
+                    }
+                    val wineContext = when (val current = state) {
+                        is SommelierState.Idle -> current.wineContext
+                        is SommelierState.Loading -> current.wineContext
+                        is SommelierState.Error -> current.wineContext
+                    }
+                    if (messages.isNotEmpty() && wineContext != null) {
+                        val context = LocalContext.current
+                        IconButton(onClick = {
+                            ShareHelper.shareConversationFromChat(
+                                context,
+                                wineContext.wineName,
+                                messages
+                            )
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = stringResource(R.string.detail_share)
+                            )
+                        }
+                    }
+                }
             )
         },
         bottomBar = {
@@ -166,6 +204,13 @@ fun SommelierScreenContent(
         }
         val isLoading = state is SommelierState.Loading
 
+        val listState = rememberLazyListState()
+        LaunchedEffect(messages.size) {
+            if (messages.isNotEmpty()) {
+                listState.animateScrollToItem(0)
+            }
+        }
+
         if (messages.isEmpty()) {
             SommelierEmptyState(
                 wineContext = wineContext,
@@ -178,30 +223,35 @@ fun SommelierScreenContent(
                 }
             )
         } else {
-            LazyColumn(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                reverseLayout = true
+                    .padding(paddingValues)
             ) {
-                if (wineContext != null && messages.size <= 1) {
-                    item(key = "wine_context") {
-                        WineContextInline(
-                            wineContext = wineContext,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
+                if (wineContext != null) {
+                    WineContextInline(
+                        wineContext = wineContext,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    reverseLayout = true
+                ) {
+                    if (isLoading) {
+                        item(key = "typing") {
+                            TypingIndicator()
+                        }
                     }
-                }
-                items(messages.reversed(), key = { it.id }) { message ->
-                    ChatBubble(message = message)
-                }
-                if (isLoading) {
-                    item(key = "typing") {
-                        TypingIndicator()
+                    items(messages.reversed(), key = { it.id }) { message ->
+                        ChatBubble(message = message)
                     }
                 }
             }

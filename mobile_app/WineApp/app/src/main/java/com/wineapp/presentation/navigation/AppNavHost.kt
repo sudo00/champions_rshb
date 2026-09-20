@@ -8,16 +8,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.wineapp.presentation.agegate.AgeGateBottomSheet
+import com.wineapp.presentation.detail.DetailScreen
+import com.wineapp.presentation.favorites.FavoritesScreen
 import com.wineapp.presentation.notfound.NotFoundScreen
-import com.wineapp.presentation.scanresult.ScanResultScreen
+import com.wineapp.presentation.savedscans.SavedScanDetailScreen
+import com.wineapp.presentation.savedscans.SavedScansScreen
 import com.wineapp.presentation.scanner.ScannerScreen
+import com.wineapp.presentation.scanresult.ScanResultScreen
 import com.wineapp.presentation.search.SearchScreen
 import com.wineapp.presentation.sommelier.SommelierScreen
 
@@ -43,9 +46,13 @@ fun AppNavHost() {
     NavHost(navController, startDestination = "search") {
         composable("scanner") {
             ScannerScreen(
-                onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") },
-                onNavigateToScanResult = { confidence, mainWineId, altIds ->
-                    navController.navigate("scan_result/$confidence/$mainWineId/$altIds")
+                onNavigateToDetail = { wineId, photoPath ->
+                    val encoded = photoPath?.let { Uri.encode(it) } ?: ""
+                    navController.navigate("detail/$wineId?photoPath=$encoded")
+                },
+                onNavigateToScanResult = { confidence, mainWineId, altIds, photoPath ->
+                    val encoded = photoPath?.let { Uri.encode(it) } ?: ""
+                    navController.navigate("scan_result/$confidence/$mainWineId/$altIds?photoPath=$encoded")
                 },
                 onNavigateBack = { navController.popBackStack() }
             )
@@ -54,33 +61,66 @@ fun AppNavHost() {
             SearchScreen(
                 onNavigateToScanner = { navController.navigate("scanner") },
                 onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") },
-                onNavigateToSommelier = { navController.navigate("sommelier") }
+                onNavigateToSommelier = { navController.navigate("sommelier") },
+                onNavigateToSavedScans = { navController.navigate("saved_scans") },
+                onNavigateToFavorites = { navController.navigate("favorites") }
             )
         }
         composable(
-            route = "detail/{wineId}",
-            arguments = listOf(androidx.navigation.navArgument("wineId") { type = NavType.StringType })
+            route = "detail/{wineId}?photoPath={photoPath}&confidence={confidence}",
+            arguments = listOf(
+                navArgument("wineId") { type = NavType.StringType },
+                navArgument("photoPath") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("confidence") {
+                    type = NavType.FloatType
+                    defaultValue = 1.0f
+                }
+            )
         ) { backStackEntry ->
             val wineId = backStackEntry.arguments?.getString("wineId") ?: ""
-            DetailScreen(wineId = wineId, navController = navController)
+            val photoPath = backStackEntry.arguments?.getString("photoPath")
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { Uri.decode(it) }
+            val confidence = backStackEntry.arguments?.getFloat("confidence") ?: 1.0f
+            DetailScreen(
+                wineId = wineId,
+                photoPath = photoPath,
+                confidence = confidence,
+                navController = navController
+            )
         }
         composable(
-            route = "scan_result/{confidence}/{mainWineId}/{altIds}",
+            route = "scan_result/{confidence}/{mainWineId}/{altIds}?photoPath={photoPath}",
             arguments = listOf(
-                androidx.navigation.navArgument("confidence") { type = NavType.FloatType },
-                androidx.navigation.navArgument("mainWineId") { type = NavType.StringType },
-                androidx.navigation.navArgument("altIds") { type = NavType.StringType }
+                navArgument("confidence") { type = NavType.FloatType },
+                navArgument("mainWineId") { type = NavType.StringType },
+                navArgument("altIds") { type = NavType.StringType },
+                navArgument("photoPath") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
             )
         ) { backStackEntry ->
             val confidence = backStackEntry.arguments?.getFloat("confidence") ?: 0f
             val mainWineId = backStackEntry.arguments?.getString("mainWineId") ?: ""
             val altIds = backStackEntry.arguments?.getString("altIds") ?: ""
             val altIdsList = altIds.split("-").filter { it.isNotBlank() }
+            val photoPath = backStackEntry.arguments?.getString("photoPath")
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { Uri.decode(it) }
             ScanResultScreen(
                 confidence = confidence,
                 mainWineId = mainWineId,
                 alternativeIds = altIdsList,
-                onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") },
+                onNavigateToDetail = { wineId ->
+                    val encoded = photoPath?.let { Uri.encode(it) } ?: ""
+                    navController.navigate("detail/$wineId?photoPath=$encoded&confidence=$confidence")
+                },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -91,19 +131,25 @@ fun AppNavHost() {
             )
         }
         composable(
-            route = "sommelier/{wineId}/{wineName}/{wineRegion}/{wineVariety}/{wineVintage}/{wineRating}/{wineStyle}",
+            route = "sommelier/{wineId}/{wineName}/{wineRegion}/{wineVariety}/{wineVintage}/{wineRating}/{wineStyle}?photoPath={photoPath}&confidence={confidence}",
             arguments = listOf(
-                androidx.navigation.navArgument("wineId") { type = NavType.StringType; defaultValue = "" },
-                androidx.navigation.navArgument("wineName") { type = NavType.StringType; defaultValue = "" },
-                androidx.navigation.navArgument("wineRegion") { type = NavType.StringType; defaultValue = "" },
-                androidx.navigation.navArgument("wineVariety") { type = NavType.StringType; defaultValue = "" },
-                androidx.navigation.navArgument("wineVintage") { type = NavType.IntType; defaultValue = 0 },
-                androidx.navigation.navArgument("wineRating") { type = NavType.FloatType; defaultValue = 0f },
-                androidx.navigation.navArgument("wineStyle") { type = NavType.StringType; defaultValue = "" }
+                navArgument("wineId") { type = NavType.StringType; defaultValue = "" },
+                navArgument("wineName") { type = NavType.StringType; defaultValue = "" },
+                navArgument("wineRegion") { type = NavType.StringType; defaultValue = "" },
+                navArgument("wineVariety") { type = NavType.StringType; defaultValue = "" },
+                navArgument("wineVintage") { type = NavType.IntType; defaultValue = 0 },
+                navArgument("wineRating") { type = NavType.FloatType; defaultValue = 0f },
+                navArgument("wineStyle") { type = NavType.StringType; defaultValue = "" },
+                navArgument("photoPath") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("confidence") { type = NavType.FloatType; defaultValue = 1.0f }
             )
         ) { backStackEntry ->
             val wineId = backStackEntry.arguments?.getString("wineId")?.takeIf { it.isNotEmpty() }
             val wineName = backStackEntry.arguments?.getString("wineName")?.takeIf { it.isNotEmpty() }
+            val photoPath = backStackEntry.arguments?.getString("photoPath")
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { Uri.decode(it) }
+            val confidence = backStackEntry.arguments?.getFloat("confidence") ?: 1.0f
             SommelierScreen(
                 wineId = wineId,
                 wineName = wineName,
@@ -112,6 +158,8 @@ fun AppNavHost() {
                 wineVintage = backStackEntry.arguments?.getInt("wineVintage")?.takeIf { it != 0 },
                 wineRating = backStackEntry.arguments?.getFloat("wineRating")?.takeIf { it != 0f },
                 wineStyle = backStackEntry.arguments?.getString("wineStyle")?.takeIf { it.isNotEmpty() },
+                photoPath = photoPath,
+                confidence = confidence,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -120,23 +168,29 @@ fun AppNavHost() {
                 onNavigateBack = { navController.popBackStack() }
             )
         }
-    }
-}
-
-@Composable
-fun DetailScreen(wineId: String, navController: NavHostController) {
-    val viewModel = hiltViewModel<com.wineapp.presentation.detail.DetailViewModel>()
-    com.wineapp.presentation.detail.DetailScreenContent(
-        viewModel = viewModel,
-        wineId = wineId,
-        onNavigateToSommelier = { sWineId, sWineName, sRegion, sVariety, sVintage, sRating, sStyle ->
-            val uriWineName = Uri.encode(sWineName)
-            val uriRegion = Uri.encode(sRegion ?: "")
-            val uriVariety = Uri.encode(sVariety ?: "")
-            val uriStyle = Uri.encode(sStyle ?: "")
-            navController.navigate(
-                "sommelier/$sWineId/$uriWineName/$uriRegion/$uriVariety/${sVintage ?: 0}/${sRating ?: 0f}/$uriStyle"
+        composable("saved_scans") {
+            SavedScansScreen(
+                onNavigateToDetail = { scanId -> navController.navigate("saved_scan_detail/$scanId") },
+                onNavigateBack = { navController.popBackStack() }
             )
         }
-    )
+        composable("favorites") {
+            FavoritesScreen(
+                onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") },
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(
+            route = "saved_scan_detail/{scanId}",
+            arguments = listOf(
+                navArgument("scanId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val scanId = backStackEntry.arguments?.getString("scanId") ?: ""
+            SavedScanDetailScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") }
+            )
+        }
+    }
 }

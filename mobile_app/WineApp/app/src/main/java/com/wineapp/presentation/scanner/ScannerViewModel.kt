@@ -1,16 +1,23 @@
 package com.wineapp.presentation.scanner
 
+import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.wineapp.data.file.CameraHelper
 import com.wineapp.domain.usecase.ScanWineUseCase
 import com.wineapp.presentation.common.BaseViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileOutputStream
 import javax.inject.Inject
+import androidx.core.net.toUri
 
 @HiltViewModel
 class ScannerViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val scanWineUseCase: ScanWineUseCase,
     val cameraHelper: CameraHelper
 ) : BaseViewModel<ScannerState, ScannerIntent>() {
@@ -21,17 +28,19 @@ class ScannerViewModel @Inject constructor(
         when (intent) {
             is ScannerIntent.CapturePhoto -> handleCapture(intent.imagePath)
             is ScannerIntent.ProcessImage -> handleProcess(intent.imagePath)
-            is ScannerIntent.PickFromGallery -> handleGalleryPick()
+            is ScannerIntent.GalleryImagePicked -> handleGalleryPicked(intent.uriString)
             is ScannerIntent.ToggleFlash -> handleToggleFlash()
             is ScannerIntent.RetryScan -> handleRetry()
-            is ScannerIntent.OpenSearch -> { /* Navigation handled in UI */ }
-            is ScannerIntent.OpenDetail -> { /* Navigation handled in UI */ }
+            is ScannerIntent.OpenSearch -> { /* Navigation handled in UI */
+            }
+
+            is ScannerIntent.OpenDetail -> { /* Navigation handled in UI */
+            }
         }
     }
 
     private fun handleCapture(imagePath: String) {
         updateState(ScannerState.Capturing(imagePath))
-        // Process immediately
         sendIntent(ScannerIntent.ProcessImage(imagePath))
     }
 
@@ -52,11 +61,36 @@ class ScannerViewModel @Inject constructor(
         }
     }
 
-    private fun handleGalleryPick() {
-        // TODO: Implement gallery picker launch
-        // galleryPicker.pickImage(activity, launcher) { file ->
-        //     file?.let { sendIntent(ScannerIntent.ProcessImage(it.absolutePath)) }
-        // }
+    private fun handleGalleryPicked(uriString: String) {
+        viewModelScope.launch {
+            val uri = try {
+                uriString.toUri()
+            } catch (e: Exception) {
+                Log.e("ScannerViewModel", "Invalid URI: $uriString", e)
+                return@launch
+            }
+            val file = copyUriToFile(uri)
+            if (file != null) {
+                sendIntent(ScannerIntent.ProcessImage(file.absolutePath))
+            } else {
+                Log.e("ScannerViewModel", "Failed to copy gallery image")
+            }
+        }
+    }
+
+    private fun copyUriToFile(uri: Uri): File? {
+        return try {
+            val inputStream = context.contentResolver.openInputStream(uri) ?: return null
+            val tempFile = File.createTempFile("gallery_", ".jpg", context.cacheDir)
+            FileOutputStream(tempFile).use { outputStream ->
+                inputStream.copyTo(outputStream)
+            }
+            inputStream.close()
+            tempFile
+        } catch (e: Exception) {
+            Log.e("ScannerViewModel", "copyUriToFile failed", e)
+            null
+        }
     }
 
     private fun handleToggleFlash() {

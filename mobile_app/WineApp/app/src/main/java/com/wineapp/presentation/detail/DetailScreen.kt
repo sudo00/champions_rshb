@@ -1,5 +1,6 @@
 package com.wineapp.presentation.detail
 
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,13 +20,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BookmarkAdd
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.WineBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -49,6 +52,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.wineapp.R
@@ -58,9 +63,32 @@ import com.wineapp.presentation.common.ErrorMessage
 import com.wineapp.presentation.common.LoadingOverlay
 
 @Composable
+fun DetailScreen(wineId: String, photoPath: String? = null, confidence: Float = 1.0f, navController: NavHostController) {
+    val viewModel = hiltViewModel<DetailViewModel>()
+    DetailScreenContent(
+        viewModel = viewModel,
+        wineId = wineId,
+        photoPath = photoPath,
+        confidence = confidence,
+        onNavigateToSommelier = { sWineId, sWineName, sRegion, sVariety, sVintage, sRating, sStyle ->
+            val uriWineName = Uri.encode(sWineName)
+            val uriRegion = Uri.encode(sRegion ?: "")
+            val uriVariety = Uri.encode(sVariety ?: "")
+            val uriStyle = Uri.encode(sStyle ?: "")
+            val encodedPhoto = photoPath?.let { Uri.encode(it) } ?: ""
+            navController.navigate(
+                "sommelier/$sWineId/$uriWineName/$uriRegion/$uriVariety/${sVintage ?: 0}/${sRating ?: 0f}/$uriStyle?photoPath=$encodedPhoto&confidence=$confidence"
+            )
+        }
+    )
+}
+
+@Composable
 fun DetailScreenContent(
     viewModel: DetailViewModel,
     wineId: String,
+    photoPath: String? = null,
+    confidence: Float = 1.0f,
     onNavigateToSommelier: (wineId: String, wineName: String, region: String?, variety: String?, vintage: Int?, rating: Float?, style: String?) -> Unit = { _, _, _, _, _, _, _ -> }
 ) {
     val state by viewModel.state.collectAsState()
@@ -78,7 +106,7 @@ fun DetailScreenContent(
     }
 
     LaunchedEffect(wineId) {
-        viewModel.sendIntent(DetailIntent.LoadDetail(wineId))
+        viewModel.sendIntent(DetailIntent.LoadDetail(wineId, photoPath, confidence))
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -106,6 +134,8 @@ fun DetailContent(
     viewModel: DetailViewModel,
     onNavigateToSommelier: (Wine) -> Unit = {}
 ) {
+    val state by viewModel.state.collectAsState()
+    val isFavorite = (state as? DetailState.Success)?.isFavorite ?: false
     LazyColumn(
         modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
@@ -164,6 +194,20 @@ fun DetailContent(
                             Text("(${wine.reviewsCount} ${stringResource(R.string.detail_reviews)})", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f))
                         }
                     }
+                }
+                // Favorite button
+                IconButton(
+                    onClick = { viewModel.sendIntent(DetailIntent.ToggleFavorite) },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = stringResource(R.string.detail_favorite),
+                        tint = if (isFavorite) Color.Red else Color.White,
+                        modifier = Modifier.size(28.dp)
+                    )
                 }
             }
         }
@@ -226,27 +270,15 @@ fun DetailContent(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Actions
-                Row(
+                Button(
+                    onClick = { viewModel.sendIntent(DetailIntent.AddToHistory) },
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
                 ) {
-                    Button(
-                        onClick = { viewModel.sendIntent(DetailIntent.AddToHistory) },
-                        modifier = Modifier.weight(1f),
-                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Icon(Icons.Default.BookmarkAdd, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                        Text(stringResource(R.string.detail_save))
-                    }
-                    Button(
-                        onClick = { viewModel.sendIntent(DetailIntent.Share) },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                        Text(stringResource(R.string.detail_share))
-                    }
+                    Icon(Icons.Default.BookmarkAdd, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                    Text(stringResource(R.string.detail_save))
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(

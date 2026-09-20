@@ -1,5 +1,6 @@
 package com.wineapp.presentation.search
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,10 +11,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.CircularProgressIndicator
@@ -47,6 +51,7 @@ import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.wineapp.R
 import com.wineapp.data.mock.MockDataProvider
+import com.wineapp.domain.model.SearchResult
 import com.wineapp.domain.model.Wine
 import com.wineapp.presentation.common.WineAppTopAppBar
 import com.wineapp.presentation.common.WineCard
@@ -64,26 +69,41 @@ enum class WineFilter(val labelRes: Int) {
 fun SearchScreen(
     onNavigateToScanner: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
-    onNavigateToSommelier: () -> Unit = {}
+    onNavigateToSommelier: () -> Unit = {},
+    onNavigateToSavedScans: () -> Unit = {},
+    onNavigateToFavorites: () -> Unit = {}
 ) {
     val viewModel: SearchViewModel = hiltViewModel()
+    val state by viewModel.state.collectAsState()
+
+    LaunchedEffect(true) {
+        viewModel.sendIntent(SearchIntent.Search(""))
+    }
+
     SearchScreenContent(
-        viewModel = viewModel,
+        state = state,
+        onSearch = { query -> viewModel.sendIntent(SearchIntent.Search(query))},
+        onLoadMore = { viewModel.sendIntent(SearchIntent.LoadMore) },
         onNavigateToScanner = onNavigateToScanner,
         onNavigateToDetail = onNavigateToDetail,
-        onNavigateToSommelier = onNavigateToSommelier
+        onNavigateToSommelier = onNavigateToSommelier,
+        onNavigateToSavedScans = onNavigateToSavedScans,
+        onNavigateToFavorites = onNavigateToFavorites
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreenContent(
-    viewModel: SearchViewModel,
+    state: SearchState,
+    onSearch: (String) -> Unit = {},
+    onLoadMore: () -> Unit = {},
     onNavigateToScanner: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
-    onNavigateToSommelier: () -> Unit = {}
+    onNavigateToSommelier: () -> Unit = {},
+    onNavigateToSavedScans: () -> Unit = {},
+    onNavigateToFavorites: () -> Unit = {}
 ) {
-    val state by viewModel.state.collectAsState()
     var query by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf(WineFilter.ALL) }
 
@@ -104,6 +124,12 @@ fun SearchScreenContent(
             WineAppTopAppBar(
                 title = stringResource(R.string.search_title),
                 actions = {
+                    IconButton(onClick = onNavigateToFavorites) {
+                        Icon(Icons.Default.FavoriteBorder, contentDescription = stringResource(R.string.favorites_title))
+                    }
+                    IconButton(onClick = onNavigateToSavedScans) {
+                        Icon(Icons.Default.History, contentDescription = stringResource(R.string.saved_scans_title))
+                    }
                     IconButton(onClick = onNavigateToScanner) {
                         Icon(Icons.Default.CameraAlt, contentDescription = stringResource(R.string.nav_scanner))
                     }
@@ -163,8 +189,9 @@ fun SearchScreenContent(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
                     .padding(bottom = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 WineFilter.entries.forEach { filter ->
                     FilterChip(
@@ -192,7 +219,7 @@ fun SearchScreenContent(
 
             LaunchedEffect(query) {
                 if (query.isNotBlank()) {
-                    viewModel.sendIntent(SearchIntent.Search(query))
+                    onSearch(query)
                 }
             }
 
@@ -248,7 +275,7 @@ fun SearchScreenContent(
                         isLoading = false,
                         hasMore = current.result.hasMore,
                         onItemClick = { onNavigateToDetail(it.id) },
-                        onLoadMore = { viewModel.sendIntent(SearchIntent.LoadMore) }
+                        onLoadMore = onLoadMore
                     )
                 }
                 is SearchState.Empty -> {
@@ -292,7 +319,7 @@ fun SearchScreenContent(
                                 color = MaterialTheme.colorScheme.error
                             )
                             androidx.compose.material3.TextButton(
-                                onClick = { viewModel.sendIntent(SearchIntent.Search(query)) }
+                                onClick = { onSearch(query) }
                             ) {
                                 Text(stringResource(R.string.retry))
                             }
@@ -343,11 +370,16 @@ fun SearchResultsList(
 @Composable
 private fun SearchScreenPreview() {
     WineAppTheme {
-        SearchResultsList(
-            wines = MockDataProvider.wines,
-            isLoading = false,
-            hasMore = false,
-            onItemClick = {}
+        SearchScreenContent(
+            state = SearchState.Success(
+                result = SearchResult(
+                    wines = MockDataProvider.wines,
+                    totalCount = MockDataProvider.wines.size,
+                    page = 1,
+                    hasMore = false,
+                ),
+                query = "",
+            )
         )
     }
 }

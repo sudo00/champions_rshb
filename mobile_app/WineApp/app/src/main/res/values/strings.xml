@@ -76,6 +76,38 @@
     <string name="nav_scanner">Сканер</string>
     <string name="nav_search">Поиск</string>
     <string name="nav_sommelier">Сомелье</string>
+    <string name="nav_saved_scans">Сохранённые</string>
+
+    <string name="saved_scans_title">Сохранённые сканирования</string>
+    <string name="saved_scans_empty">Сканирований пока нет</string>
+    <string name="saved_scans_empty_hint">Отсканируйте этикетку и сохраните результат</string>
+    <string name="saved_scans_delete">Удалить</string>
+    <string name="saved_scans_delete_title">Удалить сканирование?</string>
+    <string name="saved_scans_delete_confirm">Вы уверены, что хотите удалить «%s»?</string>
+    <string name="saved_scans_confidence">Точность: %d%%</string>
+
+    <string name="saved_scan_detail_title">Детали сканирования</string>
+    <string name="saved_scan_detail_label_photo">Фото этикетки</string>
+    <string name="saved_scan_detail_photo_unavailable">Фото недоступно</string>
+    <string name="saved_scan_detail_no_photo">Фото не сохранено</string>
+    <string name="saved_scan_detail_recognition_result">Результат распознавания</string>
+    <string name="saved_scan_detail_confidence">Точность распознавания</string>
+    <string name="saved_scan_detail_scan_date">Дата сканирования</string>
+    <string name="saved_scan_detail_conversation">Беседа с сомелье</string>
+    <string name="saved_scan_detail_conversation_subtitle">%d сообщений</string>
+    <string name="saved_scan_detail_chat_you">Вы</string>
+    <string name="saved_scan_detail_chat_sommelier">Сомелье</string>
+
+    <string name="favorites_title">Избранное</string>
+    <string name="favorites_empty">Избранного пока нет</string>
+    <string name="favorites_empty_hint">Нажмите сердечко на карточке вина, чтобы добавить</string>
+    <string name="favorites_delete">Удалить</string>
+    <string name="favorites_delete_title">Удалить из избранного?</string>
+    <string name="favorites_delete_confirm">Удалить «%s» из избранного?</string>
+    <string name="favorites_remove">Удалить из избранного</string>
+    <string name="detail_favorite">В избранное</string>
+
+    <string name="cancel">Отмена</string>
 
     <string name="retry">Повторить</string>
     <string name="loading">Загрузка…</string>

@@ -1,6 +1,7 @@
 package com.wineapp.data.repository
 
 import android.util.Log
+import com.wineapp.USE_MOCK
 import com.wineapp.data.local.WineDao
 import com.wineapp.data.local.WineHistoryEntity
 import com.wineapp.data.mock.MockDataProvider
@@ -12,8 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-
-private const val USE_MOCK = true
+import java.io.File
 
 class WineRepositoryImpl @javax.inject.Inject constructor(
     private val apiService: com.wineapp.data.remote.ApiService,
@@ -146,6 +146,20 @@ class WineRepositoryImpl @javax.inject.Inject constructor(
     }
 
     private fun convertImageToBase64(imagePath: String): String {
-        return "base64_placeholder"
+        return try {
+            val file = File(imagePath)
+            if (!file.exists()) return ""
+
+            val bitmap = android.graphics.BitmapFactory.decodeFile(imagePath)
+                ?: return ""
+
+            val outputStream = java.io.ByteArrayOutputStream()
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, outputStream)
+            val byteArray = outputStream.toByteArray()
+            android.util.Base64.encodeToString(byteArray, android.util.Base64.NO_WRAP)
+        } catch (e: Exception) {
+            Log.e("WineRepositoryImpl", "convertImageToBase64 failed", e)
+            ""
+        }
     }
 }

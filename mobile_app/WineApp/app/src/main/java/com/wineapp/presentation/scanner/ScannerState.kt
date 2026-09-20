@@ -17,7 +17,7 @@ sealed interface ScannerState : BaseState {
 sealed interface ScannerIntent : BaseIntent {
     data class CapturePhoto(val imagePath: String) : ScannerIntent
     data class ProcessImage(val imagePath: String) : ScannerIntent
-    data object PickFromGallery : ScannerIntent
+    data class GalleryImagePicked(val uriString: String) : ScannerIntent
     data object ToggleFlash : ScannerIntent
     data object RetryScan : ScannerIntent
     data object OpenSearch : ScannerIntent

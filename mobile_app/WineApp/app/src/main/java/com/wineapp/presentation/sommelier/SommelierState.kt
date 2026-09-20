@@ -16,6 +16,7 @@ sealed interface SommelierState : BaseState {
 sealed interface SommelierIntent : BaseIntent {
     data class SendMessage(val text: String) : SommelierIntent
     data class SetWineContext(val wineContext: WineContext) : SommelierIntent
+    data class SaveAndExit(val photoPath: String?, val confidence: Float) : SommelierIntent
     data object ClearChat : SommelierIntent
 }
 

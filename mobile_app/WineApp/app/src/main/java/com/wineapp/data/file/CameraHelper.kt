@@ -58,6 +58,8 @@ class CameraHelper @javax.inject.Inject constructor(
         val cameraProviderFuture = androidx.camera.lifecycle.ProcessCameraProvider.getInstance(context)
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()
+            cameraProvider.unbindAll()
+
             val previewUseCase = androidx.camera.core.Preview.Builder().build().also {
                 it.surfaceProvider = surfaceProvider
             }
