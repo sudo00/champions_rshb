@@ -1,0 +1,125 @@
+services:
+  api:
+    container_name: champions-api
+    build:
+      context: ./
+      dockerfile: ./build_env/api/${DOCKERFILE}
+    restart: unless-stopped
+    ports:
+      - ${API_PORTS}
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/champions
+      S3_BUCKET_NAME: storage
+      S3_ENDPOINT: s3:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: user
+      RABBITMQ_PASS: password
+      RABBITMQ_VHOST: /
+      RABBITMQ_QUEUE_SCAN: scan
+    depends_on:
+      db:
+        condition: service_healthy
+      s3:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  worker:
+    container_name: champions-worker
+    build:
+      context: ./
+      dockerfile: ./build_env/worker/${DOCKERFILE}
+    restart: unless-stopped
+    environment:
+      BACKEND_URL: http://api:8000/health
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/champions
+      S3_BUCKET_NAME: storage
+      S3_ENDPOINT: s3:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: user
+      RABBITMQ_PASS: password
+      RABBITMQ_VHOST: /
+      RABBITMQ_QUEUE_SCAN: scan
+    depends_on:
+      api:
+        condition: service_started
+      db:
+        condition: service_healthy
+      s3:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+
+  s3:
+    container_name: champions-s3
+    image: quay.io/minio/minio:RELEASE.2024-10-02T17-50-41Z
+    restart: unless-stopped
+    command: server /data --console-address ":9001" --address ":9000"
+    ports:
+      - "9006:9000"
+      - "9007:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+
+  db:
+    container_name: champions-db
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: champions
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d champions"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    container_name: champions-rabbitmq
+    image: rabbitmq:3.13.7-management-alpine
+    restart: unless-stopped
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+      RABBITMQ_DEFAULT_VHOST: /
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+volumes:
+  pgvector_data:
+  minio_data:
+  rabbitmq_data:

@@ -1,12 +1,22 @@
+import json
+import os
 import sys
 import time
 
 import pika
+import psycopg
 import requests
 from minio import Minio
+from psycopg.types.json import Json
 
 from config import BACKEND_URL, BUCKET, SCAN_QUEUE
 from pipeline import run
+
+STUB_RESULT = {
+    "wineId": "fanagoria-cabernet",
+    "confidence": 0.0,
+    "alternativeIds": ["abrau-durso-brut", "massaandra-muscat", "lefkadia-sauvignon"],
+}
 
 
 def log(message: str) -> None:
@@ -14,8 +24,6 @@ def log(message: str) -> None:
 
 
 def rabbit_params() -> pika.ConnectionParameters:
-    import os
-
     return pika.ConnectionParameters(
         host=os.environ.get("RABBITMQ_HOST", "rabbitmq"),
         port=int(os.environ.get("RABBITMQ_PORT", "5672")),
@@ -29,9 +37,14 @@ def rabbit_params() -> pika.ConnectionParameters:
     )
 
 
-def s3_client() -> Minio:
-    import os
+def database_url() -> str:
+    return os.environ.get(
+        "DATABASE_URL",
+        "postgresql://postgres:postgres@db:5432/champions",
+    )
 
+
+def s3_client() -> Minio:
     return Minio(
         os.environ.get("S3_ENDPOINT", "s3:9000"),
         access_key=os.environ.get("S3_ACCESS_KEY", "minioadmin"),
@@ -83,6 +96,43 @@ def wait_for_s3() -> None:
     raise RuntimeError(f"s3 is not reachable: {last_error}")
 
 
+def update_scan(scan_id: str, status: str, result: dict | None = None, error: str | None = None) -> None:
+    with psycopg.connect(database_url()) as conn:
+        conn.execute(
+            """
+            UPDATE scans
+            SET status = %s, result = %s, error = %s, updated_at = NOW()
+            WHERE id = %s
+            """,
+            (status, Json(result) if result is not None else None, error, scan_id),
+        )
+        conn.commit()
+
+
+def load_image(image_key: str | None) -> bytes:
+    if not image_key:
+        return b""
+    client = s3_client()
+    response = client.get_object(BUCKET, image_key)
+    try:
+        return response.read()
+    finally:
+        response.close()
+        response.release_conn()
+
+
+def process_scan(payload: dict) -> None:
+    scan_id = payload["scanId"]
+    include_alternatives = bool(payload.get("includeAlternatives", True))
+    update_scan(scan_id, "processing")
+    image = load_image(payload.get("imageKey"))
+    run(image)
+    result = dict(STUB_RESULT)
+    if not include_alternatives:
+        result["alternativeIds"] = []
+    update_scan(scan_id, "done", result=result)
+
+
 def main() -> None:
     wait_for_backend()
     wait_for_s3()
@@ -91,11 +141,19 @@ def main() -> None:
     channel.queue_declare(queue=SCAN_QUEUE, durable=True)
 
     def on_scan(ch, method, properties, body: bytes) -> None:
+        scan_id = None
         try:
-            run(body)
+            payload = json.loads(body.decode("utf-8"))
+            scan_id = payload.get("scanId")
+            process_scan(payload)
             ch.basic_ack(delivery_tag=method.delivery_tag)
         except Exception as exc:  # noqa: BLE001
             log(f"scan failed: {exc}")
+            if scan_id:
+                try:
+                    update_scan(scan_id, "failed", error=str(exc))
+                except Exception as db_exc:  # noqa: BLE001
+                    log(f"failed to mark scan: {db_exc}")
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
     channel.basic_qos(prefetch_count=1)

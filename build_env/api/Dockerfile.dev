@@ -1,0 +1,18 @@
+FROM python:3.12.6-slim-bookworm
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
+
+COPY backend/api/requirements.txt ./api/requirements.txt
+RUN pip install --no-cache-dir -r api/requirements.txt
+
+COPY backend/api ./api
+COPY build_env/api/entrypoint.dev.sh /entrypoint.dev.sh
+RUN chmod +x /entrypoint.dev.sh
+
+EXPOSE 8000
+
+ENTRYPOINT ["/entrypoint.dev.sh"]

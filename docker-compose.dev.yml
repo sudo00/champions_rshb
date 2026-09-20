@@ -1,0 +1,9 @@
+services:
+  api:
+    volumes:
+      - ./backend/api:/app/api
+
+  worker:
+    volumes:
+      - ./backend/worker:/app
+    command: ["watchfiles", "--filter", "python", "python main.py", "."]

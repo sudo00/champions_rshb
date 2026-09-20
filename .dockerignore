@@ -1,0 +1,12 @@
+.git
+.idea
+.vscode
+**/__pycache__
+**/.pytest_cache
+**/.venv
+mobile_app
+pgvector_data
+data
+*.md
+.DS_Store
+backend/.venv

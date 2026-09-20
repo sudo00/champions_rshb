@@ -9,5 +9,5 @@ def env(name: str, default: str | None = None) -> str:
 
 
 BUCKET = env("S3_BUCKET_NAME", "storage")
-BACKEND_URL = env("BACKEND_URL", "http://app:3000/api/ready")
+BACKEND_URL = env("BACKEND_URL", "http://api:8000/health")
 SCAN_QUEUE = env("RABBITMQ_QUEUE_SCAN", "scan")

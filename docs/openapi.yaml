@@ -1,0 +1,379 @@
+openapi: 3.0.3
+info:
+  title: Своё вино API
+  version: 1.0.0
+  description: |
+    Backend для Android-сканера этикеток. JSON в camelCase (`ApiDtos.kt`).
+    Интерактивно: http://localhost:3000/docs
+servers:
+  - url: http://localhost:3000
+    description: Docker DEV
+  - url: http://10.0.2.2:3000
+    description: Android emulator
+tags:
+  - name: health
+  - name: wines
+  - name: sommelier
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Готовность сервиса
+      operationId: health
+      responses:
+        "200":
+          description: API принимает запросы
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ready
+                  service:
+                    type: string
+                    example: api
+  /v1/wines/scan:
+    post:
+      tags: [wines]
+      summary: Поставить скан этикетки в очередь
+      operationId: scanLabel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScanRequest"
+            example:
+              imageBase64: "/9j/4AAQSkZJRgABAQAAAQABAAD..."
+              includeAlternatives: true
+      responses:
+        "200":
+          description: Задача принята, дальше polling по scanId
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanAcceptedResponse"
+  /v1/wines/scan/{scan_id}:
+    get:
+      tags: [wines]
+      summary: Результат сканирования (polling раз в секунду)
+      operationId: scanStatus
+      parameters:
+        - in: path
+          name: scan_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: pending / processing / done / failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanStatusResponse"
+        "404":
+          description: Нет такой задачи
+  /v1/wines/search:
+    get:
+      tags: [wines]
+      summary: Поиск вин по строке
+      operationId: searchWines
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+            default: ""
+          description: Подстрока — название, регион, сорт, винодельня
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Страница результатов
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+  /v1/wines/{wine_id}:
+    get:
+      tags: [wines]
+      summary: Карточка вина
+      operationId: getWineDetail
+      parameters:
+        - in: path
+          name: wine_id
+          required: true
+          schema:
+            type: string
+          example: fanagoria-cabernet
+      responses:
+        "200":
+          description: wine=null, если id нет в каталоге
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WineDetailResponse"
+  /v1/sommelier/chat:
+    post:
+      tags: [sommelier]
+      summary: Сообщение цифровому сомелье
+      operationId: sommelierChat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SommelierChatRequest"
+            example:
+              messages:
+                - role: user
+                  content: С чем подавать?
+              wineContext:
+                wineId: fanagoria-cabernet
+                wineName: Фанагория Каберне
+                region: Кубань
+                variety: Каберне Совиньон
+                vintage: 2021
+                rating: 4.2
+                style: Dry Red
+      responses:
+        "200":
+          description: Ответ ассистента
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SommelierChatResponse"
+components:
+  schemas:
+    CountryDto:
+      type: object
+      required: [name, code]
+      properties:
+        name:
+          type: string
+          example: Россия
+        code:
+          type: string
+          example: RU
+    RegionDto:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: Кубань
+        country:
+          $ref: "#/components/schemas/CountryDto"
+    VarietyDto:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: Каберне Совиньон
+    StyleDto:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: Dry Red
+    WineryDto:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: Фанагория
+    WineDto:
+      type: object
+      required: [id, name, rating, reviewsCount]
+      properties:
+        id:
+          type: string
+          example: fanagoria-cabernet
+        name:
+          type: string
+        vintage:
+          type: integer
+          nullable: true
+        rating:
+          type: number
+          format: float
+        reviewsCount:
+          type: integer
+        price:
+          type: number
+          nullable: true
+        currency:
+          type: string
+          nullable: true
+          example: RUB
+        region:
+          $ref: "#/components/schemas/RegionDto"
+        country:
+          $ref: "#/components/schemas/CountryDto"
+        variety:
+          $ref: "#/components/schemas/VarietyDto"
+        style:
+          $ref: "#/components/schemas/StyleDto"
+        alcoholPercentage:
+          type: number
+          format: float
+          nullable: true
+        imageUrl:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        foodPairing:
+          type: array
+          items:
+            type: string
+        winery:
+          $ref: "#/components/schemas/WineryDto"
+    ScanRequest:
+      type: object
+      required: [imageBase64]
+      properties:
+        imageBase64:
+          type: string
+          description: Base64 или data-URL
+        includeAlternatives:
+          type: boolean
+          default: true
+    ScanAcceptedResponse:
+      type: object
+      required: [success, status]
+      properties:
+        success:
+          type: boolean
+        scanId:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          type: string
+          enum: [pending, failed]
+        error:
+          type: string
+          nullable: true
+    ScanStatusResponse:
+      type: object
+      required: [success, status]
+      properties:
+        success:
+          type: boolean
+        scanId:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [pending, processing, done, failed]
+        wine:
+          allOf:
+            - $ref: "#/components/schemas/WineDto"
+          nullable: true
+        confidence:
+          type: number
+          format: float
+        alternatives:
+          type: array
+          items:
+            $ref: "#/components/schemas/WineDto"
+        error:
+          type: string
+          nullable: true
+    SearchResponse:
+      type: object
+      required: [totalCount, page, hasMore]
+      properties:
+        wines:
+          type: array
+          items:
+            $ref: "#/components/schemas/WineDto"
+        totalCount:
+          type: integer
+        page:
+          type: integer
+        hasMore:
+          type: boolean
+    WineDetailResponse:
+      type: object
+      properties:
+        wine:
+          allOf:
+            - $ref: "#/components/schemas/WineDto"
+          nullable: true
+    SommelierChatMessageDto:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          example: user
+        content:
+          type: string
+    SommelierWineContextDto:
+      type: object
+      required: [wineId, wineName]
+      properties:
+        wineId:
+          type: string
+        wineName:
+          type: string
+        region:
+          type: string
+          nullable: true
+        variety:
+          type: string
+          nullable: true
+        vintage:
+          type: integer
+          nullable: true
+        rating:
+          type: number
+          nullable: true
+        style:
+          type: string
+          nullable: true
+    SommelierChatRequest:
+      type: object
+      required: [messages]
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/SommelierChatMessageDto"
+        wineContext:
+          allOf:
+            - $ref: "#/components/schemas/SommelierWineContextDto"
+          nullable: true
+    SommelierChatResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        message:
+          allOf:
+            - $ref: "#/components/schemas/SommelierChatMessageDto"
+          nullable: true
+        error:
+          type: string
+          nullable: true
