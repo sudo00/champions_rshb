@@ -2,9 +2,13 @@
 
 Android-приложение, FastAPI и GPU-worker для поиска вина по фотографии. Runtime: SAM 3 → виды бутылки/этикетки → SigLIP2 + PaddleOCR GPU → гибридный поиск по 2 103 проверенным карточкам.
 
+Весь ML-код, включая геометрию этикеток, находится в `worker/pipeline/`.
+Интеграция с очередью — `backend/worker/`; точка входа — `recognition.run(...)`.
+`scripts/` содержит эксперименты и служебные команды и не требуется worker-образу.
+
 ## Начало работы
 
-1. Получить `weights/wine-recognizer-v4-memory-layout-release/` с весами и индексом.
+1. Получить `weights/wine-recognizer-v5-worker-layout-release/` с весами и индексом.
 2. Распаковать `catalog-images-v1.tar` в `data/deployment/catalog-images/`.
 3. На Linux с NVIDIA GPU и Container Toolkit выполнить `make env`, затем `make dev`.
 4. Дождаться `http://localhost:8000/ready`; Swagger — `http://localhost:8000/docs`.

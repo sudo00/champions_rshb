@@ -15,9 +15,10 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw
 
-from label_rectification_pilot import (ROOT, DETECTOR, RECOGNIZERS, GeometryRejected,
-    digest, read, write, immutable, rgb_oriented, scaled_contour, points_h, normalized, edit_distance)
-from cylinder_geometry import fit_geometry, rectify, input_to_original, densify_polygon, render_view, rim_basis
+from label_rectification_pilot import (ROOT, DETECTOR, RECOGNIZERS,
+    digest, read, write, immutable, rgb_oriented, normalized, edit_distance)
+from worker.pipeline.rectification import GeometryRejected, scaled_contour, points_h
+from worker.pipeline.cylinder_geometry import fit_geometry, rectify, input_to_original, densify_polygon, render_view, rim_basis
 
 BASE = ROOT/'data/audit/label_rectification/pilot12_v4'
 BODY = ROOT/'data/audit/bottle_ocr/pilot14_v1'
@@ -104,9 +105,9 @@ def prepare(args: argparse.Namespace) -> None:
         print(entry['id'],entry['status'],entry.get('reason',''),flush=True)
     write(args.output/'manifest.json',{'method':'weak_perspective_elliptical_rims_v1','max_side':1600,
         'baseline_manifest_sha256':digest(BASE/'manifest.json'),'bottle_manifest_sha256':digest(BODY/'manifest.json'),
-        'scripts_sha256':{p.name:digest(p) for p in (Path(__file__),Path(__file__).with_name('cylinder_geometry.py'))},
+        'scripts_sha256':{p.name:digest(p) for p in (Path(__file__),ROOT/'worker/pipeline/cylinder_geometry.py', ROOT/'worker/pipeline/rectification.py')},
         'images':records})
-    for file in (Path(__file__),Path(__file__).with_name('cylinder_geometry.py')):
+    for file in (Path(__file__),ROOT/'worker/pipeline/cylinder_geometry.py', ROOT/'worker/pipeline/rectification.py'):
         p=args.output/'provenance'/file.name;p.parent.mkdir(exist_ok=True);p.write_bytes(file.read_bytes())
 
 

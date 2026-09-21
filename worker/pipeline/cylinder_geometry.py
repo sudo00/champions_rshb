@@ -10,7 +10,7 @@ import math
 import cv2
 import numpy as np
 
-from label_rectification_pilot import GeometryRejected, points_h
+from .rectification import GeometryRejected, points_h
 
 
 def rim_basis(x: np.ndarray, center: float, radius: float) -> np.ndarray:

@@ -28,4 +28,4 @@ sudo systemctl enable wine-api-routing.service
 sudo systemctl restart wine-api-routing.service
 systemctl is-enabled wine-api-routing.service
 systemctl is-active wine-api-routing.service
-ip -4 rule show priority 10000
+ip -4 rule show priority 9000

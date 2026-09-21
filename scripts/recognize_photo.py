@@ -14,7 +14,7 @@ from pipeline.wine_recognizer import WineRecognizer
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("photos", nargs="+", type=Path)
-    parser.add_argument("--bundle", type=Path, default=ROOT/"weights/wine-recognizer-v4-memory-layout-release")
+    parser.add_argument("--bundle", type=Path, default=ROOT/"weights/wine-recognizer-v5-worker-layout-release")
     parser.add_argument("--ocr-python", type=Path, default=ROOT/".venv-ocr-gpu/bin/python")
     parser.add_argument("--ocr-device", default="gpu:0", help="gpu:N or cpu; match the selected OCR environment")
     parser.add_argument("--memory-policy", choices=["release", "retain"], default="release")

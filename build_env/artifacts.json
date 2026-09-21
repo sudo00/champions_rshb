@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "recognizer": {
-    "bundle_dir": "weights/wine-recognizer-v4-memory-layout-release",
-    "archive": "weights/artifacts/wine-recognizer-v4-memory-layout.tar",
+    "bundle_dir": "weights/wine-recognizer-v5-worker-layout-release",
+    "archive": "weights/artifacts/wine-recognizer-v5-worker-layout.tar",
     "url": null,
     "bytes": 8085504000,
-    "sha256": "1f90d46760172e0ea0f2e541611c9547ede51a583e186fdc97944f8958698138",
+    "sha256": "89d749facc21d7fbe5aa2833daefbfb9f80d9c1da71b5faec76c9c6a4bc9cfcc",
     "catalog_sha256": "383f3e6bb73c8892dec0a58b39ca7f4b8ed026f4433a865b69cce65a6ab56576"
   },
   "catalog_images": {

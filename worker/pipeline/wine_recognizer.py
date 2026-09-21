@@ -1,6 +1,6 @@
 """Reusable offline image-to-candidates prototype. One serialized instance per GPU.
 
-Requires a versioned resource bundle and this repository's scripts/ geometry helpers.
+Requires a versioned resource bundle; all inference code lives in this package.
 No filename, annotation or expected identity participates in inference.
 """
 from __future__ import annotations
@@ -13,7 +13,6 @@ import os
 from pathlib import Path
 import selectors
 import subprocess
-import sys
 import tempfile
 import threading
 import time
@@ -25,9 +24,11 @@ from PIL import Image, ImageOps
 from .hybrid_search import HybridIndex
 from .label_observations import extract_observed_fields
 from .prototype_ocr import PREFIX
+from .rectification import scaled_contour, geometry, GeometryRejected, points_h
+from .cylinder_geometry import fit_geometry, rectify, input_to_original, densify_polygon
 
 ROOT = Path(__file__).resolve().parents[2]
-VERSION = "wine-prototype-v4"
+VERSION = "wine-prototype-v5"
 
 
 def file_hash(path: Path) -> str:
@@ -214,12 +215,6 @@ class WineRecognizer:
             path = (ROOT/relative).resolve()
             if not path.is_relative_to(ROOT) or file_hash(path) != expected:
                 raise ValueError("Code differs from exported bundle: " + relative)
-        # Geometry helpers remain repository-owned; deployment includes scripts/.
-        scripts = str(ROOT / "scripts")
-        if scripts not in sys.path:
-            sys.path.insert(0, scripts)
-        from label_rectification_pilot import scaled_contour, geometry, GeometryRejected, points_h
-        from cylinder_geometry import fit_geometry, rectify, input_to_original, densify_polygon
         self.geometry = (scaled_contour, geometry, GeometryRejected, points_h,
                          fit_geometry, rectify, input_to_original, densify_polygon)
         import torch

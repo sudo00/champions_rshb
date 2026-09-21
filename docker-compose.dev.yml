@@ -7,5 +7,4 @@ services:
     volumes:
       - ./backend/worker:/app/backend/worker:ro
       - ./worker:/app/worker:ro
-      - ./scripts:/app/scripts:ro
     # Restart after worker code changes; one model instance per GPU.

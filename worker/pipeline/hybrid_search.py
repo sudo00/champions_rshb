@@ -5,10 +5,12 @@ import numpy as np
 
 from .text_search import CatalogTextIndex, COLORS, SWEETNESS, TECHNICAL_TERMS, tokens
 from .visual_search import VisualIndex
+from .producer_search import ProducerIndex
 
-VERSION = "hybrid-evidence-v1"
+VERSION = "hybrid-evidence-v2-producer"
 BRANCH_WEIGHTS = {"body": .5, "label": .3, "flat": .2}
 TEXT_BONUS = .15
+PRODUCER_BONUS = .25
 
 
 def text_reliability(candidate: dict, card: dict) -> float:
@@ -24,7 +26,8 @@ def text_reliability(candidate: dict, card: dict) -> float:
 
 
 def rerank_candidates(visual_scores: dict[str, float], text_candidates: list[dict],
-                      cards: dict[str, dict], *, limit: int = 10) -> list[dict]:
+                      cards: dict[str, dict], *, limit: int = 10,
+                      producer: dict | None = None) -> list[dict]:
     if limit < 1:
         raise ValueError("limit must be positive")
     if not visual_scores:
@@ -39,9 +42,17 @@ def rerank_candidates(visual_scores: dict[str, float], text_candidates: list[dic
         reliability = text_reliability(candidate, cards[slug]) if candidate else 0.
         normalized_text = max(0., candidate["score"])/scale if candidate else 0.
         bonus = TEXT_BONUS * reliability * normalized_text
-        rows.append({"slug": slug, "score": float(similarity + bonus), "visual_similarity": float(similarity),
+        # A distinctive, confidently read producer is stronger identity evidence
+        # than a shared grape variety. Keep a bounded prior so visual similarity
+        # still matters; absent/ambiguous OCR preserves the previous ranking.
+        producer_match = bool(producer and producer.get("status") == "recognized"
+                              and producer.get("winery") == cards[slug].get("winery"))
+        producer_bonus = PRODUCER_BONUS if producer_match else 0.
+        rows.append({"slug": slug, "score": float(similarity + bonus + producer_bonus), "visual_similarity": float(similarity),
                      "text_score": candidate["score"] if candidate else None, "text_reliability": reliability,
                      "text_bonus": bonus, "evidence": candidate.get("evidence", []) if candidate else [],
+                     "producer_match": producer_match, "producer_bonus": producer_bonus,
+                     "producer_evidence": producer.get("evidence", []) if producer_match else [],
                      "conflicts": candidate.get("conflicts", []) if candidate else [],
                      "score_is_probability": False})
     return sorted(rows, key=lambda r: (-r["score"], r["slug"]))[:limit]
@@ -51,6 +62,7 @@ class HybridIndex:
     def __init__(self, vectors: np.ndarray, views: list[dict], cards: list[dict]):
         self.visual = VisualIndex(vectors, views, cards)
         self.text = CatalogTextIndex(cards)
+        self.producer = ProducerIndex(cards)
         self.cards = {r["slug"]: r for r in cards}
 
     def search(self, vectors: np.ndarray, views: list[dict], observations: list[dict], *,
@@ -69,12 +81,14 @@ class HybridIndex:
             for candidate in candidates:
                 scores[candidate["slug"]] += BRANCH_WEIGHTS[branch] * candidate["cosine"] / weights
         text = self.text.search(observations, limit=len(self.cards))
-        candidates = rerank_candidates(scores, text["candidates"], self.cards, limit=limit)
+        producer = self.producer.search(observations)
+        candidates = rerank_candidates(scores, text["candidates"], self.cards, limit=limit, producer=producer)
         return {"version": VERSION, "status": "candidates_unverified", "score_is_probability": False,
                 "candidates": candidates, "visual_continuous": [
                     {"slug": slug, "score": float(value)} for slug, value in
                     sorted(scores.items(), key=lambda x: (-x[1], x[0]))[:limit]],
                 "text_candidates": text["candidates"][:limit],
+                "producer": producer, "producer_bonus_scale": PRODUCER_BONUS,
                 "branch_weights": BRANCH_WEIGHTS, "text_bonus_scale": TEXT_BONUS,
                 "limitations": ["Development heuristic; unknown rejection not calibrated.",
                                 "Year and file/annotation metadata are not identity inputs."]}
