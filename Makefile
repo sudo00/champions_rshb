@@ -4,10 +4,11 @@ COMPOSE_DEV := docker compose --env-file $(ENV_DEV) -f docker-compose.yml -f doc
 COMPOSE_PROD := docker compose --env-file $(ENV_PROD) -f docker-compose.yml
 API_HEALTH := http://127.0.0.1:3000/health
 
-.PHONY: help setup wait-api install install-api install-worker build dev prod up down ddown logs restart test
+.PHONY: help setup env wait-api install install-api install-worker build dev prod up down ddown logs restart test
 
 help:
-	@echo "make setup             — собрать образы, поднять стек, дождаться рабочего API"
+	@echo "make setup             — скопировать env, собрать образы, поднять стек, дождаться API"
+	@echo "make env               — создать .env и build_env/.env.* из шаблонов, если их нет"
 	@echo "make install           — pip install внутри api и worker"
 	@echo "make install-api       — pip install в контейнере api"
 	@echo "make install-worker    — pip install в контейнере worker"
@@ -21,7 +22,7 @@ help:
 	@echo "make restart           — перезапустить DEV"
 	@echo "make test              — pytest в контейнере api"
 
-setup:
+setup: env
 	$(COMPOSE_DEV) build
 	$(COMPOSE_DEV) up -d --wait db rabbitmq
 	$(COMPOSE_DEV) up -d s3
@@ -51,6 +52,11 @@ wait-api:
 	done
 	@curl -s "$(API_HEALTH)"; echo
 	@echo "API готов"
+
+env:
+	@if [ ! -f .env ]; then cp .env.example .env && echo "создан .env"; else echo ".env уже есть"; fi
+	@if [ ! -f $(ENV_DEV) ]; then cp build_env/env.dev.example $(ENV_DEV) && echo "создан $(ENV_DEV)"; else echo "$(ENV_DEV) уже есть"; fi
+	@if [ ! -f $(ENV_PROD) ]; then cp build_env/env.prod.example $(ENV_PROD) && echo "создан $(ENV_PROD)"; else echo "$(ENV_PROD) уже есть"; fi
 
 install: install-api install-worker
 
