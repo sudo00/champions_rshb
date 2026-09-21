@@ -1,5 +1,6 @@
 # Local OCR/retrieval/segmentation experiments use the repository's .venv.
-# PaddleOCR experiments have their own existing .venv-ocr environment.
+# Runtime pins: requirements-vision.lock.txt. Paddle GPU: requirements-ocr-gpu.lock.txt.
+# Separate repository environments: .venv (vision), .venv-ocr-gpu (OCR), .venv-api (API).
 torch==2.12.1
 torchvision==0.27.1
 transformers==5.16.1

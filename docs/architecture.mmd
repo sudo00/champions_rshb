@@ -1,14 +1,14 @@
-flowchart LR
-  user["Mobile browser"] --> nuxt["Nuxt app + server"]
-  evalScript["Eval script"] --> evalApi["POST /api/eval"]
-  nuxt --> scanApi["POST /api/scan"]
-  evalApi --> nuxt
-  scanApi --> rabbit["RabbitMQ scan"]
-  rabbit --> worker["Python worker"]
-  worker --> norm["Normalize photo"]
-  norm --> embed["SigLIP 2 embed"]
-  embed --> pg["PostgreSQL + pgvector"]
-  worker --> s3["MinIO etalon photos"]
-  pg --> card["Wine JSON / slug"]
-  card --> nuxt
-  nuxt --> ui["Mobile wine card"]
+flowchart TD
+    Client[Android / evaluator] --> API[FastAPI]
+    API --> Storage[MinIO photo bytes]
+    API --> Queue[RabbitMQ scan]
+    Queue --> Worker[GPU worker]
+    Storage --> Worker
+    Worker --> SAM[SAM 3 and geometry]
+    SAM --> Vision[SigLIP2]
+    SAM --> OCR[PaddleOCR GPU]
+    Vision --> Ranking[Hybrid catalogue ranking]
+    OCR --> Ranking
+    Ranking --> DB[PostgreSQL results]
+    DB --> API
+    Catalogue[Reviewed catalogue] --> API

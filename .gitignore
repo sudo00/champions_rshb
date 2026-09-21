@@ -1,13 +1,3 @@
-# Nuxt dev/build outputs
-.output
-.data
-.nuxt
-.nitro
-.cache
-dist
-.wrangler
-.vercel
-
 .idea/
 .vscode/
 .DS_Store
@@ -24,15 +14,18 @@ sam3_weights/
 dinov3_weights/
 zenodo_grain/
 venv/
-node_modules/
+*.log
 pgvector_data/
 data/
-*.log
-
-
 AGENTS.md
 others/
-
 docs
 literature/
 notes.txt
+node_modules/
+.nuxt/
+.output/
+backend/.venv/
+.venv-api/
+
+/.cache/

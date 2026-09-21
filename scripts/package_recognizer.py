@@ -34,7 +34,7 @@ def main() -> None:
         "requirements-vision.lock.txt", "requirements-ocr.lock.txt", "requirements-ocr-gpu.lock.txt", "docs/RECOGNIZER_HANDOFF.md",
         "docs/GPU_OCR_EXPERIMENT.md", "docs/LOCAL_MATCHING_AND_TARGET_SELECTION.md", "scripts/evaluate_gpu_ocr.py",
         "docs/TARGET_SELECTION_V3.md", "docs/VRAM_PLAN.md", "scripts/evaluate_target_selection.py",
-        "docs/MEMORY_OPTIMIZATION_V4.md", "docs/SOMMELIER_CAPACITY.md", "scripts/evaluate_memory_policy.py",
+        "docs/MEMORY_OPTIMIZATION_V4.md", "docs/SOMMELIER_CAPACITY.md", "docs/DEPENDENCIES.md", "scripts/evaluate_memory_policy.py",
         "docs/LIVE_SHOP_EXPERIMENT.md", "tests/test_wine_recognizer.py", "tests/test_hybrid_search.py",
         "tests/test_text_search.py", "tests/test_visual_search.py", "tests/test_label_observations.py",
         "data/audit/recognizer/release_v1/benchmark.json", "data/audit/recognizer/gpu_v2/benchmark.json",

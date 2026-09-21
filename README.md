@@ -1,78 +1,39 @@
-# Сканер «Своё вино»
+# Своё вино — распознавание этикеток
 
-Сервис распознаёт российское вино по фото этикетки и сразу открывает одну карточку каталога «Своё вино» (без экрана вариантов). Модуль рассчитан на мобильный браузер у полки.
+Android-приложение, FastAPI и GPU-worker для поиска вина по фотографии. Runtime: SAM 3 → виды бутылки/этикетки → SigLIP2 + PaddleOCR GPU → гибридный поиск по 2 103 проверенным карточкам.
 
-Репозиторий — скелет: инфраструктура, контракты API и слои пайплайна. Поиск по изображению ещё не обучен.
+## Начало работы
 
-## Требования
+1. Получить `data/deployment/wine-recognizer-v4-memory-release/` с весами и индексом.
+2. Распаковать `catalog-images-v1.tar` в `data/deployment/catalog-images/`.
+3. На Linux с NVIDIA GPU и Container Toolkit выполнить `make env`, затем `make dev`.
+4. Дождаться `http://localhost:3000/ready`; Swagger — `http://localhost:3000/docs`.
 
-- Docker Compose v2
-- GNU Make
-- GPU опционален: без него инференс/обучение на CPU или внешнем API (ТЗ)
+Полные команды, контракты, ограничения и скрипт проверки организаторов: [docs/API_RECOGNITION.md](docs/API_RECOGNITION.md). Установка зависимостей: [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md).
 
-## Быстрый старт
+## Структура
 
-```bash
-make dev
-make install-app
-```
+- `backend/api`: HTTP, карточки каталога, задания и результаты.
+- `backend/worker/recognition.py`: `run(image: bytes, includeAlternatives: bool = True)`.
+- `worker/pipeline`: проверенное ядро распознавания и поиска.
+- `backend/catalog`: исправленный каталог и контрольная сумма.
+- `scripts`: эксперименты, упаковка ресурсов, проверка API.
+- `mobile_app/WineApp`: Android-клиент коллег; адаптация polling описана в документации.
+- `tests`, `backend/api/tests`: проверки ML-компонента и HTTP-контрактов.
 
-`make dev` собирает образы без `npm install`. Зависимости Nuxt ставятся в контейнере (`node_modules` в томе) и переживают перезапуск, пока не сделали `make ddown`.
-
-В DEV исходники смонтированы с хоста: правки в `app/`, `server/` и `worker/` подхватываются без пересборки и без `docker compose restart`. Nuxt — HMR, Python-воркер перезапускает процесс через `watchfiles`. Данные Postgres, MinIO и RabbitMQ в именованных томах.
-
-| Что | URL |
-| --- | --- |
-| UI | http://localhost:3000 |
-| Ready | http://localhost:3000/api/ready |
-| Scan (заглушка) | `POST http://localhost:3000/api/scan` |
-| Eval (заглушка) | `POST http://localhost:3000/api/eval` → `{"slug":"unknown"}` |
-| Карточка | `GET /api/wines/:slug` |
-| RabbitMQ UI | http://localhost:15673 — `user` / `password` |
-| MinIO UI | http://localhost:9007 — `minioadmin` / `minioadmin` |
-
-Пример вызова контракта оценки:
+## Проверка фотографии
 
 ```bash
-chmod +x scripts/eval.example.sh
-./scripts/eval.example.sh path/to/label.jpg
+python3 scripts/scan_api.py photo.jpg --output result.json
 ```
 
-После смены образа Postgres на pgvector нужен новый том: `make ddown && make dev` (один раз, сотрёт локальную БД).
+`includeAlternatives=true` возвращает до пяти кандидатов; `false` — одного. Результат включает OCR и области изображения. `score` — оценка ранжирования, не вероятность; отказ для отсутствующего в каталоге вина пока не откалиброван.
 
-## Переменные окружения
+## Тесты
 
-Шаблон: `.env.example`. В compose уже прописаны значения для Docker-сети.
+```bash
+.venv-api/bin/python -m pytest -q
+.venv/bin/python -m unittest tests.test_worker_adapter tests.test_wine_recognizer -q
+```
 
-| Переменная | Назначение |
-| --- | --- |
-| `DATABASE_URL` | PostgreSQL (внутри сети хост `db`) |
-| `S3_ENDPOINT` | MinIO `host:port` |
-| `S3_BUCKET_NAME` | бакет эталонов, по умолчанию `storage` |
-| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | ключи MinIO |
-| `RABBITMQ_HOST` / `PORT` / `USER` / `PASS` / `VHOST` | очередь |
-| `RABBITMQ_QUEUE_SCAN` | очередь CV, по умолчанию `scan` |
-| `BACKEND_URL` | health API для воркера (`http://app:3000/api/ready`) |
-
-## Makefile
-
-| Команда | Действие |
-| --- | --- |
-| `make dev` / `make prod` | поднять DEV (Vite/Nuxt :3000) / PROD |
-| `make up` / `make down` / `make ddown` | без пересборки / стоп / стоп с томами |
-| `make install-app` | `npm install` в контейнере `app` (после `make dev`) |
-| `make test` | vitest в `champions-app` |
-| `make logs` / `make restart` | логи / пересборка DEV |
-
-## Стек
-
-Nuxt 4.5 (UI + HTTP), PostgreSQL 16 + pgvector, MinIO, RabbitMQ, Python 3.12 воркер (SigLIP 2). Каталог в проде платформы — Strapi; здесь дамп импортируется в Postgres. Подробнее: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), этапы: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
-
-## Ограничения
-
-- Локальная демонстрация, внешний деплой не требуется.
-- Каталог 1500–2000 SKU, много near-duplicates (год/сезон/категория).
-- Eval ждёт один slug в плоском JSON; F1 топ-1 и топ-5 — в `POST /api/scan`, не обязательно в UI.
-- SLA ответа — до 3 секунд (плюс к оценке, не база).
-- Цель по совпадениям на контроле — 90–100%.
-- Пока модель не подключена, `slug` в eval равен `unknown`.
+Паритет с сохранёнными результатами магазинных снимков: `python3 scripts/check_recognition_api.py` при работающем API и наличии локальных данных.

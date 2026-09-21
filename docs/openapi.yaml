@@ -1,0 +1,1254 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Своё вино API",
+    "description": "Backend для Android-сканера этикеток. JSON в camelCase, как в `ApiDtos.kt`. Интерактивная документация: `/docs` (Swagger UI), `/redoc`, схема `/openapi.json`.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Docker DEV (хост → контейнер :8000)"
+    },
+    {
+      "url": "http://10.0.2.2:3000",
+      "description": "Android-эмулятор → хост"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Готовность сервиса",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "API принимает запросы",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Ready",
+        "operationId": "ready_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Ready Ready Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/eval/predict": {
+      "post": {
+        "tags": [
+          "wines"
+        ],
+        "summary": "Синхронный Top-1 для participant_test.sh",
+        "operationId": "eval_predict_v1_eval_predict_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_eval_predict_v1_eval_predict_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Eval Predict V1 Eval Predict Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/wines/scan": {
+      "post": {
+        "tags": [
+          "wines"
+        ],
+        "summary": "Поставить скан этикетки в очередь",
+        "operationId": "scan_label_v1_wines_scan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "scanId для опроса GET /v1/wines/scan/{scanId}",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanAcceptedResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/wines/{wine_id}/image": {
+      "get": {
+        "tags": [
+          "wines"
+        ],
+        "summary": "Wine Image",
+        "operationId": "wine_image_v1_wines__wine_id__image_get",
+        "parameters": [
+          {
+            "name": "wine_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Wine Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/wines/scan/{scan_id}": {
+      "get": {
+        "tags": [
+          "wines"
+        ],
+        "summary": "Результат сканирования (polling)",
+        "operationId": "scan_status_v1_wines_scan__scan_id__get",
+        "parameters": [
+          {
+            "name": "scan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Scan Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/wines/search": {
+      "get": {
+        "tags": [
+          "wines"
+        ],
+        "summary": "Поиск вин по строке",
+        "operationId": "wines_search_v1_wines_search_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Подстрока: название, регион, сорт, винодельня",
+              "default": "",
+              "title": "Q"
+            },
+            "description": "Подстрока: название, регион, сорт, винодельня"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Страница, нумерация с 1",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Страница, нумерация с 1"
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Размер страницы",
+              "default": 20,
+              "title": "Per Page"
+            },
+            "description": "Размер страницы"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/wines/{wine_id}": {
+      "get": {
+        "tags": [
+          "wines"
+        ],
+        "summary": "Карточка вина",
+        "operationId": "wine_detail_v1_wines__wine_id__get",
+        "parameters": [
+          {
+            "name": "wine_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Wine Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WineDetailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sommelier/chat": {
+      "post": {
+        "tags": [
+          "sommelier"
+        ],
+        "summary": "Сообщение цифровому сомелье",
+        "operationId": "sommelier_chat_v1_sommelier_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SommelierChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SommelierChatResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Body_eval_predict_v1_eval_predict_post": {
+        "properties": {
+          "image": {
+            "type": "string",
+            "format": "binary",
+            "title": "Image"
+          }
+        },
+        "type": "object",
+        "required": [
+          "image"
+        ],
+        "title": "Body_eval_predict_v1_eval_predict_post"
+      },
+      "CountryDto": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Название страны",
+            "examples": [
+              "Россия"
+            ]
+          },
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "ISO-код страны",
+            "examples": [
+              "RU"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "code"
+        ],
+        "title": "CountryDto"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "RegionDto": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Регион / винодельческая зона",
+            "examples": [
+              "Кубань"
+            ]
+          },
+          "country": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CountryDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Страна региона"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "RegionDto"
+      },
+      "ScanAcceptedResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "Задача принята в очередь"
+          },
+          "scanId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scanid",
+            "description": "Идентификатор для polling"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "pending сразу после постановки"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "description": "Текст ошибки, если success=false"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "status"
+        ],
+        "title": "ScanAcceptedResponse"
+      },
+      "ScanRequest": {
+        "properties": {
+          "imageBase64": {
+            "type": "string",
+            "title": "Imagebase64",
+            "description": "Фото этикетки в Base64, допускается data-URL"
+          },
+          "includeAlternatives": {
+            "type": "boolean",
+            "title": "Includealternatives",
+            "description": "Вернуть альтернативные совпадения (аналог топ-5)",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "imageBase64"
+        ],
+        "title": "ScanRequest"
+      },
+      "ScanStatusResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "scanId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scanid",
+            "description": "Идентификатор сканирования"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "pending | processing | done | failed"
+          },
+          "wine": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WineDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Лучшее совпадение, когда status=done"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence",
+            "description": "Пока не откалибрована; не заменять score"
+          },
+          "alternatives": {
+            "items": {
+              "$ref": "#/components/schemas/WineDto"
+            },
+            "type": "array",
+            "title": "Alternatives",
+            "description": "Другие кандидаты"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
+          "candidates": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Candidates",
+            "description": "До пяти кандидатов; первый совпадает с wine"
+          },
+          "recognitionStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recognitionstatus"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "cylinder": {
+            "type": "object",
+            "title": "Cylinder"
+          },
+          "scoreIsProbability": {
+            "type": "boolean",
+            "title": "Scoreisprobability",
+            "default": false
+          },
+          "observations": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Observations"
+          },
+          "observedFields": {
+            "type": "object",
+            "title": "Observedfields"
+          },
+          "regions": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Regions"
+          },
+          "imageSize": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Imagesize"
+          },
+          "coordinateSystem": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coordinatesystem"
+          },
+          "target": {
+            "type": "object",
+            "title": "Target"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "catalogSha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalogsha256"
+          },
+          "timingsSeconds": {
+            "type": "object",
+            "title": "Timingsseconds"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "status"
+        ],
+        "title": "ScanStatusResponse"
+      },
+      "SearchResponse": {
+        "properties": {
+          "wines": {
+            "items": {
+              "$ref": "#/components/schemas/WineDto"
+            },
+            "type": "array",
+            "title": "Wines"
+          },
+          "totalCount": {
+            "type": "integer",
+            "title": "Totalcount",
+            "description": "Всего найденных позиций"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page",
+            "description": "Текущая страница, с 1"
+          },
+          "hasMore": {
+            "type": "boolean",
+            "title": "Hasmore",
+            "description": "Есть ли следующая страница"
+          }
+        },
+        "type": "object",
+        "required": [
+          "totalCount",
+          "page",
+          "hasMore"
+        ],
+        "title": "SearchResponse"
+      },
+      "SommelierChatMessageDto": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "description": "Роль: user или assistant",
+            "examples": [
+              "user"
+            ]
+          },
+          "content": {
+            "type": "string",
+            "title": "Content",
+            "description": "Текст сообщения"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role",
+          "content"
+        ],
+        "title": "SommelierChatMessageDto"
+      },
+      "SommelierChatRequest": {
+        "properties": {
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/SommelierChatMessageDto"
+            },
+            "type": "array",
+            "title": "Messages",
+            "description": "История диалога"
+          },
+          "wineContext": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SommelierWineContextDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Вино, с которым связан вопрос"
+          }
+        },
+        "type": "object",
+        "required": [
+          "messages"
+        ],
+        "title": "SommelierChatRequest"
+      },
+      "SommelierChatResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SommelierChatMessageDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ответ ассистента"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "title": "SommelierChatResponse"
+      },
+      "SommelierWineContextDto": {
+        "properties": {
+          "wineId": {
+            "type": "string",
+            "title": "Wineid"
+          },
+          "wineName": {
+            "type": "string",
+            "title": "Winename"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "variety": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variety"
+          },
+          "vintage": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vintage"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wineId",
+          "wineName"
+        ],
+        "title": "SommelierWineContextDto"
+      },
+      "StyleDto": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Стиль вина",
+            "examples": [
+              "Dry Red"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "StyleDto"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VarietyDto": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Сорт винограда",
+            "examples": [
+              "Каберне Совиньон"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "VarietyDto"
+      },
+      "WineDetailResponse": {
+        "properties": {
+          "wine": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WineDto"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Карточка; null если id неизвестен"
+          }
+        },
+        "type": "object",
+        "title": "WineDetailResponse"
+      },
+      "WineDto": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Идентификатор позиции каталога",
+            "examples": [
+              "fanagoria-cabernet"
+            ]
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Название вина"
+          },
+          "vintage": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vintage",
+            "description": "Год урожая"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating",
+            "description": "Рейтинг, если есть в источнике"
+          },
+          "reviewsCount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewscount"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "grapes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grapes"
+          },
+          "colorShade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Colorshade"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price",
+            "description": "Цена"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency",
+            "description": "Валюта",
+            "examples": [
+              "RUB"
+            ]
+          },
+          "region": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RegionDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "country": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CountryDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "variety": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VarietyDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "style": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StyleDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "alcoholPercentage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alcoholpercentage",
+            "description": "Алкоголь, %"
+          },
+          "imageUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imageurl",
+            "description": "URL этикетки / бутылки"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "foodPairing": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Foodpairing",
+            "description": "Гастрономические сочетания"
+          },
+          "winery": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WineryDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "name"
+        ],
+        "title": "WineDto"
+      },
+      "WineryDto": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Производитель",
+            "examples": [
+              "Фанагория"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "WineryDto"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "health",
+      "description": "Проверка, что API поднялся (воркер и Docker healthcheck)."
+    },
+    {
+      "name": "wines",
+      "description": "Скан этикетки, текстовый поиск и карточка. Контракт Android ApiService."
+    },
+    {
+      "name": "sommelier",
+      "description": "Цифровой сомелье после поиска (retention)."
+    }
+  ]
+}
