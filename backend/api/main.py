@@ -52,8 +52,7 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url="/openapi.json",
     servers=[
-        {"url": "http://localhost:3000", "description": "Docker DEV (хост → контейнер :8000)"},
-        {"url": "http://10.0.2.2:3000", "description": "Android-эмулятор → хост"},
+        {"url": "/", "description": "Текущий сервер API"},
     ],
     lifespan=lifespan,
 )

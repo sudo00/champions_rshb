@@ -7,9 +7,11 @@ Android-приложение, FastAPI и GPU-worker для поиска вина
 1. Получить `data/deployment/wine-recognizer-v4-memory-release/` с весами и индексом.
 2. Распаковать `catalog-images-v1.tar` в `data/deployment/catalog-images/`.
 3. На Linux с NVIDIA GPU и Container Toolkit выполнить `make env`, затем `make dev`.
-4. Дождаться `http://localhost:3000/ready`; Swagger — `http://localhost:3000/docs`.
+4. Дождаться `http://localhost:8000/ready`; Swagger — `http://localhost:8000/docs`.
 
 Полные команды, контракты, ограничения и скрипт проверки организаторов: [docs/API_RECOGNITION.md](docs/API_RECOGNITION.md). Установка зависимостей: [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md).
+
+Передача коллегам: [docs/BACKEND_HANDOFF.md](docs/BACKEND_HANDOFF.md) — API, ресурсы, запуск на новой машине и оставшиеся задачи.
 
 ## Структура
 

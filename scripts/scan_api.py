@@ -11,7 +11,7 @@ from check_recognition_api import request
 def main():
     parser=argparse.ArgumentParser(__doc__)
     parser.add_argument('image',type=Path)
-    parser.add_argument('--base',default='http://127.0.0.1:3000')
+    parser.add_argument('--base',default='http://127.0.0.1:8000')
     parser.add_argument('--output',type=Path)
     parser.add_argument('--no-alternatives',action='store_true')
     args=parser.parse_args()

@@ -24,7 +24,7 @@ def canonical_candidates(items):
 
 def main():
     parser=argparse.ArgumentParser(__doc__)
-    parser.add_argument('--base',default='http://127.0.0.1:3000')
+    parser.add_argument('--base',default='http://127.0.0.1:8000')
     parser.add_argument('--manifest',type=Path,default=Path('data/audit/live_shop/v1/gallery/manifest.json'))
     parser.add_argument('--baseline',type=Path,default=Path('data/audit/memory_v4/shop76'))
     parser.add_argument('--output',type=Path,default=Path('data/audit/api_integration/shop76'))

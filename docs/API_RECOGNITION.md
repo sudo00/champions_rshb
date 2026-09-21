@@ -81,12 +81,12 @@ tar -xf data/deployment/catalog-images-v1.tar -C data/deployment/catalog-images
 ```bash
 make env
 make dev
-curl -f http://127.0.0.1:3000/ready
+curl -f http://127.0.0.1:8000/ready
 ```
 
 Make объединяет базовый Compose, GPU-конфигурацию и DEV mounts. `/health` проверяет только API; `/ready` — свежий heartbeat worker и совпадение каталога. Первая загрузка моделей занимает время. Для production используется `make prod`, порт берётся из `build_env/.env.prod`. После изменения ML-кода перезапустить worker и пересобрать bundle, если изменились файлы, закреплённые в его манифесте.
 
-Для локальной отладки: поднять `db s3 rabbitmq` через Compose, API запустить из `.venv-api` с `PYTHONPATH=backend`, worker — из `.venv` командой `python -m backend.worker.main` в корне проекта. Обоим задать одинаковые `DATABASE_URL`, `S3_ENDPOINT`, `RABBITMQ_HOST/PORT`; worker дополнительно `BACKEND_URL=http://127.0.0.1:3000/health`. Стандартные опубликованные порты: PostgreSQL 5433, MinIO 9006, RabbitMQ 5673. OCR запускается worker автоматически из `.venv-ocr-gpu`.
+Для локальной отладки: поднять `db s3 rabbitmq` через Compose, API запустить из `.venv-api` с `PYTHONPATH=backend`, worker — из `.venv` командой `python -m backend.worker.main` в корне проекта. Обоим задать одинаковые `DATABASE_URL`, `S3_ENDPOINT`, `RABBITMQ_HOST/PORT`; worker дополнительно `BACKEND_URL=http://127.0.0.1:8000/health`. Стандартные опубликованные порты: PostgreSQL 5433, MinIO 9006, RabbitMQ 5673. OCR запускается worker автоматически из `.venv-ocr-gpu`.
 
 ### Если на Linux не работает Docker bridge
 
@@ -98,7 +98,7 @@ docker compose --env-file build_env/env.prod.example -p wine-integration \
   up -d --build
 ```
 
-API работает на 3000, PostgreSQL — 5432, MinIO — 9000/9001, RabbitMQ — 5672/15672. Эти порты должны быть свободны. Не запускайте одновременно локальный GPU-worker и контейнерный: каждый загрузит собственные модели. Для обычной установки с работающей сетью Docker этот профиль не требуется.
+API работает на 8000, PostgreSQL — 5432, MinIO — 9000/9001, RabbitMQ — 5672/15672. Эти порты должны быть свободны. Не запускайте одновременно локальный GPU-worker и контейнерный: каждый загрузит собственные модели. Для обычной установки с работающей сетью Docker этот профиль не требуется.
 
 ## Ручки и проверка
 
@@ -116,7 +116,7 @@ API работает на 3000, PostgreSQL — 5432, MinIO — 9000/9001, Rabbit
 
 ```bash
 python3 scripts/scan_api.py data/live_shop_photos/abrau-dyurso-risling-beloe-suhoe-12.jpg \
-  --base http://127.0.0.1:3000 --output data/audit/my_scan.json
+  --base http://127.0.0.1:8000 --output data/audit/my_scan.json
 ```
 
 Для одного кандидата добавить `--no-alternatives`. Оригинальный скрипт организаторов используется без изменений:
@@ -124,7 +124,7 @@ python3 scripts/scan_api.py data/live_shop_photos/abrau-dyurso-risling-beloe-suh
 ```bash
 bash data/eval/participant_test.sh \
   --images-dir data/eval/queries --manifest data/eval/queries.tsv \
-  --endpoint http://127.0.0.1:3000/v1/eval/predict \
+  --endpoint http://127.0.0.1:8000/v1/eval/predict \
   --output data/audit/eval_predictions.jsonl
 ```
 
@@ -133,3 +133,21 @@ bash data/eval/participant_test.sh \
 ## Android
 
 API можно тестировать независимо от приложения. Текущий Android-клиент коллег ожидает немедленный результат сканирования и при исключениях подставляет mock. Для подключения нужны polling по `scanId`, обработка nullable рейтинга/уверенности, отображение Top-5 и OCR-областей, разрешение относительного `imageUrl` через базовый URL. В реальном режиме ошибки нельзя заменять демонстрационными карточками. Эти изменения Android в данную интеграцию не включены.
+
+## Доступ из интернета и локальная конфигурация
+
+API в host-профиле слушает порт 8000. На роутере нужен проброс TCP 8000 на порт 8000 компьютера; его LAN-адрес следует закрепить в DHCP. В UFW разрешается только порт API: `sudo ufw allow 8000/tcp`.
+
+Личные внешние и LAN-адреса не записываются в исходники или шаблоны. Swagger использует относительный адрес `/`, поэтому работает через тот же хост, на котором открыт. Внешний IP не нужен серверу для прослушивания `0.0.0.0:8000`.
+
+При активном VPN исходящие ответы API могут требовать отдельного правила маршрутизации. Для этой машины подготовлена служба `build_env/network/wine-api-routing.service`: она направляет IPv4-ответы с TCP-порта 8000 через основную таблицу маршрутов. Сам адрес берётся из локального `.env.network`, исключённого из Git:
+
+```bash
+cp build_env/network.env.example .env.network
+# Вписать зарезервированный LAN IPv4 в WINE_API_SOURCE_IP.
+bash scripts/install_api_network.sh
+```
+
+Установщик требует локальный sudo-пароль, проверяет конфигурацию, сохраняет её в `/etc/wine-api-network.env` с правами 0600 и включает systemd-службу. Он не меняет firewall и не отключает VPN. Уже созданный `.env.network` не перезаписывать командой копирования. Одноразовое правило `ip rule add` без установки службы исчезает при перезагрузке. Установка службы не заменяет закрепление LAN-адреса на роутере.
+
+Внешнюю доступность проверять с телефона без Wi-Fi по `http://<PUBLIC_IP>:8000/ready`. Сейчас API работает по HTTP без авторизации; это временный режим проверки, а не защищённая публикация. Для постоянного доступа нужны HTTPS и контроль доступа. Публичный адрес будет виден клиентам независимо от его отсутствия в Git.

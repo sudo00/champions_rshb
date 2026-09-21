@@ -7,20 +7,20 @@ services:
     network_mode: host
     ports: !reset []
     entrypoint: []
-    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "3000"]
+    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
     environment:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/champions
       S3_ENDPOINT: 127.0.0.1:9000
       RABBITMQ_HOST: 127.0.0.1
       RABBITMQ_PORT: 5672
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:3000/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
   worker:
     build:
       network: host
     network_mode: host
     environment:
-      BACKEND_URL: http://127.0.0.1:3000/health
+      BACKEND_URL: http://127.0.0.1:8000/health
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/champions
       S3_ENDPOINT: 127.0.0.1:9000
       RABBITMQ_HOST: 127.0.0.1

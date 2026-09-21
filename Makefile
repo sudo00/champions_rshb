@@ -2,7 +2,7 @@ ENV_DEV := build_env/.env.dev
 ENV_PROD := build_env/.env.prod
 COMPOSE_DEV := docker compose --env-file $(ENV_DEV) -f docker-compose.yml -f docker-compose.gpu.yml -f docker-compose.dev.yml
 COMPOSE_PROD := docker compose --env-file $(ENV_PROD) -f docker-compose.yml -f docker-compose.gpu.yml
-API_HEALTH := http://127.0.0.1:3000/health
+API_HEALTH := http://127.0.0.1:8000/health
 
 .PHONY: help setup env wait-api install install-api install-worker build dev prod up down ddown logs restart test
 
