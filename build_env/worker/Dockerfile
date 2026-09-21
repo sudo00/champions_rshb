@@ -1,13 +1,17 @@
+# Compatibility entrypoint; keep aligned with Dockerfile.gpu.
 FROM python:3.12.6-slim-bookworm
-
 WORKDIR /app
-
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-
-COPY backend/worker/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY backend/worker/. .
-
-CMD ["python", "main.py"]
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app \
+    WINE_OCR_PYTHON=/opt/ocr/bin/python WINE_BUNDLE_DIR=/models \
+    PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True
+RUN apt-get update && apt-get install -y --no-install-recommends libglib2.0-0 libgl1 libgomp1 && rm -rf /var/lib/apt/lists/*
+COPY requirements-vision.lock.txt requirements-ocr-gpu.lock.txt /tmp/requirements/
+RUN python -m venv /opt/vision && python -m venv /opt/ocr \
+    && /opt/vision/bin/python -m pip install --no-cache-dir -r /tmp/requirements/requirements-vision.lock.txt \
+    && /opt/ocr/bin/python -m pip install --no-cache-dir -r /tmp/requirements/requirements-ocr-gpu.lock.txt \
+    && /opt/vision/bin/python -m pip check && /opt/ocr/bin/python -m pip check
+COPY worker /app/worker
+COPY backend/__init__.py /app/backend/__init__.py
+COPY backend/worker /app/backend/worker
+COPY scripts/cylinder_geometry.py scripts/label_rectification_pilot.py /app/scripts/
+CMD ["/opt/vision/bin/python", "-m", "backend.worker.main"]

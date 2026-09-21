@@ -40,6 +40,16 @@ def init_infra(retries: int = 20, delay_s: float = 1.5) -> None:
                     )
                     """
                 )
+                conn.execute("""CREATE TABLE IF NOT EXISTS recognition_worker (
+                    name TEXT PRIMARY KEY, ready BOOLEAN NOT NULL,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), metadata JSONB NOT NULL
+                )""")
+                from api.catalog import catalog_data, get_wine
+                from psycopg.types.json import Jsonb
+                with conn.cursor() as cursor:
+                    cursor.executemany("""INSERT INTO wines (id, name, payload) VALUES (%s,%s,%s)
+                        ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, payload=EXCLUDED.payload""",
+                        [(slug, raw["title"], Jsonb(get_wine(slug).model_dump())) for slug, raw in catalog_data()[0].items()])
                 conn.commit()
 
             s3 = s3_config()
@@ -73,15 +83,23 @@ def upload_scan_image(scan_id: str, image: bytes) -> str:
     )
     if not minio.bucket_exists(s3["bucket"]):
         minio.make_bucket(s3["bucket"])
-    key = f"scans/{scan_id}.jpg"
+    key = f"scans/{scan_id}/image"
     minio.put_object(
         s3["bucket"],
         key,
         BytesIO(image),
         length=len(image),
-        content_type="image/jpeg",
+        content_type="application/octet-stream",
     )
     return key
+
+
+def recognition_ready() -> bool:
+    from api.catalog import catalog_data
+    with psycopg.connect(DATABASE_URL) as conn:
+        row = conn.execute("""SELECT metadata FROM recognition_worker WHERE name='recognizer'
+            AND ready AND updated_at > NOW() - INTERVAL '20 seconds'""").fetchone()
+    return bool(row and row[0].get("catalogSha256") == catalog_data()[1])
 
 
 def publish_scan(payload: dict) -> None:

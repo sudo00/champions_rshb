@@ -2,6 +2,8 @@ import json
 import os
 import sys
 import time
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 import pika
 import psycopg
@@ -9,14 +11,8 @@ import requests
 from minio import Minio
 from psycopg.types.json import Json
 
-from config import BACKEND_URL, BUCKET, SCAN_QUEUE
-from pipeline import run
-
-STUB_RESULT = {
-    "wineId": "fanagoria-cabernet",
-    "confidence": 0.0,
-    "alternativeIds": ["abrau-durso-brut", "massaandra-muscat", "lefkadia-sauvignon"],
-}
+from backend.worker.config import BACKEND_URL, BUCKET, SCAN_QUEUE
+from backend.worker.recognition import initialize, shutdown, run
 
 
 def log(message: str) -> None:
@@ -111,7 +107,7 @@ def update_scan(scan_id: str, status: str, result: dict | None = None, error: st
 
 def load_image(image_key: str | None) -> bytes:
     if not image_key:
-        return b""
+        raise ValueError("Missing uploaded image key")
     client = s3_client()
     response = client.get_object(BUCKET, image_key)
     try:
@@ -126,27 +122,54 @@ def process_scan(payload: dict) -> None:
     include_alternatives = bool(payload.get("includeAlternatives", True))
     update_scan(scan_id, "processing")
     image = load_image(payload.get("imageKey"))
-    run(image)
-    result = dict(STUB_RESULT)
-    if not include_alternatives:
-        result["alternativeIds"] = []
+    result = run(image, includeAlternatives=include_alternatives)
     update_scan(scan_id, "done", result=result)
 
 
 def main() -> None:
     wait_for_backend()
     wait_for_s3()
+    scanner = initialize()
+    metadata = {"catalogSha256":scanner.manifest["catalog_sha256"], "version":scanner.manifest["version"]}
+    def report_ready(ready):
+        with psycopg.connect(database_url()) as conn:
+            conn.execute("""INSERT INTO recognition_worker (name,ready,metadata) VALUES ('recognizer',%s,%s)
+                ON CONFLICT (name) DO UPDATE SET ready=EXCLUDED.ready, metadata=EXCLUDED.metadata, updated_at=NOW()""",
+                (ready, Json(metadata)))
+    stop = threading.Event()
+    def heartbeat():
+        while not stop.wait(5):
+            try:
+                report_ready(not scanner.closed)
+            except Exception as exc:
+                log(f"worker readiness heartbeat failed: {exc}")
     connection = wait_for_rabbit()
     channel = connection.channel()
     channel.queue_declare(queue=SCAN_QUEUE, durable=True)
+    executor = ThreadPoolExecutor(max_workers=1)
 
     def on_scan(ch, method, properties, body: bytes) -> None:
         scan_id = None
         try:
             payload = json.loads(body.decode("utf-8"))
             scan_id = payload.get("scanId")
-            process_scan(payload)
-            ch.basic_ack(delivery_tag=method.delivery_tag)
+            def work():
+                try:
+                    process_scan(payload)
+                except Exception as exc:
+                    if scan_id:
+                        update_scan(scan_id, "failed", error=str(exc))
+                    raise
+            future = executor.submit(work)
+            def finish():
+                try:
+                    future.result()
+                    ch.basic_ack(delivery_tag=method.delivery_tag)
+                except Exception as exc:
+                    log(f"scan failed: {exc}")
+                    ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+            # RabbitMQ I/O and acknowledgements stay on the connection thread.
+            future.add_done_callback(lambda _: connection.add_callback_threadsafe(finish))
         except Exception as exc:  # noqa: BLE001
             log(f"scan failed: {exc}")
             if scan_id:
@@ -158,13 +181,23 @@ def main() -> None:
 
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(queue=SCAN_QUEUE, on_message_callback=on_scan)
+    report_ready(True)
+    heartbeat_thread = threading.Thread(target=heartbeat, daemon=True)
+    heartbeat_thread.start()
     log(f"worker ready, queue={SCAN_QUEUE}")
 
     try:
         channel.start_consuming()
     finally:
-        if connection.is_open:
-            connection.close()
+        stop.set()
+        heartbeat_thread.join(timeout=6)
+        try:
+            report_ready(False)
+        finally:
+            executor.shutdown(wait=True)
+            shutdown()
+            if connection.is_open:
+                connection.close()
 
 
 if __name__ == "__main__":

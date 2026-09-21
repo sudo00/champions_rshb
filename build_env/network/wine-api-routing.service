@@ -1,0 +1,15 @@
+[Unit]
+Description=Route wine API replies through the LAN gateway instead of the VPN
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/wine-api-network.env
+ExecStartPre=-/usr/sbin/ip -4 rule del priority 10000 from ${WINE_API_SOURCE_IP}/32 ipproto tcp sport 8000 lookup main
+ExecStart=/usr/sbin/ip -4 rule add priority 10000 from ${WINE_API_SOURCE_IP}/32 ipproto tcp sport 8000 lookup main
+RemainAfterExit=yes
+ExecStop=-/usr/sbin/ip -4 rule del priority 10000 from ${WINE_API_SOURCE_IP}/32 ipproto tcp sport 8000 lookup main
+
+[Install]
+WantedBy=multi-user.target

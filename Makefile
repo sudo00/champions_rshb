@@ -1,10 +1,11 @@
 ENV_DEV := build_env/.env.dev
 ENV_PROD := build_env/.env.prod
-COMPOSE_DEV := docker compose --env-file $(ENV_DEV) -f docker-compose.yml -f docker-compose.dev.yml
-COMPOSE_PROD := docker compose --env-file $(ENV_PROD) -f docker-compose.yml
-API_HEALTH := http://127.0.0.1:3000/health
+COMPOSE_DEV := docker compose --env-file $(ENV_DEV) -f docker-compose.yml -f docker-compose.gpu.yml -f docker-compose.dev.yml
+COMPOSE_PROD := docker compose --env-file $(ENV_PROD) -f docker-compose.yml -f docker-compose.gpu.yml
+API_HEALTH := http://127.0.0.1:8000/health
+TEST_BUILD_NETWORK ?= default
 
-.PHONY: help setup env wait-api install install-api install-worker build dev prod up down ddown logs restart test
+.PHONY: help setup env wait-api install install-api install-worker build dev prod up down ddown logs restart test test-api
 
 help:
 	@echo "make setup             — скопировать env, собрать образы, поднять стек, дождаться API"
@@ -21,23 +22,12 @@ help:
 	@echo "make logs              — логи"
 	@echo "make restart           — перезапустить DEV"
 	@echo "make test              — pytest в контейнере api"
+	@echo "make test-api          — автономные API-тесты в Docker, без GPU и сервисов"
 
 setup: env
-	$(COMPOSE_DEV) build
-	$(COMPOSE_DEV) up -d --wait db rabbitmq
-	$(COMPOSE_DEV) up -d s3
-	$(COMPOSE_DEV) up -d --no-deps api
-	$(COMPOSE_DEV) exec -T api pip install --no-cache-dir -r api/requirements.txt
-	$(COMPOSE_DEV) up -d --no-deps worker
-	$(COMPOSE_DEV) exec -T worker pip install --no-cache-dir -r requirements.txt
-	$(COMPOSE_DEV) restart api worker
+	$(COMPOSE_DEV) up -d --build
 	$(MAKE) wait-api
-	@echo ""
-	@echo "Backend готов:"
-	@echo "  API      $(API_HEALTH)"
-	@echo "  Swagger  http://localhost:3000/docs"
-	@echo "  RabbitMQ http://localhost:15673  user / password"
-	@echo "  MinIO    http://localhost:9007  minioadmin / minioadmin"
+	@echo "Модели загружаются отдельно: проверьте GET /ready перед оценкой."
 
 wait-api:
 	@echo "Ждём API $(API_HEALTH) ..."
@@ -66,11 +56,12 @@ build:
 install-api:
 	$(COMPOSE_DEV) up -d db s3 rabbitmq
 	$(COMPOSE_DEV) up -d --no-deps api
-	$(COMPOSE_DEV) exec -T api pip install --no-cache-dir -r api/requirements.txt
+	$(COMPOSE_DEV) exec -T api pip install --no-cache-dir -r api/requirements.lock.txt
 	$(COMPOSE_DEV) restart api
 
-install-worker: up
-	$(COMPOSE_DEV) exec -T worker pip install --no-cache-dir -r requirements.txt
+install-worker:
+	$(COMPOSE_DEV) build worker
+	$(COMPOSE_DEV) up -d worker
 
 dev:
 	$(COMPOSE_DEV) up -d --build
@@ -96,3 +87,7 @@ restart:
 
 test:
 	$(COMPOSE_DEV) exec -T -e PYTHONPATH=/app api pytest -q /app/api/tests
+
+test-api:
+	docker build --network=$(TEST_BUILD_NETWORK) --target api-tests -f build_env/api/Dockerfile -t wine-api-tests .
+	docker run --rm --network=none wine-api-tests

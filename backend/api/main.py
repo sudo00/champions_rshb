@@ -1,12 +1,17 @@
 import base64
 import logging
 import uuid
+import os
+import time
+from io import BytesIO
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, File, UploadFile
+from fastapi.responses import FileResponse
+from PIL import Image
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.catalog import get_wine, search_wines
+from api.catalog import get_wine, search_wines, image_path, catalog_data
 from api.contracts import (
     ScanAcceptedResponse,
     ScanRequest,
@@ -16,7 +21,7 @@ from api.contracts import (
     SommelierChatResponse,
     WineDetailResponse,
 )
-from api.infra import init_infra, publish_scan, upload_scan_image
+from api.infra import init_infra, publish_scan, upload_scan_image, recognition_ready
 from api.scans import create_pending, get_job, mark_failed, to_status_response
 from api.sommelier import reply
 
@@ -47,8 +52,7 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url="/openapi.json",
     servers=[
-        {"url": "http://localhost:3000", "description": "Docker DEV (хост → контейнер :8000)"},
-        {"url": "http://10.0.2.2:3000", "description": "Android-эмулятор → хост"},
+        {"url": "/", "description": "Текущий сервер API"},
     ],
     lifespan=lifespan,
 )
@@ -70,6 +74,64 @@ def health() -> dict[str, str]:
     return {"status": "ready", "service": "api"}
 
 
+@app.get("/ready", tags=["health"])
+def ready() -> dict:
+    if not recognition_ready():
+        raise HTTPException(503, "Recognizer is not ready or catalogue versions differ")
+    return {"status":"ready", "catalogCount":len(catalog_data()[0]), "catalogSha256":catalog_data()[1]}
+
+
+MAX_IMAGE_BYTES = 30*1024*1024
+
+
+def validate_image(data: bytes) -> None:
+    if not data or len(data) > MAX_IMAGE_BYTES:
+        raise ValueError("Empty image or upload exceeds 30 MiB")
+    with Image.open(BytesIO(data)) as image:
+        if image.width*image.height > 25_000_000 or getattr(image, "n_frames", 1) != 1:
+            raise ValueError("Expected a single image up to 25 megapixels")
+        image.verify()
+
+
+def submit_scan(image: bytes, include_alternatives: bool) -> ScanAcceptedResponse:
+    scan_id = str(uuid.uuid4())
+    try:
+        image_key = upload_scan_image(scan_id, image)
+    except Exception as exc:
+        log.exception("scan image upload failed")
+        raise HTTPException(503, "Image storage unavailable") from exc
+    job = create_pending(include_alternatives, image_key=image_key, scan_id=scan_id)
+    try:
+        publish_scan({"scanId":job.scan_id, "imageKey":job.image_key, "includeAlternatives":include_alternatives})
+    except Exception as exc:
+        mark_failed(job.scan_id, "Не удалось поставить задачу в очередь")
+        raise HTTPException(503, "Queue unavailable") from exc
+    return ScanAcceptedResponse(success=True, scanId=job.scan_id, status="pending")
+
+
+@app.post("/v1/eval/predict", tags=["wines"], summary="Синхронный Top-1 для participant_test.sh")
+def eval_predict(image: UploadFile = File(...)) -> dict[str, str]:
+    deadline = time.monotonic()+float(os.environ.get("EVAL_WAIT_SECONDS", "9"))
+    if not recognition_ready():
+        raise HTTPException(503, "Wait for GET /ready before evaluation")
+    data = image.file.read(MAX_IMAGE_BYTES+1)
+    try:
+        validate_image(data)
+    except Exception as exc:
+        raise HTTPException(422, "Invalid image") from exc
+    accepted = submit_scan(data, False)
+    while time.monotonic() < deadline:
+        job = get_job(accepted.scanId)
+        if job and job.status == "done":
+            # Validate catalogue/contract using the same mapping as mobile polling.
+            result = to_status_response(job)
+            return {"slug":result.slug or "unknown"}
+        if job and job.status == "failed":
+            raise HTTPException(500, "Recognition failed")
+        time.sleep(.1)
+    raise HTTPException(504, "Recognition timed out; check GPU availability and queue load")
+
+
 @app.post(
     "/v1/wines/scan",
     tags=["wines"],
@@ -80,6 +142,7 @@ def health() -> dict[str, str]:
 def scan_label(body: ScanRequest) -> ScanAcceptedResponse:
     try:
         image = _decode_image(body.imageBase64)
+        validate_image(image)
     except Exception:
         return ScanAcceptedResponse(
             success=False,
@@ -88,37 +151,17 @@ def scan_label(body: ScanRequest) -> ScanAcceptedResponse:
             error="Некорректное изображение",
         )
 
-    scan_id = str(uuid.uuid4())
-    try:
-        image_key = upload_scan_image(scan_id, image)
-    except Exception as exc:  # noqa: BLE001
-        log.warning("scan image upload failed: %s", exc)
-        image_key = None
+    return submit_scan(image, body.includeAlternatives)
 
-    job = create_pending(body.includeAlternatives, image_key=image_key, scan_id=scan_id)
-    try:
-        publish_scan(
-            {
-                "scanId": job.scan_id,
-                "imageKey": job.image_key,
-                "includeAlternatives": job.include_alternatives,
-            }
-        )
-    except Exception as exc:  # noqa: BLE001
-        log.warning("scan queue publish failed: %s", exc)
-        mark_failed(job.scan_id, "Не удалось поставить задачу в очередь")
-        return ScanAcceptedResponse(
-            success=False,
-            scanId=job.scan_id,
-            status="failed",
-            error="Не удалось поставить задачу в очередь",
-        )
-    return ScanAcceptedResponse(
-        success=True,
-        scanId=job.scan_id,
-        status="pending",
-        error=None,
-    )
+
+@app.get(
+    "/v1/wines/{wine_id}/image", tags=["wines"], response_class=FileResponse,
+)
+def wine_image(wine_id: str):
+    path = image_path(wine_id)
+    if path is None:
+        raise HTTPException(404, "Catalogue image unavailable")
+    return FileResponse(path)
 
 
 @app.get(
@@ -127,8 +170,8 @@ def scan_label(body: ScanRequest) -> ScanAcceptedResponse:
     summary="Результат сканирования (polling)",
     response_model=ScanStatusResponse,
 )
-def scan_status(scan_id: str) -> ScanStatusResponse:
-    job = get_job(scan_id)
+def scan_status(scan_id: uuid.UUID) -> ScanStatusResponse:
+    job = get_job(str(scan_id))
     if job is None:
         raise HTTPException(
             status_code=404,
@@ -185,7 +228,9 @@ def _decode_image(image_base64: str) -> bytes:
         raise ValueError("empty")
     if "," in payload and payload.lower().startswith("data:"):
         payload = payload.split(",", 1)[1]
-    data = base64.b64decode(payload, validate=False)
+    if len(payload) > (MAX_IMAGE_BYTES+2)//3*4:
+        raise ValueError("Image is too large")
+    data = base64.b64decode(payload, validate=True)
     if not data:
         raise ValueError("empty")
     return data

@@ -4,7 +4,7 @@ from typing import Any
 
 import psycopg
 
-from api.catalog import get_wine, stub_scan
+from api.catalog import get_wine, catalog_data
 from api.config import DATABASE_URL
 from api.contracts import ScanStatusResponse, WineDto
 
@@ -84,24 +84,30 @@ def mark_failed(scan_id: str, error: str) -> None:
 def to_status_response(job: ScanJob) -> ScanStatusResponse:
     wine: WineDto | None = None
     alternatives: list[WineDto] = []
-    confidence = 0.0
+    details = {}
     if job.status == STATUS_DONE:
         if job.result:
-            wine = get_wine(job.result.get("wineId", ""))
-            confidence = float(job.result.get("confidence") or 0)
-            alternatives = [
-                item
-                for item in (get_wine(wine_id) for wine_id in job.result.get("alternativeIds") or [])
-                if item is not None
-            ]
+            if job.result.get("catalogSha256") != catalog_data()[1]:
+                raise RuntimeError("API and recognizer catalogues differ")
+            details = {k:v for k,v in job.result.items() if k in ScanStatusResponse.model_fields and k not in ("success", "scanId", "status", "error", "wine", "alternatives", "confidence")}
+            candidates = []
+            for item in job.result.get("candidates", [])[:5 if job.include_alternatives else 1]:
+                card = get_wine(item["slug"])
+                if card is None:
+                    raise RuntimeError("Recognizer returned a slug missing from catalogue")
+                candidates.append({**item, "wine":card.model_dump()})
+            details["candidates"] = candidates
+            wine = get_wine(candidates[0]["slug"]) if candidates else None
+            alternatives = [get_wine(c["slug"]) for c in candidates[1:]]
         else:
-            wine, alternatives = stub_scan(job.include_alternatives)
+            raise RuntimeError("Completed scan has no recognition result")
     return ScanStatusResponse(
         success=True,
         scanId=job.scan_id,
         status=job.status,
         wine=wine,
-        confidence=confidence,
+        confidence=None,
         alternatives=alternatives,
         error=job.error,
+        **details,
     )

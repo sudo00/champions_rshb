@@ -25,10 +25,14 @@ class WineryDto(BaseModel):
 
 class WineDto(BaseModel):
     id: str = Field(description="Идентификатор позиции каталога", examples=["fanagoria-cabernet"])
+    slug: str
     name: str = Field(description="Название вина")
     vintage: int | None = Field(default=None, description="Год урожая")
-    rating: float = Field(description="Рейтинг 0–5")
-    reviewsCount: int = Field(description="Число отзывов")
+    rating: float | None = Field(default=None, description="Рейтинг, если есть в источнике")
+    reviewsCount: int | None = None
+    category: str | None = None
+    grapes: str | None = None
+    colorShade: str | None = None
     price: float | None = Field(default=None, description="Цена")
     currency: str | None = Field(default=None, description="Валюта", examples=["RUB"])
     region: RegionDto | None = None
@@ -62,8 +66,24 @@ class ScanStatusResponse(BaseModel):
     scanId: str | None = Field(default=None, description="Идентификатор сканирования")
     status: str = Field(description="pending | processing | done | failed")
     wine: WineDto | None = Field(default=None, description="Лучшее совпадение, когда status=done")
-    confidence: float = Field(default=0, description="Уверенность топ-1, 0–1")
+    confidence: float | None = Field(default=None, description="Пока не откалибрована; не заменять score")
     alternatives: list[WineDto] = Field(default_factory=list, description="Другие кандидаты")
+    slug: str | None = None
+    candidates: list[dict] = Field(default_factory=list, description="До пяти кандидатов; первый совпадает с wine")
+    recognitionStatus: str | None = None
+    message: str | None = None
+    cylinder: dict = Field(default_factory=dict)
+    scoreIsProbability: bool = False
+    observations: list[dict] = Field(default_factory=list)
+    observedFields: dict = Field(default_factory=dict)
+    regions: list[dict] = Field(default_factory=list)
+    imageSize: list[int] = Field(default_factory=list)
+    coordinateSystem: str | None = None
+    target: dict = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)
+    version: str | None = None
+    catalogSha256: str | None = None
+    timingsSeconds: dict = Field(default_factory=dict)
     error: str | None = None
 
 

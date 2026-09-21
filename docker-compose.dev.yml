@@ -2,8 +2,10 @@ services:
   api:
     volumes:
       - ./backend/api:/app/api
-
+      - ./backend/catalog:/app/catalog:ro
   worker:
     volumes:
-      - ./backend/worker:/app
-    command: ["watchfiles", "--filter", "python", "python main.py", "."]
+      - ./backend/worker:/app/backend/worker:ro
+      - ./worker:/app/worker:ro
+      - ./scripts:/app/scripts:ro
+    # Restart after worker code changes; one model instance per GPU.

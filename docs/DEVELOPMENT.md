@@ -1,25 +1,11 @@
-# План разработки
+# Разработка
 
-Кейс: сканер российских вин для «Своё вино».
+Приложение Android находится в `mobile_app/WineApp`, FastAPI — в `backend/api`, очередь — в `backend/worker`. Проверенный ML-код и эксперименты сохранены в `worker/pipeline` и `scripts`.
 
-## Этап 0 — скелет (сейчас)
+Настоящий каталог, Top-5, OCR, области изображения и оценочный multipart API подключены. Подробности запуска и контрактов — [API_RECOGNITION.md](API_RECOGNITION.md), зависимости — [DEPENDENCIES.md](DEPENDENCIES.md), результаты проверки — [API_INTEGRATION_VALIDATION.md](API_INTEGRATION_VALIDATION.md).
 
-- [x] FastAPI под контракты Android `ApiService`
-- [x] Postgres + pgvector, MinIO, RabbitMQ
-- [x] Python-воркер, очередь `scan`
-- [x] README / ARCHITECTURE / OpenAPI
+Для проверки API без GPU, весов и работающей инфраструктуры выполнить `make test-api`. Команда собирает тестовый Docker-образ и запускает проверки без сети.
 
-## Этап 1 — каталог
+Использовать отдельные среды проекта: `.venv`, `.venv-ocr-gpu`, `.venv-api`. Для API в локальном окружении выполнить `.venv-api/bin/python -m pytest -q`; для адаптера — `.venv/bin/python -m unittest backend.worker.tests.test_recognition -q`. Тесты самого ML в корневой `tests/` остаются локально и не входят в Git.
 
-- Импорт дампа в `wines`
-- Эталоны в MinIO
-- pgvector под SigLIP 2
-
-## Этап 2 — CV
-
-- `backend/worker/pipeline/*`
-- `POST /v1/wines/scan` отдаёт реальный `WineDto`
-
-## Этап 3 — сомелье
-
-- LLM вместо rule-based заглушки в `POST /v1/sommelier/chat`
+Для сравнения с локальными результатами 76 магазинных снимков при запущенном API: `python3 scripts/check_recognition_api.py`. Снимки и результаты не входят в Git. При изменении численного ML-кода нужен новый согласованный bundle, иначе проверка SHA-256 при запуске отклонит его.
