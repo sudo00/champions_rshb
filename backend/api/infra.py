@@ -5,8 +5,62 @@ from io import BytesIO
 import pika
 import psycopg
 from minio import Minio
+from minio.error import S3Error
 
 from api.config import DATABASE_URL, SCAN_QUEUE, rabbit_url, s3_config
+
+
+def minio_client() -> Minio:
+    s3 = s3_config()
+    return Minio(
+        f"{s3['endPoint']}:{s3['port']}",
+        access_key=s3["accessKey"],
+        secret_key=s3["secretKey"],
+        secure=s3["useSSL"],
+    )
+
+
+def ensure_bucket(client: Minio | None = None) -> Minio:
+    s3 = s3_config()
+    minio = client or minio_client()
+    if not minio.bucket_exists(s3["bucket"]):
+        minio.make_bucket(s3["bucket"])
+    policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"AWS": ["*"]},
+                "Action": ["s3:GetObject"],
+                "Resource": [f"arn:aws:s3:::{s3['bucket']}/*"],
+            }
+        ],
+    }
+    minio.set_bucket_policy(s3["bucket"], json.dumps(policy))
+    return minio
+
+
+def object_exists(key: str, client: Minio | None = None) -> bool:
+    s3 = s3_config()
+    minio = client or minio_client()
+    try:
+        minio.stat_object(s3["bucket"], key)
+        return True
+    except S3Error:
+        return False
+
+
+def upload_bytes(key: str, data: bytes, content_type: str, client: Minio | None = None) -> str:
+    s3 = s3_config()
+    minio = ensure_bucket(client)
+    minio.put_object(
+        s3["bucket"],
+        key,
+        BytesIO(data),
+        length=len(data),
+        content_type=content_type,
+    )
+    return key
 
 
 def init_infra(retries: int = 20, delay_s: float = 1.5) -> None:
@@ -44,23 +98,12 @@ def init_infra(retries: int = 20, delay_s: float = 1.5) -> None:
                     name TEXT PRIMARY KEY, ready BOOLEAN NOT NULL,
                     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), metadata JSONB NOT NULL
                 )""")
-                from api.catalog import catalog_data, get_wine
-                from psycopg.types.json import Jsonb
-                with conn.cursor() as cursor:
-                    cursor.executemany("""INSERT INTO wines (id, name, payload) VALUES (%s,%s,%s)
-                        ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, payload=EXCLUDED.payload""",
-                        [(slug, raw["title"], Jsonb(get_wine(slug).model_dump())) for slug, raw in catalog_data()[0].items()])
+                from api.catalog import seed_catalog_file
+                inserted, skipped = seed_catalog_file(conn)
                 conn.commit()
+                print(f"catalog file seed: inserted={inserted} skipped={skipped}", flush=True)
 
-            s3 = s3_config()
-            minio = Minio(
-                f"{s3['endPoint']}:{s3['port']}",
-                access_key=s3["accessKey"],
-                secret_key=s3["secretKey"],
-                secure=s3["useSSL"],
-            )
-            if not minio.bucket_exists(s3["bucket"]):
-                minio.make_bucket(s3["bucket"])
+            ensure_bucket()
 
             connection = pika.BlockingConnection(pika.URLParameters(rabbit_url()))
             channel = connection.channel()
@@ -74,24 +117,7 @@ def init_infra(retries: int = 20, delay_s: float = 1.5) -> None:
 
 
 def upload_scan_image(scan_id: str, image: bytes) -> str:
-    s3 = s3_config()
-    minio = Minio(
-        f"{s3['endPoint']}:{s3['port']}",
-        access_key=s3["accessKey"],
-        secret_key=s3["secretKey"],
-        secure=s3["useSSL"],
-    )
-    if not minio.bucket_exists(s3["bucket"]):
-        minio.make_bucket(s3["bucket"])
-    key = f"scans/{scan_id}/image"
-    minio.put_object(
-        s3["bucket"],
-        key,
-        BytesIO(image),
-        length=len(image),
-        content_type="application/octet-stream",
-    )
-    return key
+    return upload_bytes(f"scans/{scan_id}/image", image, "application/octet-stream")
 
 
 def recognition_ready() -> bool:

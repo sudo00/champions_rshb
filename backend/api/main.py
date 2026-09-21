@@ -3,6 +3,7 @@ import logging
 import uuid
 import os
 import time
+import asyncio
 from io import BytesIO
 from contextlib import asynccontextmanager
 
@@ -37,7 +38,23 @@ TAGS = [
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     init_infra()
+    if _catalog_import_on_start():
+        asyncio.create_task(asyncio.to_thread(_run_startup_catalog_load))
     yield
+
+
+def _catalog_import_on_start() -> bool:
+    return os.environ.get("IMPORT_CATALOG_ON_START", "0").strip().lower() in {"1", "true", "yes"}
+
+
+def _run_startup_catalog_load() -> None:
+    from api.import_vino_svoe import startup_catalog_load
+
+    try:
+        stats = startup_catalog_load()
+        log.info("startup catalog load: %s", stats)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("startup catalog load failed: %s", exc)
 
 
 app = FastAPI(

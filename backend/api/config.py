@@ -18,7 +18,13 @@ def s3_config() -> dict:
         "accessKey": env("S3_ACCESS_KEY", "minioadmin"),
         "secretKey": env("S3_SECRET_KEY", "minioadmin"),
         "useSSL": False,
+        "publicBaseUrl": env("S3_PUBLIC_BASE_URL", "http://localhost:9006"),
     }
+
+
+def s3_public_url(key: str) -> str:
+    s3 = s3_config()
+    return f"{s3['publicBaseUrl'].rstrip('/')}/{s3['bucket']}/{key.lstrip('/')}"
 
 
 def rabbit_url() -> str:
