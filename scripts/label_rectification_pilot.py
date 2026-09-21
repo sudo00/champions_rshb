@@ -321,7 +321,7 @@ def prepare(args: argparse.Namespace) -> None:
 def run(args: argparse.Namespace) -> None:
     manifest_path = args.output / "manifest.json"
     manifest = read(manifest_path)
-    cache = ROOT / "data/audit/ocr/cache"
+    cache = ROOT / "weights/cache/ocr"
     for name, value in {"PADDLE_PDX_CACHE_HOME": cache/'paddlex', 'PADDLE_HOME':cache/'paddle',
                         'HF_HOME':cache/'huggingface', 'XDG_CACHE_HOME':cache/'xdg'}.items():
         os.environ.setdefault(name, str(value))

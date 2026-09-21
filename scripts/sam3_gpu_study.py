@@ -17,7 +17,7 @@ from detect_labels_pilot import ROOT, box_iou, image_rgb, json_digest, sha256, v
 from label_segmentation_pilot import choose_main_label
 
 BASE = ROOT / "data/audit/sam3_gpu"
-MODEL = ROOT / "data/audit/label_segmentation/models/sam3-converted"
+MODEL = ROOT / "weights/research/label_segmentation/sam3-converted"
 PACK_PROMPTS = ["label", "wine label", "wine packaging", "wine box",
                 "front panel of a wine box", "wine carton", "wine pouch", "beverage can"]
 

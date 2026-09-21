@@ -60,7 +60,7 @@ finally:
 
 - `backend/catalog/catalog.jsonl`: 2 103 проверенные карточки, точная копия `data/catalog/curated/catalog.jsonl`.
 - `backend/catalog/manifest.json`: количество и SHA-256. Каталог API обязан совпадать с каталогом индекса.
-- `data/deployment/wine-recognizer-v4-memory-release/`: веса SAM 3, SigLIP2, OCR, индекс и манифест проверенного runtime. Передаётся отдельно от Git.
+- `weights/wine-recognizer-v4-memory-layout-release/`: веса SAM 3, SigLIP2, OCR, индекс и манифест проверенного runtime. Передаётся отдельно от Git.
 - `data/deployment/catalog-images-v1.tar`: реальные файлы 2 103 изображений карточек; архив создаётся `python3 scripts/package_catalog_images.py`.
 
 На машине коллег разместить bundle по указанному пути и распаковать изображения:

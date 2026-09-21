@@ -166,7 +166,7 @@ def prepare(args: argparse.Namespace) -> None:
 def run(args: argparse.Namespace) -> None:
     manifest_path = args.output / "annotations.json"
     manifest = json.loads(manifest_path.read_text())
-    cache = ROOT / "data/audit/ocr/cache"
+    cache = ROOT / "weights/cache/ocr"
     for name, value in {"PADDLE_PDX_CACHE_HOME": cache / "paddlex", "PADDLE_HOME": cache / "paddle",
                         "HF_HOME": cache / "huggingface", "XDG_CACHE_HOME": cache / "xdg"}.items():
         os.environ.setdefault(name, str(value))
@@ -307,7 +307,7 @@ def main() -> None:
     parser.add_argument("command", choices=["prepare", "run", "report"])
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--max-side", type=int, default=1600)
-    parser.add_argument("--models-dir", type=Path, default=ROOT / "data/audit/ocr/cache/paddlex/official_models")
+    parser.add_argument("--models-dir", type=Path, default=ROOT / "weights/cache/ocr/paddlex/official_models")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--cpu-threads", type=int, default=4)
     args = parser.parse_args()

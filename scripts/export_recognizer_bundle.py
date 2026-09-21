@@ -32,11 +32,11 @@ def export(output: Path) -> None:
     if file_hash(catalog) != baseline["catalog_sha256"]:
         raise ValueError("Catalogue no longer matches the validated baseline")
     models = {
-        "sam3": ROOT / "data/audit/label_segmentation/models/sam3-converted",
-        "siglip2": ROOT / "data/audit/visual_search/models/siglip2",
+        "sam3": ROOT / "weights/research/label_segmentation/sam3-converted",
+        "siglip2": ROOT / "weights/research/visual_search/siglip2",
     }
     receipts = {"sam3": ROOT/"data/audit/label_segmentation/sam3_download.json",
-                "siglip2": ROOT/"data/audit/visual_search/models/siglip2_download.json"}
+                "siglip2": ROOT/"weights/research/visual_search/siglip2_download.json"}
     if file_hash(receipts["siglip2"]) != config["model_download_sha256"]:
         raise ValueError("Encoder weights and index differ")
     for kind, path in receipts.items():
@@ -58,7 +58,7 @@ def export(output: Path) -> None:
                 shutil.copyfile(source/name, target)
         ocr_config = json.loads((ROOT/"data/audit/live_shop/v1/ocr_fast/ocr_config.json").read_text())
         for model, files in ocr_config["weights_sha256"].items():
-            source = ROOT/"data/audit/ocr/cache/paddlex/official_models"/model
+            source = ROOT/"weights/cache/ocr/paddlex/official_models"/model
             for name, sha in files.items():
                 if file_hash(source/name) != sha:
                     raise ValueError("Changed OCR weights: " + model)
@@ -88,5 +88,5 @@ def export(output: Path) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=ROOT/"data/deployment/wine-recognizer-v4-memory-release")
+    parser.add_argument("--output", type=Path, default=ROOT/"weights/wine-recognizer-v4-memory-layout-release")
     export(parser.parse_args().output.resolve())

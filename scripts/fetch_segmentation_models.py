@@ -27,7 +27,7 @@ def main() -> None:
     # Use standard local login if available; never print or persist credentials.
     token = get_token() or False
     repo = MODELS[args.model]
-    destination = BASE / "models" / ("sam3-mirror" if args.model == "sam3_mirror" else repo.split("/")[-1])
+    destination = ROOT / "weights/research/label_segmentation" / ("sam3-mirror" if args.model == "sam3_mirror" else repo.split("/")[-1])
     manifest_path = BASE / f"{args.model}_download.json"
     previous = json.loads(manifest_path.read_text()) if manifest_path.exists() else None
     api = HfApi(token=token)
@@ -35,7 +35,7 @@ def main() -> None:
     print(f"Downloading {repo} at {revision}", flush=True)
     try:
         snapshot_download(repo, revision=revision, local_dir=destination,
-                          cache_dir=BASE / "cache", token=token, max_workers=2,
+                          cache_dir=ROOT / "weights/cache/label_segmentation", token=token, max_workers=2,
                           allow_patterns=(["sam3.safetensors", "README.md"] if args.model == "sam3_mirror"
                                           else ["*.json", "*.txt", "*.safetensors", "*.model"]))
     except GatedRepoError:
@@ -73,7 +73,7 @@ def main() -> None:
         tokenizer_repo = "openai/clip-vit-base-patch32"
         tokenizer_revision = api.model_info(tokenizer_repo).sha
         snapshot_download(tokenizer_repo, revision=tokenizer_revision, local_dir=source_dir / "tokenizer",
-                          cache_dir=BASE / "cache", token=False,
+                          cache_dir=ROOT / "weights/cache/label_segmentation", token=False,
                           allow_patterns=["tokenizer*", "vocab.json", "merges.txt", "special_tokens_map.json"])
         (source_dir / "provenance.json").write_text(json.dumps({"converter_url": url,
             "converter_sha256": hashlib.sha256(contents).hexdigest(), "tokenizer_repo": tokenizer_repo,

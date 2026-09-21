@@ -15,7 +15,7 @@ services:
       WINE_DEVICE: cuda:0
       WINE_OCR_DEVICE: gpu:0
     volumes:
-      - ./data/deployment/wine-recognizer-v4-memory-release:/models:ro
+      - ./weights/wine-recognizer-v4-memory-layout-release:/models:ro
     deploy:
       resources:
         reservations:

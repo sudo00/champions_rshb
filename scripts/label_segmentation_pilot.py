@@ -132,7 +132,7 @@ def model_config(model_name, mode, alpha_white=False):
     import cv2
     download_path = BASE / f"{model_name}_download.json"
     manifest = json.loads(download_path.read_text())
-    model_dir = BASE / manifest.get("local_dir", "models/" + manifest["model_id"].split("/")[-1])
+    model_dir = ROOT / "weights/research/label_segmentation" / Path(manifest.get("local_dir", manifest["model_id"])).name
     for name, expected in manifest["files_sha256"].items():
         if sha256(model_dir / name) != expected:
             raise ValueError("Model hash mismatch")

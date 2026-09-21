@@ -29,8 +29,8 @@ def main() -> None:
                           ("config.json", "config_sha256")]:
         if digest(base / filename) != encoding[key]:
             raise ValueError("Changed embedding artifact: " + filename)
-    model_dir = BASE / "models/siglip2"
-    receipt = BASE / "models/siglip2_download.json"
+    model_dir = ROOT / "weights/research/visual_search/siglip2"
+    receipt = ROOT / "weights/research/visual_search/siglip2_download.json"
     if digest(receipt) != config["model_download_sha256"]:
         raise ValueError("Different model weights")
     for filename, checksum in read(receipt)["files_sha256"].items():

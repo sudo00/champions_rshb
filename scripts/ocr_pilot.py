@@ -180,7 +180,7 @@ def run(args: argparse.Namespace) -> None:
     catalog_path = ROOT / manifest["catalog_path"]
     if sha256(catalog_path) != manifest["catalog_sha256"]:
         raise ValueError("Catalog changed since pilot preparation")
-    cache = ROOT / "data/audit/ocr/cache"
+    cache = ROOT / "weights/cache/ocr"
     os.environ.setdefault("PADDLE_PDX_CACHE_HOME", str(cache / "paddlex"))
     os.environ.setdefault("PADDLE_HOME", str(cache / "paddle"))
     os.environ.setdefault("HF_HOME", str(cache / "huggingface"))

@@ -19,7 +19,7 @@ def main() -> None:
     parser.add_argument('checkpoint', type=Path)
     args = parser.parse_args()
     source = args.checkpoint.resolve()
-    output = ROOT / 'data/audit/visual_search/models/dinov3_large'
+    output = ROOT / 'weights/research/visual_search/dinov3_large'
     receipt = output.parent / 'dinov3_large_download.json'
     checksum = digest(source)
     if receipt.exists():

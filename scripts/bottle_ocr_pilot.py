@@ -131,7 +131,7 @@ def ocr(args: argparse.Namespace) -> None:
     import cv2
     cv2.setNumThreads(1)
     manifest=read(args.output/'manifest.json')
-    cache=ROOT/'data/audit/ocr/cache'
+    cache=ROOT/'weights/cache/ocr'
     for k,v in {'PADDLE_PDX_CACHE_HOME':cache/'paddlex','PADDLE_HOME':cache/'paddle','HF_HOME':cache/'huggingface','XDG_CACHE_HOME':cache/'xdg'}.items():os.environ.setdefault(k,str(v))
     os.environ.setdefault('PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK','True')
     models=cache/'paddlex/official_models'

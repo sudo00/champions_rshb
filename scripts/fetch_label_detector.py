@@ -18,8 +18,8 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "data/audit/label_detection"
 MODEL_ID = "IDEA-Research/grounding-dino-tiny"
-MODEL_DIR = OUTPUT / "models/grounding-dino-tiny"
-os.environ.setdefault("HF_HOME", str(OUTPUT / "cache/huggingface"))
+MODEL_DIR = ROOT / "weights/research/label_detection/grounding-dino-tiny"
+os.environ.setdefault("HF_HOME", str(ROOT / "weights/cache/label_detection/huggingface"))
 os.environ.setdefault("HF_HUB_DISABLE_IMPLICIT_TOKEN", "1")
 os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "60")
 os.environ.setdefault("HF_HUB_ETAG_TIMEOUT", "20")

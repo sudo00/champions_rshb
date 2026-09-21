@@ -115,7 +115,7 @@ def ocr(args: argparse.Namespace) -> None:
     cv2.setNumThreads(1)
     output = args.output / args.ocr_dir
     manifest = read(output / "manifest.json")
-    cache = ROOT / "data/audit/ocr/cache"
+    cache = ROOT / "weights/cache/ocr"
     for key, value in {"PADDLE_PDX_CACHE_HOME": cache/"paddlex", "PADDLE_HOME": cache/"paddle",
                        "HF_HOME": cache/"huggingface", "XDG_CACHE_HOME": cache/"xdg"}.items():
         os.environ.setdefault(key, str(value))

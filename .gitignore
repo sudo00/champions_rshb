@@ -19,7 +19,20 @@ pgvector_data/
 data/
 AGENTS.md
 others/
-docs
+# Only shared integration/deployment documentation belongs in Git.
+# Research notes and new documents stay local unless explicitly allowlisted.
+/docs/*
+!/docs/ARCHITECTURE.md
+!/docs/architecture.mmd
+!/docs/API_RECOGNITION.md
+!/docs/BACKEND_HANDOFF.md
+!/docs/DEPENDENCIES.md
+!/docs/DEVELOPMENT.md
+!/docs/API_INTEGRATION_VALIDATION.md
+!/docs/openapi.yaml
+!/docs/examples/
+/docs/examples/*
+!/docs/examples/scan-response.json
 literature/
 notes.txt
 node_modules/
@@ -29,3 +42,6 @@ backend/.venv/
 .venv-api/
 
 /.cache/
+
+/weights/
+/tests/

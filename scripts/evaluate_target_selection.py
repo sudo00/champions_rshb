@@ -16,7 +16,7 @@ from pipeline.wine_recognizer import WineRecognizer, file_hash
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--bundle", type=Path, default=ROOT/"data/deployment/wine-recognizer-v4-memory-release")
+    parser.add_argument("--bundle", type=Path, default=ROOT/"weights/wine-recognizer-v4-memory-layout-release")
     parser.add_argument("--output", type=Path, default=ROOT/"data/audit/target_selection/v4")
     args = parser.parse_args()
     if args.output.exists():

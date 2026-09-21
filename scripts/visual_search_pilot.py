@@ -77,7 +77,7 @@ def encode(args: argparse.Namespace) -> None:
     import torch
     rows = records(args.gallery)
     captures, capture_provenance = capture_evidence()
-    model_dir = BASE / 'models' / args.model
+    model_dir = ROOT / 'weights/research/visual_search' / args.model
     download = model_dir.with_name(args.model + '_download.json')
     for name, checksum in read(download)['files_sha256'].items():
         if digest(model_dir / name) != checksum:

@@ -29,14 +29,14 @@ def main():
 
     torch.set_num_threads(4)
     mirror = json.loads((BASE / "sam3_mirror_download.json").read_text())
-    source = BASE / "models/sam3-mirror/sam3.safetensors"
+    source = ROOT / "weights/research/label_segmentation/sam3-mirror/sam3.safetensors"
     if sha256(source) != mirror["files_sha256"]["sam3.safetensors"]:
         raise ValueError("Mirror checkpoint hash differs")
     provenance = json.loads((BASE / "conversion_source/provenance.json").read_text())
     converter_path = BASE / "conversion_source/convert_sam3_to_hf.py"
     if sha256(converter_path) != provenance["converter_sha256"]:
         raise ValueError("Converter source hash differs")
-    output = BASE / "models/sam3-converted"
+    output = ROOT / "weights/research/label_segmentation/sam3-converted"
     if (BASE / "sam3_download.json").exists():
         raise ValueError("Existing converted model preserved; verify or use a separate location")
     spec = importlib.util.spec_from_file_location("pinned_hf_sam3_converter", converter_path)

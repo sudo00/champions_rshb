@@ -24,7 +24,7 @@ def used_mib() -> int:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--bundle", type=Path, default=ROOT/"data/deployment/wine-recognizer-v4-memory-release")
+    parser.add_argument("--bundle", type=Path, default=ROOT/"weights/wine-recognizer-v4-memory-layout-release")
     parser.add_argument("--output", type=Path, default=ROOT/"data/audit/memory_v4/shop76")
     args = parser.parse_args()
     if args.output.exists():

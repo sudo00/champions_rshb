@@ -23,7 +23,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / "data/audit/label_detection/pilot"
-DEFAULT_MODEL = ROOT / "data/audit/label_detection/models/grounding-dino-tiny"
+DEFAULT_MODEL = ROOT / "weights/research/label_detection/grounding-dino-tiny"
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".avif"}
 
 

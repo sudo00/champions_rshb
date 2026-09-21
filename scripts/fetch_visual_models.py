@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
-BASE=ROOT/'data/audit/visual_search/models'
+BASE=ROOT/'weights/research/visual_search'
 MODELS={'dinov3':'facebook/dinov3-vitb16-pretrain-lvd1689m',
         'dinov3_timm':'timm/vit_base_patch16_dinov3_qkvb.lvd1689m',
         'siglip2':'google/siglip2-so400m-patch14-384'}

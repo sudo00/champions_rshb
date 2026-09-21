@@ -20,7 +20,7 @@ from pipeline.wine_recognizer import WineRecognizer
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--bundle", type=Path, default=ROOT/"data/deployment/wine-recognizer-v4-memory-release")
+    parser.add_argument("--bundle", type=Path, default=ROOT/"weights/wine-recognizer-v4-memory-layout-release")
     parser.add_argument("--output", type=Path, default=ROOT/"data/audit/recognizer/memory_v4")
     parser.add_argument("--ocr-python", type=Path, default=ROOT/".venv-ocr-gpu/bin/python")
     parser.add_argument("--ocr-device", default="gpu:0")
