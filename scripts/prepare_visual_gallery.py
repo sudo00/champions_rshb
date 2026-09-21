@@ -14,9 +14,10 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from label_rectification_pilot import ROOT,read,write,digest,immutable,rgb_oriented,scaled_contour,geometry,GeometryRejected
+from label_rectification_pilot import ROOT,read,write,digest,immutable,rgb_oriented
+from worker.pipeline.rectification import scaled_contour,geometry,GeometryRejected
 from label_segmentation_pilot import choose_main_label
-from cylinder_geometry import fit_geometry,rectify,render_view
+from worker.pipeline.cylinder_geometry import fit_geometry,rectify,render_view
 from sam3_gpu_study import load_runtime
 
 BASE=ROOT/'data/audit/visual_search/gallery_v2'
@@ -109,13 +110,15 @@ def crop_region(array,mask,neutralize=False):
 def run(args):
     import torch
     manifest=read(args.output/'manifest.json');cache=cache_index()
+    sources = [Path(__file__), ROOT/'worker/pipeline/cylinder_geometry.py',
+               ROOT/'worker/pipeline/rectification.py', Path(__file__).with_name('label_rectification_pilot.py')]
     config={'manifest_sha256':digest(args.output/'manifest.json'),'threshold':.5,'mask_threshold':.5,'mask_side':768,
             'rgb_side':768,'augmentation_side':384,'poses':POSES,'precision':'bf16','reuse_vision_embeddings':True,
-            'scripts':{p.name:digest(p) for p in [Path(__file__),Path(__file__).with_name('cylinder_geometry.py'),Path(__file__).with_name('label_rectification_pilot.py')]}}
+            'scripts':{p.name:digest(p) for p in sources}}
     immutable(args.output/'config.json',config)
     model,processor,runtime=load_runtime('bf16');write(args.output/'runtime.json',runtime)
-    for name in config['scripts']:
-        dest=args.output/'provenance'/name;dest.parent.mkdir(exist_ok=True);dest.write_bytes(Path(__file__).with_name(name).read_bytes())
+    for source in sources:
+        dest=args.output/'provenance'/source.name;dest.parent.mkdir(exist_ok=True);dest.write_bytes(source.read_bytes())
     entries=manifest['entries'];entries=entries[:args.limit] if args.limit else entries
     text_inputs={p:processor(text=p,return_tensors='pt').to('cuda') for p in ['bottle','label','wine box','can']}
     processed=0;started=time.perf_counter();equivalence_checked=False

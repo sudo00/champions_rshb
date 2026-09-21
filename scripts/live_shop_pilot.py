@@ -65,7 +65,7 @@ def plan(args: argparse.Namespace) -> None:
 
 
 def prepare_ocr(args: argparse.Namespace) -> None:
-    from cylinder_geometry import rectify
+    from worker.pipeline.cylinder_geometry import rectify
     gallery = args.output / "gallery"
     output = args.output / "ocr"
     entries = []
@@ -110,8 +110,8 @@ def ocr(args: argparse.Namespace) -> None:
     import time
     import cv2
     from bottle_ocr_pilot import DETECTOR, RECOGNIZERS, in_bottle
-    from cylinder_geometry import input_to_original, densify_polygon
-    from label_rectification_pilot import points_h
+    from worker.pipeline.cylinder_geometry import input_to_original, densify_polygon
+    from worker.pipeline.rectification import points_h
     cv2.setNumThreads(1)
     output = args.output / args.ocr_dir
     manifest = read(output / "manifest.json")

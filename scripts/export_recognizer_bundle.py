@@ -14,6 +14,39 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "worker"))
 from pipeline.wine_recognizer import VERSION, file_hash
 
+CODE_FILES = [ROOT/"worker/pipeline"/n for n in (
+    "wine_recognizer.py", "prototype_ocr.py", "hybrid_search.py", "producer_search.py",
+    "text_search.py", "visual_search.py", "label_observations.py", "rectification.py",
+    "cylinder_geometry.py")]
+
+
+def repackage(source: Path, output: Path) -> None:
+    """Reuse verified gallery/model assets when only inference code changes."""
+    if output.exists():
+        raise ValueError("Choose a new bundle directory; existing bundles are immutable")
+    previous = json.loads((source/"manifest.json").read_text())
+    for relative, expected in previous["files_sha256"].items():
+        path = (source/relative).resolve()
+        if not path.is_relative_to(source.resolve()) or file_hash(path) != expected:
+            raise ValueError("Source bundle integrity mismatch: " + relative)
+    if file_hash(source/"catalog.jsonl") != previous["catalog_sha256"]:
+        raise ValueError("Source catalogue checksum mismatch")
+    output.mkdir(parents=True)
+    for relative in previous["files_sha256"]:
+        target = output/relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source/relative, target)
+        if file_hash(target) != previous["files_sha256"][relative]:
+            raise ValueError("Copied resource checksum mismatch: " + relative)
+    manifest = {**previous, "version": VERSION,
+                "code_sha256": {str(p.relative_to(ROOT)): file_hash(p) for p in CODE_FILES},
+                "parent_manifest_sha256": file_hash(source/"manifest.json"),
+                "note": "Verified gallery/model assets reused; versioned inference code updated. No evaluation photos or labels."}
+    identity = {key: manifest[key] for key in ("version", "files_sha256", "code_sha256")}
+    manifest["bundle_id"] = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
+    (output/"manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2)+"\n")
+    print(json.dumps({"path": str(output), "bundle_id": manifest["bundle_id"], "version": VERSION}, indent=2))
+
 
 def export(output: Path) -> None:
     if output.exists():
@@ -70,12 +103,10 @@ def export(output: Path) -> None:
                 shutil.copyfile(source/name, target)
         files = {str(p.relative_to(output)): file_hash(p) for p in sorted(output.rglob("*")) if p.is_file()}
         bundle_id = hashlib.sha256(json.dumps(files, sort_keys=True).encode()).hexdigest()
-        code_files = [ROOT/"worker/pipeline"/n for n in ("wine_recognizer.py", "prototype_ocr.py", "hybrid_search.py", "text_search.py", "visual_search.py", "label_observations.py")]
-        code_files += [ROOT/"scripts"/n for n in ("cylinder_geometry.py", "label_rectification_pilot.py")]
         manifest = dict(version=VERSION, bundle_id=bundle_id, catalog_sha256=file_hash(catalog),
                         catalog_count=2103, view_count=len(minimal), files_sha256=files,
                         source_encoding_sha256=file_hash(gallery/"encoding.json"), preprocessing=config,
-                        code_sha256={str(p.relative_to(ROOT)): file_hash(p) for p in code_files},
+                        code_sha256={str(p.relative_to(ROOT)): file_hash(p) for p in CODE_FILES},
                         ocr_versions=ocr_config["versions"], note="Gallery-only; no phone photos or evaluation labels. Reference photos are optional UI assets and are not included.")
         (output/"manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2)+"\n")
         print(json.dumps({"path": str(output), "bundle_id": bundle_id, "views": len(minimal),
@@ -88,5 +119,10 @@ def export(output: Path) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=ROOT/"weights/wine-recognizer-v4-memory-layout-release")
-    export(parser.parse_args().output.resolve())
+    parser.add_argument("--output", type=Path, default=ROOT/"weights/wine-recognizer-v5-worker-layout-release")
+    parser.add_argument("--source-bundle", type=Path, help="Reuse verified model/index files for a code-only release")
+    args = parser.parse_args()
+    if args.source_bundle:
+        repackage(args.source_bundle.resolve(), args.output.resolve())
+    else:
+        export(args.output.resolve())

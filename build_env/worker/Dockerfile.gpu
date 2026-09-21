@@ -12,5 +12,4 @@ RUN python -m venv /opt/vision && python -m venv /opt/ocr \
 COPY worker /app/worker
 COPY backend/__init__.py /app/backend/__init__.py
 COPY backend/worker /app/backend/worker
-COPY scripts/cylinder_geometry.py scripts/label_rectification_pilot.py /app/scripts/
 CMD ["/opt/vision/bin/python", "-m", "backend.worker.main"]

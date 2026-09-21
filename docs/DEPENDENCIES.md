@@ -58,7 +58,7 @@ nvidia-smi
 
 ## Что делает Docker
 
-`build_env/worker/Dockerfile.gpu` использует Python 3.12.6 на Debian Bookworm и устанавливает системные `libglib2.0-0`, `libgl1`, `libgomp1`. Внутри созданы `/opt/vision` и `/opt/ocr` из соответствующих lock-файлов. Код `worker/`, `backend/worker/` и геометрические helpers сохранены по ожидаемым путям.
+`build_env/worker/Dockerfile.gpu` использует Python 3.12.6 на Debian Bookworm и устанавливает системные `libglib2.0-0`, `libgl1`, `libgomp1`. Внутри созданы `/opt/vision` и `/opt/ocr` из соответствующих lock-файлов. Весь ML-код, включая геометрию, находится в `worker/pipeline/`; очередь и адаптер — в `backend/worker/`. Каталог `scripts/` в образ не копируется.
 
 `docker-compose.gpu.yml` подключает GPU, монтирует bundle в `/models` и изображения карточек в API. Make включает этот override для DEV и PROD. Worker стартует как модуль `backend.worker.main`. Контейнер API устанавливает собственный lock-файл и не загружает ML-модели.
 
