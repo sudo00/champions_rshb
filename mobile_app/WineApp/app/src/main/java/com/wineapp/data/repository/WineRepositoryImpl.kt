@@ -1,10 +1,15 @@
 package com.wineapp.data.repository
 
 import android.util.Log
-import com.wineapp.USE_MOCK
+import com.wineapp.data.file.ImageOrientationHelper
 import com.wineapp.data.local.WineDao
 import com.wineapp.data.local.WineHistoryEntity
-import com.wineapp.data.mock.MockDataProvider
+import com.wineapp.data.remote.mapper.ScanMapper
+import com.wineapp.data.remote.mapper.SearchMapper
+import com.wineapp.data.remote.mapper.WineMapper
+import com.wineapp.data.remote.dto.ScanRequest
+import com.wineapp.data.remote.dto.ScanStatusResponse
+import com.wineapp.data.remote.dto.ScanAcceptedResponse
 import com.wineapp.domain.model.ScanResult
 import com.wineapp.domain.model.SearchResult
 import com.wineapp.domain.model.Wine
@@ -15,68 +20,80 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.io.File
 
+const val POLLING_TIMEOUT_MS = 500L
+const val MAX_ATTEMPTS = 60
+
 class WineRepositoryImpl @javax.inject.Inject constructor(
     private val apiService: com.wineapp.data.remote.ApiService,
     private val wineDao: WineDao
 ) : WineRepository {
 
+    private var currentScanId: String? = null
+
     override suspend fun scanWineLabel(imagePath: String): Result<ScanResult> {
         return withContext(Dispatchers.IO) {
-            if (USE_MOCK) {
-                delay(1500)
-                val mockResult = MockDataProvider.mockScanResult()
-                mockResult.wine?.let { saveToHistory(it) }
-                return@withContext Result.success(mockResult)
-            }
             try {
                 val base64Image = convertImageToBase64(imagePath)
-                val request = com.wineapp.data.remote.dto.ScanRequest(base64Image)
-                val response = apiService.scanLabel(request)
-                if (response.success) {
-                    val result = com.wineapp.data.remote.mapper.ScanMapper.toDomain(response)
-                    result.wine?.let { saveToHistory(it) }
-                    Result.success(result)
-                } else {
-                    Result.failure(Exception(response.error ?: "Ошибка сканирования"))
+                val request = ScanRequest(base64Image)
+                val accepted = apiService.scanLabel(request)
+                if (!accepted.success) {
+                    return@withContext Result.failure(Exception(accepted.error ?: "Ошибка сканирования"))
                 }
+                val scanId = accepted.scanId ?: return@withContext Result.failure(Exception("scanId не получен"))
+                currentScanId = scanId
+                val statusResponse = pollScanStatus(scanId)
+                val result = ScanMapper.toDomain(statusResponse)
+                result.wine?.let { saveToHistory(it) }
+                Result.success(result)
             } catch (e: Exception) {
-                Log.e("WineRepositoryImpl", "Scan failed, using mock data", e)
-                val mockResult = MockDataProvider.mockScanResult()
-                mockResult.wine?.let { saveToHistory(it) }
-                Result.success(mockResult)
+                Log.e("WineRepositoryImpl", "Scan failed", e)
+                Result.failure(e)
             }
         }
     }
 
+    private suspend fun pollScanStatus(scanId: String): ScanStatusResponse {
+        var status = "pending"
+        var attempts = 0
+        var lastResponse: ScanStatusResponse? = null
+        val maxAttempts = MAX_ATTEMPTS
+        while (status == "pending" || status == "processing") {
+            if (attempts >= maxAttempts) {
+                throw Exception("Тайм-аут сканирования")
+            }
+            delay(POLLING_TIMEOUT_MS)
+            val response = apiService.getScanStatus(scanId)
+            lastResponse = response
+            status = response.status
+            attempts++
+        }
+        if (status == "failed") {
+            throw Exception(lastResponse?.error ?: "Распознавание не удалось")
+        }
+        return lastResponse ?: throw Exception("Сканирование не найдено")
+    }
+
     override suspend fun searchWines(query: String, page: Int, pageSize: Int): Result<SearchResult> {
         return withContext(Dispatchers.IO) {
-            if (USE_MOCK) {
-                delay(800)
-                return@withContext Result.success(MockDataProvider.mockSearchResult(query, page))
-            }
             try {
                 val response = apiService.searchWines(query, page, pageSize)
-                Result.success(com.wineapp.data.remote.mapper.SearchMapper.toDomain(response))
+                Result.success(SearchMapper.toDomain(response))
             } catch (e: Exception) {
-                Log.e("WineRepositoryImpl", "Search failed, using mock data", e)
-                Result.success(MockDataProvider.mockSearchResult(query, page))
+                Log.e("WineRepositoryImpl", "Search failed", e)
+                Result.failure(e)
             }
         }
     }
 
     override suspend fun getWineById(id: String): Result<Wine> {
         return withContext(Dispatchers.IO) {
-            if (USE_MOCK) {
-                delay(500)
-                return@withContext Result.success(MockDataProvider.mockWineDetail(id))
-            }
             try {
                 val response = apiService.getWineDetail(id)
-                response.wine?.let { Result.success(com.wineapp.data.remote.mapper.WineMapper.toDomain(it)) }
+                response.wine?.let { Result.success(WineMapper.toDomain(it)) }
                     ?: Result.failure(Exception("Вино не найдено"))
             } catch (e: Exception) {
-                Log.e("WineRepositoryImpl", "Get wine detail failed, using mock data", e)
-                Result.success(MockDataProvider.mockWineDetail(id))
+                Log.e("WineRepositoryImpl", "Get wine detail failed", e)
+                Result.failure(e)
             }
         }
     }
@@ -150,13 +167,12 @@ class WineRepositoryImpl @javax.inject.Inject constructor(
             val file = File(imagePath)
             if (!file.exists()) return ""
 
-            val bitmap = android.graphics.BitmapFactory.decodeFile(imagePath)
+            // Нормализация EXIF-ориентации: BitmapFactory игнорирует EXIF,
+            // а compress срезает его — без этого на бэк уходило повёрнутое фото.
+            // Угол берётся из EXIF каждого файла, фиксированного поворота нет.
+            val jpegBytes = ImageOrientationHelper.encodeNormalizedJpeg(imagePath, quality = 85)
                 ?: return ""
-
-            val outputStream = java.io.ByteArrayOutputStream()
-            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, outputStream)
-            val byteArray = outputStream.toByteArray()
-            android.util.Base64.encodeToString(byteArray, android.util.Base64.NO_WRAP)
+            android.util.Base64.encodeToString(jpegBytes, android.util.Base64.NO_WRAP)
         } catch (e: Exception) {
             Log.e("WineRepositoryImpl", "convertImageToBase64 failed", e)
             ""

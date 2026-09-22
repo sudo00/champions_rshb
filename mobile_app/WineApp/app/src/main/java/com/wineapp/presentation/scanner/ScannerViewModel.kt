@@ -52,7 +52,7 @@ class ScannerViewModel @Inject constructor(
                 if (scanResult.wine != null) {
                     updateState(ScannerState.Success(scanResult, imagePath))
                 } else {
-                    updateState(ScannerState.NotFound(imagePath, scanResult.matches))
+                    updateState(ScannerState.NotFound(imagePath, scanResult.matches, scanResult.recognitionStatus, scanResult.message))
                 }
             }.onFailure { error ->
                 Log.e("ScannerViewModel", "Scan failed", error)
@@ -86,6 +86,13 @@ class ScannerViewModel @Inject constructor(
                 inputStream.copyTo(outputStream)
             }
             inputStream.close()
+            // Путь галереи: копия сохраняет исходный EXIF. Нормализуем пиксели,
+            // чтобы локальный файл и Base64 на бэк были upright.
+            try {
+                com.wineapp.data.file.ImageOrientationHelper.normalizeFileInPlace(tempFile)
+            } catch (e: Exception) {
+                Log.e("ScannerViewModel", "EXIF normalize failed, using as-is", e)
+            }
             tempFile
         } catch (e: Exception) {
             Log.e("ScannerViewModel", "copyUriToFile failed", e)

@@ -39,6 +39,9 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,6 +49,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -63,13 +67,13 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.LifecycleOwner
 import com.wineapp.data.file.CameraHelper
-import com.wineapp.presentation.common.ErrorMessage
-import com.wineapp.presentation.common.LoadingOverlay
+import com.wineapp.presentation.common.ui.ErrorMessage
+import com.wineapp.presentation.common.ui.LoadingOverlay
 
 @Composable
 fun ScannerScreen(
-    onNavigateToDetail: (wineId: String, photoPath: String?) -> Unit = { _, _ -> },
-    onNavigateToScanResult: (confidence: Float, mainWineId: String, alternativeIds: String, photoPath: String?) -> Unit = { _, _, _, _ -> },
+    onNavigateToDetail: (wineId: String, photoPath: String?, recognitionStatus: String?) -> Unit = { _, _, _ -> },
+    onNavigateToScanResult: (confidence: Float, mainWineId: String, alternativeIds: String, photoPath: String?, recognitionStatus: String?) -> Unit = { _, _, _, _, _ -> },
     onNavigateBack: () -> Unit = {}
 ) {
     val viewModel: ScannerViewModel = hiltViewModel()
@@ -120,11 +124,11 @@ fun ScannerScreen(
                 }
                 if (allWines.size <= 1) {
                     viewModel.resetToReady()
-                    onNavigateToDetail(mainWineId, current.imagePath)
+                    onNavigateToDetail(mainWineId ?: "", current.imagePath, result.recognitionStatus)
                 } else {
-                    val altIds = allWines.filter { it.id != mainWineId }.joinToString("-") { it.id }
+                    val altIds = allWines.filter { it.id != mainWineId }.joinToString("|") { it.id }
                     viewModel.resetToReady()
-                    onNavigateToScanResult(result.confidence, mainWineId, altIds, current.imagePath)
+                    onNavigateToScanResult(result.confidence, mainWineId, altIds, current.imagePath, result.recognitionStatus)
                 }
             }
             else -> {}
@@ -170,6 +174,25 @@ fun ScannerScreenContent(
     val flashMode = when (val s = state) {
         is ScannerState.Ready -> s.flashMode
         else -> androidx.camera.core.ImageCapture.FLASH_MODE_OFF
+    }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val noTargetStr = stringResource(com.wineapp.R.string.scan_status_no_target)
+    val candidatesUnverifiedStr = stringResource(com.wineapp.R.string.scan_status_candidates_unverified)
+    val notFoundFallbackStr = stringResource(com.wineapp.R.string.notfound_message)
+
+    val notFoundMessage = when (val current = state) {
+        is ScannerState.NotFound -> when (current.recognitionStatus) {
+            "no_target" -> noTargetStr
+            "candidates_unverified" -> candidatesUnverifiedStr
+            else -> current.message ?: notFoundFallbackStr
+        }
+        else -> null
+    }
+
+    LaunchedEffect(notFoundMessage) {
+        if (notFoundMessage != null) {
+            snackbarHostState.showSnackbar(notFoundMessage, duration = SnackbarDuration.Short)
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -239,6 +262,15 @@ fun ScannerScreenContent(
             is ScannerState.Error -> ErrorMessage(message = current.message, onRetry = onRetry)
             else -> {}
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 140.dp)
+        )
     }
 }
 
@@ -417,5 +449,21 @@ private fun ScannerControlsPreview() {
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true, heightDp = 800)
+@Composable
+private fun ScannerScreenPreview() {
+    com.wineapp.ui.theme.WineAppTheme {
+        ScannerScreenContent(
+            state = ScannerState.Ready(),
+            cameraHelper = CameraHelper(LocalContext.current),
+            lifecycleOwner = LocalLifecycleOwner.current,
+            onGalleryClick = {},
+            onTakePicture = {},
+            onToggleFlash = {},
+            onRetry = {}
+        )
     }
 }

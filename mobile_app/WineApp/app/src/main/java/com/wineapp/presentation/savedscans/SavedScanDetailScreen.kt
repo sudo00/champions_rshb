@@ -60,7 +60,7 @@ import com.wineapp.R
 import com.wineapp.domain.model.SavedScan
 import com.wineapp.domain.model.SommelierMessage
 import com.wineapp.domain.model.Wine
-import com.wineapp.presentation.common.WineAppTopAppBar
+import com.wineapp.presentation.common.ui.WineAppTopAppBar
 import com.wineapp.ui.theme.WineAppTheme
 import com.wineapp.util.ShareHelper
 import java.io.File

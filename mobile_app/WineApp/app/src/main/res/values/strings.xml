@@ -69,6 +69,8 @@
     <string name="error_search">Ошибка поиска</string>
     <string name="error_load_details">Не удалось загрузить данные о вине</string>
     <string name="error_save_history">Не удалось сохранить в историю</string>
+    <string name="scan_status_no_target">Поместите бутылку или упаковку с этикеткой перед камерой.</string>
+    <string name="scan_status_candidates_unverified">Найдены кандидаты, но соответствие вина не подтверждено. Попробуйте снова.</string>
 
     <string name="history_title">История сканирований</string>
     <string name="history_empty">Сканирований пока нет</string>

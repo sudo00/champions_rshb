@@ -32,6 +32,7 @@ android {
             useSupportLibrary = true
         }
 
+        buildConfigField("String", "BASE_URL", "\"http://109.248.37.178:8000\"")
         buildConfigField("String", "GIGACHAT_AUTH_KEY", "\"${localProperties.getProperty("GIGACHAT_AUTH_KEY", "")}\"")
     }
 
@@ -110,6 +111,9 @@ dependencies {
 
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.6.0")
+
+    // EXIF orientation normalization (camera/gallery photos before Base64 upload)
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
 
     // Coroutines & Flow
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")

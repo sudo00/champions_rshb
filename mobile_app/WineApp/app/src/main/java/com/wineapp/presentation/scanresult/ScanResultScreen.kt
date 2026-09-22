@@ -1,5 +1,7 @@
 package com.wineapp.presentation.scanresult
 
+import android.app.Activity
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,13 +20,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
@@ -34,28 +44,45 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.wineapp.R
 import com.wineapp.data.mock.MockDataProvider
-import com.wineapp.presentation.common.WineAppTopAppBar
-import com.wineapp.presentation.common.WineCard
+import com.wineapp.presentation.common.ui.WineAppTopAppBar
+import com.wineapp.presentation.common.ui.WineCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScanResultScreen(
     confidence: Float,
-    mainWineId: String?,
-    alternativeIds: List<String>,
+    mainWineId: String,
+    altIds: String,
+    photoPath: String? = null,
+    recognitionStatus: String? = null,
     onNavigateToDetail: (String) -> Unit,
     onNavigateBack: () -> Unit
 ) {
+    val viewModel: ScanResultViewModel = hiltViewModel()
+    val state by viewModel.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val candidatesUnverifiedStr = stringResource(R.string.scan_status_candidates_unverified)
+
+    LaunchedEffect(recognitionStatus) {
+        if (recognitionStatus == "candidates_unverified") {
+            snackbarHostState.showSnackbar(
+                candidatesUnverifiedStr,
+                duration = SnackbarDuration.Short
+            )
+        }
+    }
+
+    LaunchedEffect(mainWineId) {
+        viewModel.sendIntent(ScanResultIntent.LoadWines(mainWineId, altIds))
+    }
+
     val view = LocalView.current
     val surfaceColor = MaterialTheme.colorScheme.surface
-
-    val mainWine = mainWineId?.let { id -> MockDataProvider.wines.find { it.id == id } }
-    val alternatives = alternativeIds.mapNotNull { id -> MockDataProvider.wines.find { it.id == id } }
-
     SideEffect {
-        (view.context as? android.app.Activity)?.let { activity ->
+        (view.context as? Activity)?.let { activity ->
             val window = activity.window
             window.statusBarColor = surfaceColor.toArgb()
             window.navigationBarColor = surfaceColor.toArgb()
@@ -71,20 +98,52 @@ fun ScanResultScreen(
                 showBack = true,
                 onBack = onNavigateBack
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .windowInsetsPadding(WindowInsets.systemBars),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)
-        ) {
-            item {
-                ConfidenceHeader(confidence = confidence)
-            }
+        ScanResultContent(
+            state = state,
+            confidence = confidence,
+            onNavigateToDetail = onNavigateToDetail,
+            modifier = Modifier.padding(paddingValues)
+        )
+    }
+}
 
-            if (mainWine != null) {
+@Composable
+fun ScanResultContent(
+    state: ScanResultState,
+    confidence: Float,
+    onNavigateToDetail: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    when (val current = state) {
+        is ScanResultState.Loading -> {
+            Box(
+                modifier = modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        }
+        is ScanResultState.Error -> {
+            Box(
+                modifier = modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(current.message, color = MaterialTheme.colorScheme.error)
+            }
+        }
+        is ScanResultState.Success -> {
+            LazyColumn(
+                modifier = modifier
+                    .fillMaxSize(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)
+            ) {
+                item {
+                    ConfidenceHeader(confidence = confidence)
+                }
+
                 item {
                     Text(
                         stringResource(R.string.scan_result_best_match),
@@ -95,27 +154,29 @@ fun ScanResultScreen(
                 }
                 item {
                     WineCard(
-                        wine = mainWine,
-                        onClick = { onNavigateToDetail(mainWine.id) }
+                        modifier = Modifier.padding(8.dp),
+                        wine = current.mainWine,
+                        onClick = { onNavigateToDetail(current.mainWine.id) }
                     )
                 }
-            }
 
-            if (alternatives.isNotEmpty()) {
-                item {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        stringResource(R.string.scan_result_alternatives),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                }
-                itemsIndexed(alternatives) { _, wine ->
-                    WineCard(
-                        wine = wine,
-                        onClick = { onNavigateToDetail(wine.id) }
-                    )
+                if (current.alternatives.isNotEmpty()) {
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            stringResource(R.string.scan_result_alternatives),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+                    itemsIndexed(current.alternatives) { _, wine ->
+                        Spacer(Modifier.height(8.dp))
+                        WineCard(
+                            wine = wine,
+                            onClick = { onNavigateToDetail(wine.id) }
+                        )
+                    }
                 }
             }
         }
@@ -150,7 +211,7 @@ private fun ConfidenceHeader(confidence: Float) {
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
                 Text(
-                    "${String.format("%.0f", confidence * 100)}%",
+                    text = "${String.format("%.0f", confidence * 100)}%",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -164,12 +225,14 @@ private fun ConfidenceHeader(confidence: Float) {
 @Composable
 private fun ScanResultScreenPreview() {
     com.wineapp.ui.theme.WineAppTheme {
-        ScanResultScreen(
+        val wines = MockDataProvider.wines
+        ScanResultContent(
+            state = ScanResultState.Success(
+                mainWine = wines.first(),
+                alternatives = wines.drop(1).take(3)
+            ),
             confidence = 0.92f,
-            mainWineId = "1",
-            alternativeIds = listOf("2", "3", "4"),
-            onNavigateToDetail = {},
-            onNavigateBack = {}
+            onNavigateToDetail = {}
         )
     }
 }

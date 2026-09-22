@@ -82,7 +82,7 @@ object NetworkModule {
     fun provideRetrofit(client: OkHttpClient): Retrofit {
         val json = Json { ignoreUnknownKeys = true }
         return Retrofit.Builder()
-            .baseUrl("https://api.vivino.com/")
+            .baseUrl("http://109.248.37.178:8000/")
             .client(client)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()

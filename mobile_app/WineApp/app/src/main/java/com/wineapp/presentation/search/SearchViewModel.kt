@@ -30,10 +30,6 @@ class SearchViewModel @Inject constructor(
 
     private fun handleSearch(query: String) {
         val trimmed = query.trim()
-        if (trimmed.isEmpty()) {
-            updateState(SearchState.Idle())
-            return
-        }
         currentQuery = trimmed
         currentPage = 1
         updateState(SearchState.Loading(trimmed))

@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">109.248.37.178</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">api.giga.chat</domain>
         <domain includeSubdomains="true">ngw.devices.sberbank.ru</domain>

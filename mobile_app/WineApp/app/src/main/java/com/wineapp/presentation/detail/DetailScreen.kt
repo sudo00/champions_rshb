@@ -30,6 +30,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,6 +40,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -56,20 +60,28 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.wineapp.BuildConfig
 import com.wineapp.R
 import com.wineapp.data.mock.MockDataProvider
 import com.wineapp.domain.model.Wine
-import com.wineapp.presentation.common.ErrorMessage
-import com.wineapp.presentation.common.LoadingOverlay
+import com.wineapp.presentation.common.ui.ErrorMessage
+import com.wineapp.presentation.common.ui.LoadingOverlay
 
 @Composable
-fun DetailScreen(wineId: String, photoPath: String? = null, confidence: Float = 1.0f, navController: NavHostController) {
+fun DetailScreen(
+    wineId: String,
+    photoPath: String? = null,
+    confidence: Float = 1.0f,
+    recognitionStatus: String? = null,
+    navController: NavHostController
+) {
     val viewModel = hiltViewModel<DetailViewModel>()
     DetailScreenContent(
         viewModel = viewModel,
         wineId = wineId,
         photoPath = photoPath,
         confidence = confidence,
+        recognitionStatus = recognitionStatus,
         onNavigateToSommelier = { sWineId, sWineName, sRegion, sVariety, sVintage, sRating, sStyle ->
             val uriWineName = Uri.encode(sWineName)
             val uriRegion = Uri.encode(sRegion ?: "")
@@ -89,9 +101,21 @@ fun DetailScreenContent(
     wineId: String,
     photoPath: String? = null,
     confidence: Float = 1.0f,
+    recognitionStatus: String? = null,
     onNavigateToSommelier: (wineId: String, wineName: String, region: String?, variety: String?, vintage: Int?, rating: Float?, style: String?) -> Unit = { _, _, _, _, _, _, _ -> }
 ) {
     val state by viewModel.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val candidatesUnverifiedStr = stringResource(R.string.scan_status_candidates_unverified)
+
+    LaunchedEffect(recognitionStatus) {
+        if (recognitionStatus == "candidates_unverified") {
+            snackbarHostState.showSnackbar(
+                candidatesUnverifiedStr,
+                duration = SnackbarDuration.Short
+            )
+        }
+    }
 
     val view = LocalView.current
     val surfaceColor = MaterialTheme.colorScheme.surface
@@ -124,6 +148,14 @@ fun DetailScreenContent(
                 }
             )
         }
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp)
+        )
     }
 }
 
@@ -150,10 +182,10 @@ fun DetailContent(
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current).data(wine.imageUrl).crossfade(true).build(),
+                    model = ImageRequest.Builder(LocalContext.current).data(wine.imageUrl?.let { BuildConfig.BASE_URL + it }).crossfade(true).build(),
                     contentDescription = wine.name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+                    modifier = Modifier.fillMaxSize().padding(16.dp),
+                    contentScale = ContentScale.FillHeight
                 )
                 // Gradient overlay
                 Box(
@@ -188,8 +220,8 @@ fun DetailContent(
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFD700), modifier = Modifier.size(20.dp))
-                        Text(String.format("%.1f", wine.rating), style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
-                        if (wine.reviewsCount > 0) {
+                        Text(String.format("%.1f", wine.rating ?: 0f), style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
+                        if ((wine.reviewsCount ?: 0) > 0) {
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("(${wine.reviewsCount} ${stringResource(R.string.detail_reviews)})", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f))
                         }
@@ -338,7 +370,7 @@ private fun DetailScreenPreview() {
                             Spacer(modifier = Modifier.height(8.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFD700), modifier = Modifier.size(20.dp))
-                                Text(String.format("%.1f", wine.rating), style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
+                                Text(String.format("%.1f", wine.rating ?: 0f), style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

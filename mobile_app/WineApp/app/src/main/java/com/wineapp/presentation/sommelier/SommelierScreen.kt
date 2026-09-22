@@ -74,7 +74,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.wineapp.R
-import com.wineapp.presentation.common.WineAppTopAppBar
+import com.wineapp.presentation.common.ui.WineAppTopAppBar
 import com.wineapp.util.ShareHelper
 
 @Composable

@@ -80,6 +80,15 @@ class CameraHelper @javax.inject.Inject constructor(
 
         imageCapture.takePicture(outputOptions, cameraExecutor, object : ImageCapture.OnImageSavedCallback {
             override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                // Путь камеры: CameraX пишет EXIF-ориентацию по повороту девайса.
+                // Нормализуем пиксели сразу, чтобы локальный photoPath совпадал
+                // с тем, что уйдёт на бэк (иначе UI через Coil выглядит нормально,
+                // а бэк получает повёрнутое фото).
+                try {
+                    ImageOrientationHelper.normalizeFileInPlace(photoFile)
+                } catch (e: Exception) {
+                    android.util.Log.e("CameraHelper", "EXIF normalize failed, sending as-is", e)
+                }
                 onSuccess(photoFile)
             }
 

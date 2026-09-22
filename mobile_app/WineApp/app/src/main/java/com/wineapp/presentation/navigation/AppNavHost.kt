@@ -23,6 +23,7 @@ import com.wineapp.presentation.scanner.ScannerScreen
 import com.wineapp.presentation.scanresult.ScanResultScreen
 import com.wineapp.presentation.search.SearchScreen
 import com.wineapp.presentation.sommelier.SommelierScreen
+import kotlinx.serialization.json.Json
 
 @Composable
 fun AppNavHost() {
@@ -46,13 +47,15 @@ fun AppNavHost() {
     NavHost(navController, startDestination = "search") {
         composable("scanner") {
             ScannerScreen(
-                onNavigateToDetail = { wineId, photoPath ->
+                onNavigateToDetail = { wineId, photoPath, recognitionStatus ->
                     val encoded = photoPath?.let { Uri.encode(it) } ?: ""
-                    navController.navigate("detail/$wineId?photoPath=$encoded")
+                    val status = recognitionStatus?.let { Uri.encode(it) } ?: ""
+                    navController.navigate("detail/$wineId?photoPath=$encoded&recognitionStatus=$status")
                 },
-                onNavigateToScanResult = { confidence, mainWineId, altIds, photoPath ->
+                onNavigateToScanResult = { confidence, mainWineId, altIds, photoPath, recognitionStatus ->
                     val encoded = photoPath?.let { Uri.encode(it) } ?: ""
-                    navController.navigate("scan_result/$confidence/$mainWineId/$altIds?photoPath=$encoded")
+                    val status = recognitionStatus?.let { Uri.encode(it) } ?: ""
+                    navController.navigate("scan_result/$confidence/$mainWineId/$altIds?photoPath=$encoded&recognitionStatus=$status")
                 },
                 onNavigateBack = { navController.popBackStack() }
             )
@@ -67,7 +70,7 @@ fun AppNavHost() {
             )
         }
         composable(
-            route = "detail/{wineId}?photoPath={photoPath}&confidence={confidence}",
+            route = "detail/{wineId}?photoPath={photoPath}&confidence={confidence}&recognitionStatus={recognitionStatus}",
             arguments = listOf(
                 navArgument("wineId") { type = NavType.StringType },
                 navArgument("photoPath") {
@@ -78,6 +81,11 @@ fun AppNavHost() {
                 navArgument("confidence") {
                     type = NavType.FloatType
                     defaultValue = 1.0f
+                },
+                navArgument("recognitionStatus") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
                 }
             )
         ) { backStackEntry ->
@@ -86,20 +94,29 @@ fun AppNavHost() {
                 ?.takeIf { it.isNotEmpty() }
                 ?.let { Uri.decode(it) }
             val confidence = backStackEntry.arguments?.getFloat("confidence") ?: 1.0f
+            val recognitionStatus = backStackEntry.arguments?.getString("recognitionStatus")
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { Uri.decode(it) }
             DetailScreen(
                 wineId = wineId,
                 photoPath = photoPath,
                 confidence = confidence,
+                recognitionStatus = recognitionStatus,
                 navController = navController
             )
         }
         composable(
-            route = "scan_result/{confidence}/{mainWineId}/{altIds}?photoPath={photoPath}",
+            route = "scan_result/{confidence}/{mainWineId}/{altIds}?photoPath={photoPath}&recognitionStatus={recognitionStatus}",
             arguments = listOf(
                 navArgument("confidence") { type = NavType.FloatType },
                 navArgument("mainWineId") { type = NavType.StringType },
                 navArgument("altIds") { type = NavType.StringType },
                 navArgument("photoPath") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("recognitionStatus") {
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
@@ -109,17 +126,22 @@ fun AppNavHost() {
             val confidence = backStackEntry.arguments?.getFloat("confidence") ?: 0f
             val mainWineId = backStackEntry.arguments?.getString("mainWineId") ?: ""
             val altIds = backStackEntry.arguments?.getString("altIds") ?: ""
-            val altIdsList = altIds.split("-").filter { it.isNotBlank() }
             val photoPath = backStackEntry.arguments?.getString("photoPath")
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { Uri.decode(it) }
+            val recognitionStatus = backStackEntry.arguments?.getString("recognitionStatus")
                 ?.takeIf { it.isNotEmpty() }
                 ?.let { Uri.decode(it) }
             ScanResultScreen(
                 confidence = confidence,
                 mainWineId = mainWineId,
-                alternativeIds = altIdsList,
+                altIds = altIds,
+                photoPath = photoPath,
+                recognitionStatus = recognitionStatus,
                 onNavigateToDetail = { wineId ->
                     val encoded = photoPath?.let { Uri.encode(it) } ?: ""
-                    navController.navigate("detail/$wineId?photoPath=$encoded&confidence=$confidence")
+                    val status = recognitionStatus?.let { Uri.encode(it) } ?: ""
+                    navController.navigate("detail/$wineId?photoPath=$encoded&confidence=$confidence&recognitionStatus=$status")
                 },
                 onNavigateBack = { navController.popBackStack() }
             )

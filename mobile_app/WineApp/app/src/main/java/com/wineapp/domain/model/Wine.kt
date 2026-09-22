@@ -7,8 +7,8 @@ data class Wine(
     val id: String,
     val name: String,
     val vintage: Int?,
-    val rating: Float,
-    val reviewsCount: Int,
+    val rating: Float?,
+    val reviewsCount: Int?,
     val price: Double?,
     val currency: String?,
     val region: String?,
@@ -22,11 +22,25 @@ data class Wine(
     val winery: String?
 )
 
-@Serializable
 data class ScanResult(
     val wine: Wine?,
     val confidence: Float,
-    val matches: List<Wine> = emptyList()
+    val matches: List<Wine> = emptyList(),
+    val slug: String? = null,
+    val candidates: List<Wine> = emptyList(),
+    val recognitionStatus: String? = null,
+    val message: String? = null,
+    val observations: List<Map<String, Any>> = emptyList(),
+    val observedFields: Map<String, Any> = emptyMap(),
+    val regions: List<Map<String, Any>> = emptyList(),
+    val imageSize: List<Int> = emptyList(),
+    val coordinateSystem: String? = null,
+    val target: Map<String, Any> = emptyMap(),
+    val warnings: List<String> = emptyList(),
+    val version: String? = null,
+    val catalogSha256: String? = null,
+    val timingsSeconds: Map<String, Any> = emptyMap(),
+    val scoreIsProbability: Boolean = false
 )
 
 @Serializable

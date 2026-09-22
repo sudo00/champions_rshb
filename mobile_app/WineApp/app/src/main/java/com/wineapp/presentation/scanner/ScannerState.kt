@@ -10,7 +10,12 @@ sealed interface ScannerState : BaseState {
     data class Capturing(val imagePath: String) : ScannerState
     data class Processing(val imagePath: String) : ScannerState
     data class Success(val result: ScanResult, val imagePath: String) : ScannerState
-    data class NotFound(val imagePath: String, val matches: List<Wine> = emptyList()) : ScannerState
+    data class NotFound(
+        val imagePath: String,
+        val matches: List<Wine> = emptyList(),
+        val recognitionStatus: String? = null,
+        val message: String? = null
+    ) : ScannerState
     data class Error(val message: String) : ScannerState
 }
 

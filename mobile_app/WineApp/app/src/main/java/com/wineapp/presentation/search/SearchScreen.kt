@@ -53,8 +53,8 @@ import com.wineapp.R
 import com.wineapp.data.mock.MockDataProvider
 import com.wineapp.domain.model.SearchResult
 import com.wineapp.domain.model.Wine
-import com.wineapp.presentation.common.WineAppTopAppBar
-import com.wineapp.presentation.common.WineCard
+import com.wineapp.presentation.common.ui.WineAppTopAppBar
+import com.wineapp.presentation.common.ui.WineCard
 import com.wineapp.ui.theme.WineAppTheme
 
 enum class WineFilter(val labelRes: Int) {
