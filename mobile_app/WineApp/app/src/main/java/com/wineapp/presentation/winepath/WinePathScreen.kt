@@ -34,7 +34,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetScaffold
@@ -58,6 +57,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -177,47 +177,35 @@ fun WinePathScreenContent(
                         onSelect = { hit -> selectedId = if (hit == selectedId) null else hit }
                     )
                     if (state.summary.scansCount == 0) {
-                        // Компактная плавающая подсказка: карту не сжимает, висит поверх.
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Card(
-                                shape = RoundedCornerShape(20.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = Color(0xFF232D3A).copy(alpha = 0.95f)
-                                )
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(24.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    androidx.compose.material3.Icon(
-                                        Icons.Default.Map,
-                                        contentDescription = null,
-                                        tint = Color.White.copy(alpha = 0.7f),
-                                        modifier = Modifier.size(40.dp)
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
+                        // Одноразовый закрываемый диалог: после закрытия карта свободна для изучения.
+                        var emptyDismissed by rememberSaveable { mutableStateOf(false) }
+                        if (!emptyDismissed) {
+                            AlertDialog(
+                                onDismissRequest = { emptyDismissed = true },
+                                title = {
                                     Text(
                                         stringResource(R.string.winepath_title),
-                                        style = MaterialTheme.typography.titleLarge,
-                                        color = Color.White,
                                         textAlign = TextAlign.Center
                                     )
-                                    Spacer(modifier = Modifier.height(8.dp))
+                                },
+                                text = {
                                     Text(
                                         stringResource(R.string.winepath_empty),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = Color.White.copy(alpha = 0.75f),
                                         textAlign = TextAlign.Center
                                     )
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    androidx.compose.material3.Button(onClick = onNavigateToScanner) {
-                                        Text(stringResource(R.string.winepath_scan))
+                                },
+                                confirmButton = {
+                                    TextButton(onClick = {
+                                        emptyDismissed = true
+                                        onNavigateToScanner()
+                                    }) { Text(stringResource(R.string.winepath_scan)) }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { emptyDismissed = true }) {
+                                        Text(stringResource(R.string.cancel))
                                     }
                                 }
-                            }
+                            )
                         }
                     } else {
                         state.territories.find { it.territoryId == selectedId }?.let { selected ->
@@ -392,7 +380,9 @@ class WinePathMapState {
     }
 
     fun onTransform(zoomChange: Float, panChange: Offset) {
-        scale = (scale * zoomChange).coerceIn(MAP_MIN_SCALE, MAP_MAX_SCALE)
+        // Демпфируем щипок: сырой zoomChange слишком резкий, берём 40% отклонения от 1.
+        val dampedZoom = 1f + (zoomChange - 1f) * 0.4f
+        scale = (scale * dampedZoom).coerceIn(MAP_MIN_SCALE, MAP_MAX_SCALE)
         offset = clamp(offset + panChange)
     }
 
@@ -421,14 +411,16 @@ class WinePathMapState {
 
     private fun clamp(o: Offset, s: Float = scale): Offset {
         if (boxW <= 0f || boxH <= 0f) return o
-        val sw = drawW * s
-        val sh = drawH * s
+        // Прямоугольник карты с учётом letterbox-базы (offX/offY!) и зума.
+        // Правило: центр экрана не покидает прямоугольник ± margin.
+        // Диапазон всегда непуст (ширина = scaled + 2m), рецентринга нет,
+        // поэтому фокус стартового вида и flyTo проходят без искажений.
         val m = 64f
-        // Карта больше экрана — не даём увести её за край; меньше — центрируем.
-        // Без ветвления диапазон coerceIn инвертируется и падает с IllegalArgumentException.
-        val x = if (sw + 2 * m >= boxW) o.x.coerceIn(boxW - sw - m, m) else (boxW - sw) / 2f
-        val y = if (sh + 2 * m >= boxH) o.y.coerceIn(boxH - sh - m, m) else (boxH - sh) / 2f
-        return Offset(x, y)
+        val xMin = boxW / 2f - m - s * (offX + drawW)
+        val xMax = boxW / 2f + m - s * offX
+        val yMin = boxH / 2f - m - s * (offY + drawH)
+        val yMax = boxH / 2f + m - s * offY
+        return Offset(o.x.coerceIn(xMin, xMax), o.y.coerceIn(yMin, yMax))
     }
 }
 
@@ -563,14 +555,20 @@ private fun WinePathMap(
         return
     }
     val textMeasurer = rememberTextMeasurer()
-    val labelStyle = TextStyle(
-        fontSize = 11.sp,
+    // Кегль и отступ делим на зум: graphicsLayer масштабирует весь Canvas,
+    // поэтому на экране подпись всегда одного размера, а не растёт с картой.
+    // Подпись рисуется только у выбранного региона — ярко-жёлтая.
+    val zoomSafe = mapUi.scale.coerceAtLeast(1f)
+    val selectedLabelStyle = TextStyle(
+        fontSize = (15f / zoomSafe).sp,
         color = Color.White,
+        fontWeight = FontWeight.Bold,
         textAlign = TextAlign.Center
     )
-    val labelDimStyle = labelStyle.copy(color = Color.White.copy(alpha = 0.45f))
     // Подписи Ставрополья и Осетии — над точкой, иначе сливаются с соседями в плотном кластере.
     val labelsAbove = setOf("stavropol", "ossetia")
+    // Отступ подписи тоже делим на зум, иначе он визуально растёт вместе с картой.
+    val labelGap = 14f / zoomSafe
 
     BoxWithConstraints(
         modifier = Modifier
@@ -597,8 +595,7 @@ private fun WinePathMap(
             }
         }
 
-        // Подписи видны только с приближением — на обзоре чистая карта со светящимися регионами.
-        val labelAlpha = ((mapUi.scale - 1.2f) / 1.5f).coerceIn(0f, 1f)
+        // Подписи рисуем только для выбранного региона (см. ниже) — карта остаётся чистой.
 
         val transformState = rememberTransformableState { zoomChange, panChange, _ ->
             mapUi.onTransform(zoomChange, panChange)
@@ -641,15 +638,15 @@ private fun WinePathMap(
                         paths.forEach { path ->
                             drawPath(
                                 path,
-                                Color.White.copy(alpha = 0.30f),
+                                Color.White.copy(alpha = if (selected) 0.55f else 0.30f),
                                 style = Stroke(
                                     width = strokeWidth,
                                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f), 0f)
                                 )
                             )
                         }
-                        if (labelAlpha > 0.02f) {
-                            drawLabel(textMeasurer, territory.name, center, labelDimStyle.copy(color = labelDimStyle.color.copy(alpha = labelAlpha)), above)
+                        if (selected) {
+                            drawLabel(textMeasurer, territory.name, center, selectedLabelStyle, above, labelGap)
                         }
                     }
                     territory.unlocked -> {
@@ -659,29 +656,29 @@ private fun WinePathMap(
                         }
                         drawCircle(Color(0xFFFFC107).copy(alpha = 0.25f), radius = 18f, center = center)
                         drawCircle(Color(0xFFFFC107), radius = 8f, center = center)
-                        if (labelAlpha > 0.02f) {
-                            drawLabel(textMeasurer, territory.name, center, labelStyle.copy(color = labelStyle.color.copy(alpha = labelAlpha)), above)
+                        if (selected) {
+                            drawLabel(textMeasurer, territory.name, center, selectedLabelStyle, above, labelGap)
                         }
                     }
                     else -> {
-                        // Винный регион из каталога, но ещё не открыт — особая подсветка.
+                        // Невыбранные винные регионы — тусклое жёлтое подсвечивание.
                         val inCatalog = territory.totalWines > 0
                         paths.forEach { path ->
                             if (inCatalog) {
-                                drawPath(path, Color(0xFFFFC107).copy(alpha = if (selected) 0.22f else 0.12f))
+                                drawPath(path, Color(0xFFFFC107).copy(alpha = if (selected) 0.18f else 0.07f))
                             }
                             drawPath(
                                 path,
-                                if (inCatalog) Color(0xFFFFC107).copy(alpha = 0.70f)
+                                if (inCatalog) Color(0xFFFFC107).copy(alpha = if (selected) 0.90f else 0.45f)
                                 else Color.White.copy(alpha = 0.55f),
-                                style = Stroke(width = if (inCatalog) strokeWidth else 1.5f)
+                                style = Stroke(width = if (inCatalog && selected) 2.5f else 1.5f)
                             )
                         }
                         if (inCatalog) {
                             drawCircle(Color(0xFFFFC107).copy(alpha = 0.5f), radius = 6f, center = center, style = Stroke(width = 2f))
                         }
-                        if (labelAlpha > 0.02f) {
-                            drawLabel(textMeasurer, territory.name, center, labelDimStyle.copy(color = labelDimStyle.color.copy(alpha = labelAlpha)), above)
+                        if (selected) {
+                            drawLabel(textMeasurer, territory.name, center, selectedLabelStyle, above, labelGap)
                         }
                     }
                 }
@@ -781,14 +778,15 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawLabel(
     text: String,
     center: Offset,
     style: TextStyle,
-    above: Boolean = false
+    above: Boolean = false,
+    gapPx: Float = 14f
 ) {
     val layout = textMeasurer.measure(text, style)
     drawText(
         layout,
         topLeft = Offset(
             (center.x - layout.size.width / 2f).coerceAtLeast(0f),
-            if (above) center.y - layout.size.height - 12f else center.y + 14f
+            if (above) center.y - layout.size.height - gapPx else center.y + gapPx
         )
     )
 }

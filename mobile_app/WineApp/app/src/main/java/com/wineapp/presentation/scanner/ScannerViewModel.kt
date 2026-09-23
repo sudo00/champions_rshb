@@ -5,6 +5,8 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.wineapp.data.file.CameraHelper
+import com.wineapp.domain.model.SavedScan
+import com.wineapp.domain.usecase.SaveScanUseCase
 import com.wineapp.domain.usecase.ScanWineUseCase
 import com.wineapp.presentation.common.BaseViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,6 +21,7 @@ import androidx.core.net.toUri
 class ScannerViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val scanWineUseCase: ScanWineUseCase,
+    private val saveScanUseCase: SaveScanUseCase,
     private val badgeRepository: com.wineapp.domain.repository.BadgeRepository,
     val cameraHelper: CameraHelper
 ) : BaseViewModel<ScannerState, ScannerIntent>() {
@@ -73,6 +76,22 @@ class ScannerViewModel @Inject constructor(
             val result = scanWineUseCase(imagePath)
             result.onSuccess { scanResult ->
                 if (scanResult.wine != null) {
+                    // Автосейв каждого успешного скана — до перехода в лучшую карточку.
+                    // Без фанатизма по ошибкам: скан уже распознан, история вторична.
+                    viewModelScope.launch {
+                        saveScanUseCase(
+                            SavedScan(
+                                id = java.util.UUID.randomUUID().toString(),
+                                wine = scanResult.wine,
+                                labelPhotoPath = imagePath,
+                                confidence = scanResult.confidence,
+                                conversation = emptyList(),
+                                scannedAt = System.currentTimeMillis()
+                            )
+                        ).onFailure { e ->
+                            Log.e("ScannerViewModel", "Auto-save scan failed", e)
+                        }
+                    }
                     updateState(ScannerState.Success(scanResult, imagePath))
                 } else {
                     updateState(ScannerState.NotFound(imagePath, scanResult.matches, scanResult.recognitionStatus, scanResult.message))

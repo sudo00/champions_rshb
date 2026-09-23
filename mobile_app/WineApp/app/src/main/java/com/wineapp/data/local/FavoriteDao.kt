@@ -14,9 +14,12 @@ interface FavoriteDao {
     @Query("DELETE FROM favorites WHERE wineId = :wineId")
     suspend fun deleteByWineId(wineId: String)
 
-    @Query("SELECT EXISTS(SELECT 1 FROM favorites WHERE wineId = :wineId)")
-    fun isFavorite(wineId: String): Flow<Boolean>
+    @Query("UPDATE favorites SET kind = :kind WHERE wineId = :wineId")
+    suspend fun setKind(wineId: String, kind: String)
 
-    @Query("SELECT wineId FROM favorites ORDER BY addedAt DESC")
-    fun getAllFavoriteIds(): Flow<List<String>>
+    @Query("SELECT EXISTS(SELECT 1 FROM favorites WHERE wineId = :wineId AND kind = :kind)")
+    fun isFavorite(wineId: String, kind: String): Flow<Boolean>
+
+    @Query("SELECT * FROM favorites ORDER BY addedAt DESC")
+    fun getAllFavorites(): Flow<List<FavoriteEntity>>
 }

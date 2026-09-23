@@ -19,7 +19,9 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Inventory2
@@ -169,7 +171,10 @@ fun DetailContent(
 ) {
     val state by viewModel.state.collectAsState()
     val isFavorite = (state as? DetailState.Success)?.isFavorite ?: false
+    val isWished = (state as? DetailState.Success)?.isWished ?: false
     val isInCellar = (state as? DetailState.Success)?.isInCellar ?: false
+    // «Хочу попробовать» бессмысленно, когда вино в наличии в погребе.
+    val showWish = (state as? DetailState.Success)?.cellarStatus != com.wineapp.data.local.CellarStatus.IN_STOCK
     val cellarQuantity = (state as? DetailState.Success)?.cellarQuantity ?: 0
     LazyColumn(
         modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars),
@@ -230,37 +235,23 @@ fun DetailContent(
                         }
                     }
                 }
-                // Favorite + cellar buttons
-                Column(
+                // Cellar button
+                IconButton(
+                    onClick = { viewModel.sendIntent(DetailIntent.ToggleCellar) },
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .padding(8.dp)
                 ) {
-                    IconButton(
-                        onClick = { viewModel.sendIntent(DetailIntent.ToggleFavorite) }
-                    ) {
-                        Icon(
-                            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = stringResource(R.string.detail_favorite),
-                            tint = if (isFavorite) Color.Red else Color.White,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                    IconButton(
-                        onClick = { viewModel.sendIntent(DetailIntent.ToggleCellar) }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Inventory2,
-                            contentDescription = if (isInCellar) {
-                                stringResource(R.string.detail_cellar_added, cellarQuantity)
-                            } else {
-                                stringResource(R.string.detail_cellar)
-                            },
-                            tint = if (isInCellar) MaterialTheme.colorScheme.primary else Color.White,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Inventory2,
+                        contentDescription = if (isInCellar) {
+                            stringResource(R.string.detail_cellar_added, cellarQuantity)
+                        } else {
+                            stringResource(R.string.detail_cellar)
+                        },
+                        tint = if (isInCellar) MaterialTheme.colorScheme.primary else Color.White,
+                        modifier = Modifier.size(28.dp)
+                    )
                 }
             }
         }
@@ -322,18 +313,72 @@ fun DetailContent(
                 Divider()
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Actions
+                // Actions: вино живёт только в одном теге — вторая кнопка блокируется.
+                // Невыбранная, но доступная кнопка — outlined (серая заливка читалась как disabled).
                 Button(
-                    onClick = { viewModel.sendIntent(DetailIntent.AddToHistory) },
+                    onClick = { viewModel.sendIntent(DetailIntent.ToggleFavorite) },
+                    enabled = !isWished || !showWish,
                     modifier = Modifier.fillMaxWidth(),
+                    border = if (!isFavorite) {
+                        androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.primary
+                        )
+                    } else null,
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        containerColor = if (isFavorite) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surface
+                        },
+                        contentColor = if (isFavorite) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        }
                     )
                 ) {
-                    Icon(Icons.Default.BookmarkAdd, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                    Text(stringResource(R.string.detail_save))
+                    Icon(
+                        if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                    Text(stringResource(R.string.detail_liked))
                 }
                 Spacer(modifier = Modifier.height(12.dp))
+                if (showWish) {
+                    Button(
+                        onClick = { viewModel.sendIntent(DetailIntent.ToggleWish) },
+                        enabled = !isFavorite,
+                        modifier = Modifier.fillMaxWidth(),
+                        border = if (!isWished) {
+                            androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                MaterialTheme.colorScheme.primary
+                            )
+                        } else null,
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = if (isWished) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surface
+                            },
+                            contentColor = if (isWished) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.primary
+                            }
+                        )
+                    ) {
+                        Icon(
+                            if (isWished) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text(stringResource(R.string.detail_wish))
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
                 Button(
                     onClick = { onNavigateToSommelier(wine) },
                     modifier = Modifier.fillMaxWidth(),

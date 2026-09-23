@@ -186,8 +186,7 @@ private fun CellarFilterRow(
 ) {
     val filters = listOf(
         null to R.string.cellar_filter_all,
-        CellarStatus.HOME to R.string.cellar_status_home,
-        CellarStatus.WISH to R.string.cellar_status_wish,
+        CellarStatus.IN_STOCK to R.string.cellar_status_home,
         CellarStatus.CONSUMED to R.string.cellar_status_consumed
     )
     Row(
@@ -227,7 +226,6 @@ private fun CellarRow(
 ) {
     var statusMenuExpanded by remember { mutableStateOf(false) }
     val statusLabel = when (item.status) {
-        CellarStatus.WISH -> stringResource(R.string.cellar_status_wish)
         CellarStatus.CONSUMED -> stringResource(R.string.cellar_status_consumed)
         else -> stringResource(R.string.cellar_status_home)
     }
@@ -299,14 +297,7 @@ private fun CellarRow(
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.cellar_status_home)) },
                             onClick = {
-                                onSetStatus(CellarStatus.HOME)
-                                statusMenuExpanded = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.cellar_status_wish)) },
-                            onClick = {
-                                onSetStatus(CellarStatus.WISH)
+                                onSetStatus(CellarStatus.IN_STOCK)
                                 statusMenuExpanded = false
                             }
                         )
@@ -349,8 +340,8 @@ private fun CellarScreenPreview() {
         CellarScreenContent(
             state = CellarState.Success(
                 items = listOf(
-                    CellarItem(wine = wine, quantity = 3, status = CellarStatus.HOME, updatedAt = 0L),
-                    CellarItem(wine = wine.copy(id = "2", name = "Barolo 2019"), quantity = 1, status = CellarStatus.WISH, updatedAt = 0L)
+                    CellarItem(wine = wine, quantity = 3, status = CellarStatus.IN_STOCK, updatedAt = 0L),
+                    CellarItem(wine = wine.copy(id = "2", name = "Barolo 2019"), quantity = 0, status = CellarStatus.CONSUMED, updatedAt = 0L)
                 )
             )
         )

@@ -45,7 +45,6 @@
     <string name="detail_pairing">С чем подавать</string>
     <string name="detail_alcohol">Крепость</string>
     <string name="detail_reviews">отзывов</string>
-    <string name="detail_save">Сохранить</string>
     <string name="detail_share">Поделиться</string>
     <string name="detail_ask_sommelier">Спросить сомелье</string>
 
@@ -111,15 +110,18 @@
     <string name="favorites_delete_title">Удалить из избранного?</string>
     <string name="favorites_delete_confirm">Удалить «%s» из избранного?</string>
     <string name="favorites_remove">Удалить из избранного</string>
-    <string name="detail_favorite">В избранное</string>
+    <string name="favorites_filter_all">Все</string>
+    <string name="favorites_wish">Хочу</string>
+    <string name="favorites_liked">Понравилось</string>
+    <string name="detail_liked">Понравилось</string>
+    <string name="detail_wish">Хочу попробовать</string>
 
     <string name="cellar_title">Мой погреб</string>
     <string name="cellar_empty">Погреб пока пуст</string>
     <string name="cellar_empty_hint">Откройте вино и нажмите «В погреб», чтобы вести инвентарь</string>
     <string name="cellar_total">Вин: %1$d · Бутылок: %2$d</string>
     <string name="cellar_filter_all">Все</string>
-    <string name="cellar_status_home">Дома</string>
-    <string name="cellar_status_wish">Хочу</string>
+    <string name="cellar_status_home">В наличии</string>
     <string name="cellar_status_consumed">Выпито</string>
     <string name="cellar_bottles">× %d</string>
     <string name="cellar_increase">Увеличить количество</string>

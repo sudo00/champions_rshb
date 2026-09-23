@@ -2,25 +2,21 @@ package com.wineapp.presentation.detail
 
 import android.util.Log
 import androidx.lifecycle.viewModelScope
-import com.wineapp.domain.model.SavedScan
 import com.wineapp.domain.usecase.AddToCellarUseCase
 import com.wineapp.domain.usecase.GetCellarEntryUseCase
 import com.wineapp.domain.usecase.GetWineDetailsUseCase
 import com.wineapp.domain.usecase.IsFavoriteUseCase
 import com.wineapp.domain.usecase.RemoveFromCellarUseCase
-import com.wineapp.domain.usecase.SaveScanUseCase
 import com.wineapp.domain.usecase.ToggleFavoriteUseCase
 import com.wineapp.presentation.common.BaseViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
 class DetailViewModel @Inject constructor(
     private val getWineDetailsUseCase: GetWineDetailsUseCase,
-    private val saveScanUseCase: SaveScanUseCase,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
     private val isFavoriteUseCase: IsFavoriteUseCase,
     private val addToCellarUseCase: AddToCellarUseCase,
@@ -38,8 +34,8 @@ class DetailViewModel @Inject constructor(
         when (intent) {
             is DetailIntent.LoadDetail -> handleLoad(intent.wineId, intent.photoPath, intent.confidence)
             is DetailIntent.Retry -> handleLoad(currentWineId, currentPhotoPath, currentConfidence)
-            is DetailIntent.AddToHistory -> handleAddToHistory()
             is DetailIntent.ToggleFavorite -> handleToggleFavorite()
+            is DetailIntent.ToggleWish -> handleToggleWish()
             is DetailIntent.ToggleCellar -> handleToggleCellar()
         }
     }
@@ -52,7 +48,8 @@ class DetailViewModel @Inject constructor(
         viewModelScope.launch {
             val result = getWineDetailsUseCase(wineId)
             result.onSuccess { wine ->
-                val isFavorite = isFavoriteUseCase(wineId).first()
+                val isFavorite = isFavoriteUseCase(wineId, com.wineapp.data.local.FavoriteKind.LIKED).first()
+                val isWished = isFavoriteUseCase(wineId, com.wineapp.data.local.FavoriteKind.WISH).first()
                 val cellarEntry = getCellarEntryUseCase(wineId).first()
                 updateState(
                     DetailState.Success(
@@ -60,8 +57,10 @@ class DetailViewModel @Inject constructor(
                         photoPath,
                         confidence,
                         isFavorite,
+                        isWished = isWished,
                         isInCellar = cellarEntry != null,
-                        cellarQuantity = cellarEntry?.quantity ?: 0
+                        cellarQuantity = cellarEntry?.quantity ?: 0,
+                        cellarStatus = cellarEntry?.status
                     )
                 )
             }.onFailure { error ->
@@ -75,12 +74,35 @@ class DetailViewModel @Inject constructor(
         val state = _state.value
         if (state is DetailState.Success) {
             viewModelScope.launch {
-                toggleFavoriteUseCase(state.wine.id, state.isFavorite)
+                toggleFavoriteUseCase(
+                    state.wine.id,
+                    state.isFavorite,
+                    com.wineapp.data.local.FavoriteKind.LIKED
+                )
                     .onSuccess {
                         updateState(state.copy(isFavorite = !state.isFavorite))
                     }
                     .onFailure { error ->
                         Log.e("DetailViewModel", "Toggle favorite failed", error)
+                    }
+            }
+        }
+    }
+
+    private fun handleToggleWish() {
+        val state = _state.value
+        if (state is DetailState.Success) {
+            viewModelScope.launch {
+                toggleFavoriteUseCase(
+                    state.wine.id,
+                    state.isWished,
+                    com.wineapp.data.local.FavoriteKind.WISH
+                )
+                    .onSuccess {
+                        updateState(state.copy(isWished = !state.isWished))
+                    }
+                    .onFailure { error ->
+                        Log.e("DetailViewModel", "Toggle wish failed", error)
                     }
             }
         }
@@ -93,7 +115,7 @@ class DetailViewModel @Inject constructor(
                 if (state.isInCellar) {
                     removeFromCellarUseCase(state.wine.id)
                         .onSuccess {
-                            updateState(state.copy(isInCellar = false, cellarQuantity = 0))
+                            updateState(state.copy(isInCellar = false, cellarQuantity = 0, cellarStatus = null))
                         }
                         .onFailure { error ->
                             Log.e("DetailViewModel", "Remove from cellar failed", error)
@@ -101,32 +123,18 @@ class DetailViewModel @Inject constructor(
                 } else {
                     addToCellarUseCase(state.wine.id, 1)
                         .onSuccess {
-                            updateState(state.copy(isInCellar = true, cellarQuantity = 1))
+                            updateState(
+                                state.copy(
+                                    isInCellar = true,
+                                    cellarQuantity = 1,
+                                    cellarStatus = com.wineapp.data.local.CellarStatus.IN_STOCK
+                                )
+                            )
                         }
                         .onFailure { error ->
                             Log.e("DetailViewModel", "Add to cellar failed", error)
                         }
                 }
-            }
-        }
-    }
-
-    private fun handleAddToHistory() {
-        val state = _state.value
-        if (state is DetailState.Success) {
-            viewModelScope.launch {
-                val scan = SavedScan(
-                    id = UUID.randomUUID().toString(),
-                    wine = state.wine,
-                    labelPhotoPath = currentPhotoPath,
-                    confidence = state.confidence,
-                    conversation = emptyList(),
-                    scannedAt = System.currentTimeMillis()
-                )
-                saveScanUseCase(scan)
-                    .onFailure { error ->
-                        Log.e("DetailViewModel", "Save scan failed", error)
-                    }
             }
         }
     }

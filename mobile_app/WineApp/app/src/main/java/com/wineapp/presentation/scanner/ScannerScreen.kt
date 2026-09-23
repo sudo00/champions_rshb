@@ -114,6 +114,7 @@ fun ScannerScreen(
     LaunchedEffect(state) {
         when (val current = state) {
             is ScannerState.Success -> {
+                com.wineapp.util.HapticHelper.vibrateSuccess(context)
                 val result = current.result
                 val allWines = result.matches
                 val mainWine = result.wine

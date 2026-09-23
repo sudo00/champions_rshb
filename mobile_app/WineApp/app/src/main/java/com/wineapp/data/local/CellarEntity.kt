@@ -8,15 +8,14 @@ data class CellarEntity(
     @PrimaryKey
     val wineId: String,
     val quantity: Int = 1,
-    val status: String = CellarStatus.HOME,
+    val status: String = CellarStatus.IN_STOCK,
     val note: String? = null,
     val addedAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )
 
-/** Статусы записи погреба. Хранятся как String чтобы не усложнять миграции. */
+/** Статусы записи погреба: в наличии / выпито. */
 object CellarStatus {
-    const val HOME = "HOME" // дома / в наличии
-    const val WISH = "WISH" // хочу купить
-    const val CONSUMED = "CONSUMED" // выпито
+    const val IN_STOCK = "IN_STOCK"
+    const val CONSUMED = "CONSUMED"
 }

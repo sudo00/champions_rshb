@@ -16,7 +16,7 @@ interface CellarDao {
     suspend fun incrementQuantity(wineId: String, delta: Int, now: Long = System.currentTimeMillis())
 
     @Transaction
-    suspend fun addOrIncrement(wineId: String, delta: Int = 1, status: String = CellarStatus.HOME) {
+    suspend fun addOrIncrement(wineId: String, delta: Int = 1, status: String = CellarStatus.IN_STOCK) {
         val now = System.currentTimeMillis()
         insertIgnore(CellarEntity(wineId = wineId, quantity = 0, status = status, addedAt = now, updatedAt = now))
         incrementQuantity(wineId, delta, now)
@@ -36,6 +36,9 @@ interface CellarDao {
 
     @Query("SELECT * FROM cellar WHERE wineId = :wineId")
     fun getEntry(wineId: String): Flow<CellarEntity?>
+
+    @Query("SELECT * FROM cellar WHERE wineId = :wineId")
+    suspend fun getEntryOnce(wineId: String): CellarEntity?
 
     @Query("SELECT * FROM cellar ORDER BY updatedAt DESC")
     fun getAllEntries(): Flow<List<CellarEntity>>

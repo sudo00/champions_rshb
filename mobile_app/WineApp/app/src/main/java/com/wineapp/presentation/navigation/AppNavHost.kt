@@ -13,7 +13,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.wineapp.presentation.agegate.AgeGateBottomSheet
+import com.wineapp.data.local.AgeGatePrefs
+import com.wineapp.presentation.agegate.AgeGateScreen
 import com.wineapp.presentation.cellar.CellarScreen
 import com.wineapp.presentation.detail.DetailScreen
 import com.wineapp.presentation.favorites.FavoritesScreen
@@ -31,19 +32,8 @@ fun AppNavHost(startRoute: String? = null) {
     val navController = rememberNavController()
     val context = LocalContext.current
     val activity = context as? Activity
-    var ageVerified by remember { mutableStateOf(false) }
-
-    if (!ageVerified) {
-        AgeGateBottomSheet(
-            onConfirm = {
-                ageVerified = true
-            },
-            onDeny = {
-                activity?.finishAffinity()
-                System.exit(0)
-            }
-        )
-    }
+    // Плашка возраста — только при первом открытии приложения.
+    var ageVerified by remember { mutableStateOf(AgeGatePrefs.isVerified(context)) }
 
     NavHost(navController, startDestination = startRoute ?: "search") {
         composable("scanner") {
@@ -229,5 +219,20 @@ fun AppNavHost(startRoute: String? = null) {
                 onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") }
             )
         }
+    }
+
+    // Гейт — строго ПОСЛЕ NavHost: обычный Box-оверлей рисуется поверх только так
+    // (раньше порядок не имел значения, т.к. ModalBottomSheet жил в отдельном окне).
+    if (!ageVerified) {
+        AgeGateScreen(
+            onConfirm = {
+                AgeGatePrefs.setVerified(context)
+                ageVerified = true
+            },
+            onDeny = {
+                activity?.finishAffinity()
+                System.exit(0)
+            }
+        )
     }
 }

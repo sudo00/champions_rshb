@@ -15,7 +15,7 @@ import com.wineapp.data.local.converter.Converters
         UserBadgeEntity::class,
         PointsEntry::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

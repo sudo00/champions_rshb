@@ -1,49 +1,75 @@
 package com.wineapp.presentation.agegate
 
+import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
+/**
+ * Возрастной гейт как полноэкранный блокирующий оверлей, а не BottomSheet:
+ * свайкать нечего, системная кнопка «назад» закрывает приложение.
+ * Показывается только при первом открытии (см. AgeGatePrefs).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AgeGateBottomSheet(
+fun AgeGateScreen(
     onConfirm: () -> Unit,
     onDeny: () -> Unit,
     onDismissRequest: () -> Unit = {}
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val context = LocalContext.current
+    val exitApp = {
+        (context as? Activity)?.finishAffinity()
+        System.exit(0)
+    }
 
-    ModalBottomSheet(
-        sheetState = sheetState,
-        onDismissRequest = onDismissRequest,
-        dragHandle = null,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        containerColor = MaterialTheme.colorScheme.surface
+    // Перехватываем системный «назад» раньше всех: выход из приложения.
+    BackHandler(enabled = true) {
+        onDeny()
+        exitApp()
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface),
+        contentAlignment = Alignment.Center
     ) {
-        AgeGateBottomSheetContent(
-            onConfirm = onConfirm,
-            onDeny = onDeny
-        )
+        Surface(
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            AgeGateBottomSheetContent(
+                onConfirm = onConfirm,
+                onDeny = {
+                    onDeny()
+                    exitApp()
+                }
+            )
+        }
     }
 }
 
@@ -54,9 +80,10 @@ fun AgeGateBottomSheetContent(
 ) {
     Column(
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .padding(horizontal = 24.dp, vertical = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
         Text(
             text = "\uD83C\uDF77",

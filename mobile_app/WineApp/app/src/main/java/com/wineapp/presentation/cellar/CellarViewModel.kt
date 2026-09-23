@@ -67,14 +67,10 @@ class CellarViewModel @Inject constructor(
     private fun changeQuantity(wineId: String, delta: Int) {
         viewModelScope.launch {
             val current = allItems.find { it.wine.id == wineId } ?: return@launch
-            val newQty = current.quantity + delta
-            if (newQty <= 0) {
-                removeFromCellarUseCase(wineId)
-                    .onFailure { e -> Log.e("CellarVM", "Remove failed", e) }
-            } else {
-                setCellarQuantityUseCase(wineId, newQty)
-                    .onFailure { e -> Log.e("CellarVM", "Set quantity failed", e) }
-            }
+            // Переходы В наличии <-> Выпито по количеству — внутри репозитория.
+            // 0 бутылок = «выпито» (запись остаётся), снова >0 = «в наличии».
+            setCellarQuantityUseCase(wineId, current.quantity + delta)
+                .onFailure { e -> Log.e("CellarVM", "Set quantity failed", e) }
         }
     }
 

@@ -2,6 +2,7 @@ package com.wineapp.presentation.favorites
 
 import android.app.Activity
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -24,7 +26,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -56,6 +62,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.wineapp.R
+import com.wineapp.data.local.FavoriteKind
 import com.wineapp.domain.model.Wine
 import com.wineapp.presentation.common.ui.EmptyState
 import com.wineapp.presentation.common.ui.WineAppTopAppBar
@@ -71,6 +78,8 @@ fun FavoritesScreen(
     FavoritesScreenContent(
         state = state,
         onRemoveFavorite = { viewModel.sendIntent(FavoritesIntent.RemoveFavorite(it)) },
+        onFilter = { viewModel.sendIntent(FavoritesIntent.SetFilter(it)) },
+        onSetKind = { wineId, kind -> viewModel.sendIntent(FavoritesIntent.SetKind(wineId, kind)) },
         onNavigateToDetail = onNavigateToDetail,
         onNavigateBack = onNavigateBack
     )
@@ -81,6 +90,8 @@ fun FavoritesScreen(
 fun FavoritesScreenContent(
     state: FavoritesState,
     onRemoveFavorite: (String) -> Unit = {},
+    onFilter: (String?) -> Unit = {},
+    onSetKind: (String, String) -> Unit = { _, _ -> },
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateBack: () -> Unit = {}
 ) {
@@ -149,7 +160,7 @@ fun FavoritesScreenContent(
                 }
             }
             is FavoritesState.Success -> {
-                if (state.wines.isEmpty()) {
+                if (state.items.isEmpty() && state.filter == null) {
                     EmptyState(
                         icon = Icons.Default.FavoriteBorder,
                         title = stringResource(R.string.favorites_empty),
@@ -157,23 +168,41 @@ fun FavoritesScreenContent(
                         modifier = Modifier.padding(padding)
                     )
                 } else {
-                    LazyColumn(
+                    Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(padding)
-                            .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp)
+                            .padding(horizontal = 16.dp)
                     ) {
-                        items(
-                            items = state.wines,
-                            key = { it.id }
-                        ) { wine ->
-                            FavoriteWineCard(
-                                wine = wine,
-                                onClick = { onNavigateToDetail(wine.id) },
-                                onRemove = { wineToDelete = wine }
+                        FavoritesFilterRow(
+                            selected = state.filter,
+                            onFilter = onFilter
+                        )
+                        if (state.items.isEmpty()) {
+                            EmptyState(
+                                icon = Icons.Default.FavoriteBorder,
+                                title = stringResource(R.string.favorites_empty),
+                                message = stringResource(R.string.favorites_empty_hint)
                             )
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(
+                                    items = state.items,
+                                    key = { it.wine.id }
+                                ) { item ->
+                                    FavoriteWineCard(
+                                        wine = item.wine,
+                                        kind = item.kind,
+                                        onClick = { onNavigateToDetail(item.wine.id) },
+                                        onRemove = { wineToDelete = item.wine },
+                                        onSetKind = { kind -> onSetKind(item.wine.id, kind) }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -183,10 +212,94 @@ fun FavoritesScreenContent(
 }
 
 @Composable
+fun FavoritesFilterRow(
+    selected: String?,
+    onFilter: (String?) -> Unit
+) {
+    val filters = listOf(
+        null to R.string.favorites_filter_all,
+        FavoriteKind.WISH to R.string.favorites_wish,
+        FavoriteKind.LIKED to R.string.favorites_liked
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        filters.forEach { (kind, labelRes) ->
+            FilterChip(
+                selected = selected == kind,
+                onClick = { onFilter(kind) },
+                label = {
+                    Text(
+                        stringResource(labelRes),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun FavoriteKindChip(
+    kind: String,
+    onSetKind: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val label = if (kind == FavoriteKind.WISH) {
+        stringResource(R.string.favorites_wish)
+    } else {
+        stringResource(R.string.favorites_liked)
+    }
+    Box {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            onClick = { expanded = true }
+        ) {
+            Text(
+                label,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.favorites_wish)) },
+                onClick = {
+                    onSetKind(FavoriteKind.WISH)
+                    expanded = false
+                }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.favorites_liked)) },
+                onClick = {
+                    onSetKind(FavoriteKind.LIKED)
+                    expanded = false
+                }
+            )
+        }
+    }
+}
+
+@Composable
 fun FavoriteWineCard(
     wine: Wine,
+    kind: String,
     onClick: () -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    onSetKind: (String) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -306,6 +419,8 @@ fun FavoriteWineCard(
                         )
                     }
                 }
+                Spacer(modifier = Modifier.height(6.dp))
+                FavoriteKindChip(kind = kind, onSetKind = onSetKind)
             }
             IconButton(onClick = onRemove) {
                 Icon(

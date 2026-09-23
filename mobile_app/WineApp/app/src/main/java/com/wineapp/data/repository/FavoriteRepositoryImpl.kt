@@ -13,10 +13,10 @@ class FavoriteRepositoryImpl @Inject constructor(
     private val favoriteDao: FavoriteDao
 ) : FavoriteRepository {
 
-    override suspend fun addFavorite(wineId: String): Result<Unit> {
+    override suspend fun addFavorite(wineId: String, kind: String): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
-                favoriteDao.insert(FavoriteEntity(wineId = wineId))
+                favoriteDao.insert(FavoriteEntity(wineId = wineId, kind = kind))
                 Result.success(Unit)
             } catch (e: Exception) {
                 Log.e("FavoriteRepo", "Add favorite failed", e)
@@ -37,11 +37,23 @@ class FavoriteRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun isFavorite(wineId: String): Flow<Boolean> {
-        return favoriteDao.isFavorite(wineId)
+    override suspend fun setKind(wineId: String, kind: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                favoriteDao.setKind(wineId, kind)
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Log.e("FavoriteRepo", "Set kind failed", e)
+                Result.failure(e)
+            }
+        }
     }
 
-    override fun getAllFavoriteIds(): Flow<List<String>> {
-        return favoriteDao.getAllFavoriteIds()
+    override fun isFavorite(wineId: String, kind: String): Flow<Boolean> {
+        return favoriteDao.isFavorite(wineId, kind)
+    }
+
+    override fun getAllFavorites(): Flow<List<FavoriteEntity>> {
+        return favoriteDao.getAllFavorites()
     }
 }
