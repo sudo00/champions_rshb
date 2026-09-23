@@ -40,8 +40,34 @@ node_modules/
 .output/
 backend/.venv/
 .venv-api/
+.venv-confidence/
 
 /.cache/
 
 /weights/
 /tests/
+
+# Shared operational tools only; research stays local at its existing paths.
+/scripts/*
+!/scripts/scan_api.py
+!/scripts/check_recognition_api.py
+!/scripts/recognize_photo.py
+!/scripts/install_api_network.sh
+!/scripts/export_recognizer_bundle.py
+!/scripts/package_recognizer.py
+!/scripts/package_catalog_images.py
+!/scripts/image_preprocessing.py
+!/scripts/prepare_scan_image.py
+!/scripts/README.md
+
+# Offline ML experiments, not production imports.
+/worker/pipeline/catalog_membership.py
+/worker/pipeline/confidence.py
+/worker/pipeline/confirmation.py
+/worker/pipeline/targeted_text.py
+/worker/pipeline/top5_verification.py
+
+/requirements-confidence*.txt
+/requirements-local-matching.txt
+/requirements-ocr.lock.txt
+/requirements-vision.txt

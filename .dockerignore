@@ -23,3 +23,12 @@ tests
 .env.*
 **/.env
 **/.env.*
+
+# Local research must not enter production build contexts.
+.cache
+scripts
+worker/pipeline/catalog_membership.py
+worker/pipeline/confidence.py
+worker/pipeline/confirmation.py
+worker/pipeline/targeted_text.py
+worker/pipeline/top5_verification.py

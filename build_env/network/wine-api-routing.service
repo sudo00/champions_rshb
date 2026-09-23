@@ -6,13 +6,15 @@ After=network-online.target
 [Service]
 Type=oneshot
 EnvironmentFile=/etc/wine-api-network.env
-# Lower priorities run first: the VPN currently installs its catch-all at 9999.
-# Remove the legacy exception as well when upgrading an existing installation.
+# Run this narrow exception before VPN catch-all rules (observed at 99/8999/9999).
+# Priority 0 remains reserved for the local table. Remove legacy exceptions.
 ExecStartPre=-/usr/sbin/ip -4 rule del priority 10000 from ${WINE_API_SOURCE_IP}/32 ipproto tcp sport 8000 lookup main
 ExecStartPre=-/usr/sbin/ip -4 rule del priority 9000 from ${WINE_API_SOURCE_IP}/32 ipproto tcp sport 8000 lookup main
-ExecStart=/usr/sbin/ip -4 rule add priority 9000 from ${WINE_API_SOURCE_IP}/32 ipproto tcp sport 8000 lookup main
+ExecStartPre=-/usr/sbin/ip -4 rule del priority 100 from ${WINE_API_SOURCE_IP}/32 ipproto tcp sport 8000 lookup main
+ExecStartPre=-/usr/sbin/ip -4 rule del priority 1 from ${WINE_API_SOURCE_IP}/32 ipproto tcp sport 8000 lookup main
+ExecStart=/usr/sbin/ip -4 rule add priority 1 from ${WINE_API_SOURCE_IP}/32 ipproto tcp sport 8000 lookup main
 RemainAfterExit=yes
-ExecStop=-/usr/sbin/ip -4 rule del priority 9000 from ${WINE_API_SOURCE_IP}/32 ipproto tcp sport 8000 lookup main
+ExecStop=-/usr/sbin/ip -4 rule del priority 1 from ${WINE_API_SOURCE_IP}/32 ipproto tcp sport 8000 lookup main
 
 [Install]
 WantedBy=multi-user.target

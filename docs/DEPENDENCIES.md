@@ -9,8 +9,6 @@
 | `requirements-vision.lock.txt` | Полный зафиксированный набор для `.venv`: PyTorch, SAM/SigLIP через Transformers, геометрия, поиск и библиотеки worker |
 | `requirements-ocr-gpu.lock.txt` | Полный набор для `.venv-ocr-gpu`: PaddlePaddle GPU, PaddleOCR и их зависимости |
 | `backend/api/requirements.lock.txt` | Зафиксированная среда `.venv-api`: FastAPI, PostgreSQL/RabbitMQ/MinIO clients, Pillow и тесты |
-| `requirements-ocr.lock.txt` | Архивный CPU OCR для контрольных прогонов, не нужен для обычного GPU-запуска |
-| `requirements-vision.txt` | Короткий список основных библиотек экспериментов; не заменяет полный lock-файл при передаче прототипа |
 | `backend/worker/requirements.txt` | Зависимости инфраструктурного worker; сам по себе не устанавливает распознаватель |
 
 Lock-файлы здесь — обычные requirements-файлы pip с точными версиями, включая зависимости библиотек. Расширение `.lock.txt` обозначает их назначение, отдельный менеджер пакетов не требуется.
