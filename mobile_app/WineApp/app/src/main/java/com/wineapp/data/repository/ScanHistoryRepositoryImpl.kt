@@ -5,6 +5,7 @@ import android.util.Log
 import com.wineapp.data.local.ScanHistoryDao
 import com.wineapp.data.local.ScanHistoryEntity
 import com.wineapp.data.local.ScanConversationEntity
+import com.wineapp.data.local.TerritoryRegistry
 import com.wineapp.domain.model.SavedScan
 import com.wineapp.domain.model.SommelierMessage
 import com.wineapp.domain.model.Wine
@@ -20,13 +21,15 @@ import javax.inject.Inject
 
 class ScanHistoryRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val scanHistoryDao: ScanHistoryDao
+    private val scanHistoryDao: ScanHistoryDao,
+    private val badgeRepository: com.wineapp.domain.repository.BadgeRepository
 ) : ScanHistoryRepository {
 
     override suspend fun saveScan(scan: SavedScan): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
                 val savedPhotoPath = scan.labelPhotoPath?.let { copyPhotoToInternal(it) }
+                val territoryId = TerritoryRegistry.normalize(scan.wine.region)
 
                 val entity = ScanHistoryEntity(
                     id = scan.id,
@@ -48,9 +51,24 @@ class ScanHistoryRepositoryImpl @Inject constructor(
                     description = scan.wine.description,
                     foodPairing = scan.wine.foodPairing.joinToString(","),
                     winery = scan.wine.winery,
-                    scannedAt = scan.scannedAt
+                    scannedAt = scan.scannedAt,
+                    territoryId = territoryId
                 )
                 scanHistoryDao.insertScan(entity)
+
+                // «Винный путь»: очки и бейджи за скан (идемпотентно, ошибки не роняют сохранение).
+                try {
+                    badgeRepository.awardForScan(scan.id, territoryId)
+                } catch (e: Exception) {
+                    Log.e("ScanHistoryRepo", "Badge award failed", e)
+                }
+
+                // Виджет показывает недавние сканы — обновляем его после сохранения.
+                try {
+                    com.wineapp.presentation.widget.WidgetUpdater.updateAll(context)
+                } catch (e: Exception) {
+                    Log.e("ScanHistoryRepo", "Widget update failed", e)
+                }
 
                 if (scan.conversation.isNotEmpty()) {
                     val conversationEntities = scan.conversation.map { msg ->
@@ -101,6 +119,18 @@ class ScanHistoryRepositoryImpl @Inject constructor(
                     conversation = emptyList(),
                     scannedAt = entity.scannedAt
                 )
+            }
+        }
+    }
+
+    override suspend fun getRecentScans(limit: Int): Result<List<SavedScan>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val entities = scanHistoryDao.getRecentScans(limit)
+                Result.success(entities.map { entity -> toSavedScan(entity) })
+            } catch (e: Exception) {
+                Log.e("ScanHistoryRepo", "Get recent scans failed", e)
+                Result.failure(e)
             }
         }
     }
@@ -162,6 +192,34 @@ class ScanHistoryRepositoryImpl @Inject constructor(
                 Result.failure(e)
             }
         }
+    }
+
+    private fun toSavedScan(entity: ScanHistoryEntity): SavedScan {
+        return SavedScan(
+            id = entity.id,
+            wine = Wine(
+                id = entity.wineId,
+                name = entity.wineName,
+                vintage = entity.vintage,
+                rating = entity.rating,
+                reviewsCount = entity.reviewsCount,
+                price = entity.price,
+                currency = entity.currency,
+                region = entity.region,
+                country = entity.country,
+                variety = entity.variety,
+                style = entity.style,
+                alcoholPercentage = entity.alcoholPercentage,
+                imageUrl = entity.imageUrl,
+                description = entity.description,
+                foodPairing = entity.foodPairing.split(",").filter { it.isNotBlank() },
+                winery = entity.winery
+            ),
+            labelPhotoPath = entity.labelPhotoPath,
+            confidence = entity.confidence,
+            conversation = emptyList(),
+            scannedAt = entity.scannedAt
+        )
     }
 
     private fun copyPhotoToInternal(sourcePath: String): String {

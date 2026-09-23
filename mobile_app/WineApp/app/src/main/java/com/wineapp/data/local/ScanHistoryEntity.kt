@@ -25,5 +25,7 @@ data class ScanHistoryEntity(
     val description: String?,
     val foodPairing: String,
     val winery: String?,
-    val scannedAt: Long = System.currentTimeMillis()
+    val scannedAt: Long = System.currentTimeMillis(),
+    /** Нормализованная территория «Винного пути» (TerritoryRegistry id), заполняется при сохранении. */
+    val territoryId: String? = null
 )

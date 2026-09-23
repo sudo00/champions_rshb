@@ -19,10 +19,31 @@ import androidx.core.net.toUri
 class ScannerViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val scanWineUseCase: ScanWineUseCase,
+    private val badgeRepository: com.wineapp.domain.repository.BadgeRepository,
     val cameraHelper: CameraHelper
 ) : BaseViewModel<ScannerState, ScannerIntent>() {
 
     override fun getInitialState(): ScannerState = ScannerState.Ready()
+
+    /** Текст тоста о новой награде «Винного пути». Нуллабельный одноразовый сигнал для UI. */
+    private val _badgeMessage = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    val badgeMessage: kotlinx.coroutines.flow.StateFlow<String?> = _badgeMessage
+
+    init {
+        viewModelScope.launch {
+            try {
+                badgeRepository.freshBadges.collect { fresh ->
+                    val first = fresh.firstOrNull() ?: return@collect
+                    _badgeMessage.value = context.getString(
+                        com.wineapp.R.string.winepath_new_badge,
+                        first.def.title
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e("ScannerViewModel", "Fresh badges failed", e)
+            }
+        }
+    }
 
     override fun reduce(intent: ScannerIntent) {
         when (intent) {
@@ -39,13 +60,15 @@ class ScannerViewModel @Inject constructor(
         }
     }
 
+    private var lastFactIndex: Int = -1
+
     private fun handleCapture(imagePath: String) {
         updateState(ScannerState.Capturing(imagePath))
         sendIntent(ScannerIntent.ProcessImage(imagePath))
     }
 
     private fun handleProcess(imagePath: String) {
-        updateState(ScannerState.Processing(imagePath))
+        updateState(ScannerState.Processing(imagePath, nextSeed(), nextFactIndex()))
         viewModelScope.launch {
             val result = scanWineUseCase(imagePath)
             result.onSuccess { scanResult ->
@@ -100,6 +123,25 @@ class ScannerViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Сид анимации уникален на каждый показ: нано-время практически исключает повторы.
+     * Факт стартует с индекса, отличного от прошлого показа.
+     */
+    private fun nextSeed(): Long = System.nanoTime()
+
+    private fun nextFactIndex(): Int {
+        val count = try {
+            context.resources.getStringArray(com.wineapp.R.array.scan_facts).size
+        } catch (e: Exception) {
+            Log.e("ScannerViewModel", "scan_facts missing", e)
+            1
+        }.coerceAtLeast(1)
+        var index = (nextSeed() % count).toInt().let { if (it < 0) it + count else it }
+        if (index == lastFactIndex) index = (index + 1) % count
+        lastFactIndex = index
+        return index
+    }
+
     private fun handleToggleFlash() {
         val newMode = cameraHelper.toggleFlash()
         val currentState = _state.value
@@ -114,6 +156,10 @@ class ScannerViewModel @Inject constructor(
 
     fun resetToReady() {
         updateState(ScannerState.Ready())
+    }
+
+    fun consumeBadgeMessage() {
+        _badgeMessage.value = null
     }
 
     fun getFlashMode(): Int = cameraHelper.getFlashMode()

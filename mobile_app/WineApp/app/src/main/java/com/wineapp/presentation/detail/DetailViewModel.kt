@@ -3,8 +3,11 @@ package com.wineapp.presentation.detail
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.wineapp.domain.model.SavedScan
+import com.wineapp.domain.usecase.AddToCellarUseCase
+import com.wineapp.domain.usecase.GetCellarEntryUseCase
 import com.wineapp.domain.usecase.GetWineDetailsUseCase
 import com.wineapp.domain.usecase.IsFavoriteUseCase
+import com.wineapp.domain.usecase.RemoveFromCellarUseCase
 import com.wineapp.domain.usecase.SaveScanUseCase
 import com.wineapp.domain.usecase.ToggleFavoriteUseCase
 import com.wineapp.presentation.common.BaseViewModel
@@ -19,7 +22,10 @@ class DetailViewModel @Inject constructor(
     private val getWineDetailsUseCase: GetWineDetailsUseCase,
     private val saveScanUseCase: SaveScanUseCase,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
-    private val isFavoriteUseCase: IsFavoriteUseCase
+    private val isFavoriteUseCase: IsFavoriteUseCase,
+    private val addToCellarUseCase: AddToCellarUseCase,
+    private val removeFromCellarUseCase: RemoveFromCellarUseCase,
+    private val getCellarEntryUseCase: GetCellarEntryUseCase
 ) : BaseViewModel<DetailState, DetailIntent>() {
 
     private var currentWineId = ""
@@ -34,6 +40,7 @@ class DetailViewModel @Inject constructor(
             is DetailIntent.Retry -> handleLoad(currentWineId, currentPhotoPath, currentConfidence)
             is DetailIntent.AddToHistory -> handleAddToHistory()
             is DetailIntent.ToggleFavorite -> handleToggleFavorite()
+            is DetailIntent.ToggleCellar -> handleToggleCellar()
         }
     }
 
@@ -46,7 +53,17 @@ class DetailViewModel @Inject constructor(
             val result = getWineDetailsUseCase(wineId)
             result.onSuccess { wine ->
                 val isFavorite = isFavoriteUseCase(wineId).first()
-                updateState(DetailState.Success(wine, photoPath, confidence, isFavorite))
+                val cellarEntry = getCellarEntryUseCase(wineId).first()
+                updateState(
+                    DetailState.Success(
+                        wine,
+                        photoPath,
+                        confidence,
+                        isFavorite,
+                        isInCellar = cellarEntry != null,
+                        cellarQuantity = cellarEntry?.quantity ?: 0
+                    )
+                )
             }.onFailure { error ->
                 Log.e("DetailViewModel", "Load detail failed", error)
                 updateState(DetailState.Error(error.message ?: "Не удалось загрузить данные о вине"))
@@ -65,6 +82,31 @@ class DetailViewModel @Inject constructor(
                     .onFailure { error ->
                         Log.e("DetailViewModel", "Toggle favorite failed", error)
                     }
+            }
+        }
+    }
+
+    private fun handleToggleCellar() {
+        val state = _state.value
+        if (state is DetailState.Success) {
+            viewModelScope.launch {
+                if (state.isInCellar) {
+                    removeFromCellarUseCase(state.wine.id)
+                        .onSuccess {
+                            updateState(state.copy(isInCellar = false, cellarQuantity = 0))
+                        }
+                        .onFailure { error ->
+                            Log.e("DetailViewModel", "Remove from cellar failed", error)
+                        }
+                } else {
+                    addToCellarUseCase(state.wine.id, 1)
+                        .onSuccess {
+                            updateState(state.copy(isInCellar = true, cellarQuantity = 1))
+                        }
+                        .onFailure { error ->
+                            Log.e("DetailViewModel", "Add to cellar failed", error)
+                        }
+                }
             }
         }
     }

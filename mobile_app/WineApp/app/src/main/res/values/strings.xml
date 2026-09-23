@@ -13,6 +13,10 @@
     <string name="scanner_flash_on">Вспышка вкл</string>
     <string name="scanner_flash_off">Вспышка выкл</string>
     <string name="scanner_processing">Обработка…</string>
+    <string name="scanner_stage_upload">Отправляем фото…</string>
+    <string name="scanner_stage_recognize">Распознаём этикетку…</string>
+    <string name="scanner_stage_match">Подбираем вино…</string>
+    <string name="scanner_processing_cd">Идёт распознавание вина</string>
 
     <string name="scan_result_title">Результат сканирования</string>
     <string name="scan_result_confidence">Точность определения</string>
@@ -108,6 +112,47 @@
     <string name="favorites_delete_confirm">Удалить «%s» из избранного?</string>
     <string name="favorites_remove">Удалить из избранного</string>
     <string name="detail_favorite">В избранное</string>
+
+    <string name="cellar_title">Мой погреб</string>
+    <string name="cellar_empty">Погреб пока пуст</string>
+    <string name="cellar_empty_hint">Откройте вино и нажмите «В погреб», чтобы вести инвентарь</string>
+    <string name="cellar_total">Вин: %1$d · Бутылок: %2$d</string>
+    <string name="cellar_filter_all">Все</string>
+    <string name="cellar_status_home">Дома</string>
+    <string name="cellar_status_wish">Хочу</string>
+    <string name="cellar_status_consumed">Выпито</string>
+    <string name="cellar_bottles">× %d</string>
+    <string name="cellar_increase">Увеличить количество</string>
+    <string name="cellar_decrease">Уменьшить количество</string>
+    <string name="cellar_delete">Удалить</string>
+    <string name="cellar_delete_title">Убрать из погреба?</string>
+    <string name="cellar_delete_confirm">Убрать «%s» из погреба?</string>
+    <string name="detail_cellar">В погреб</string>
+    <string name="detail_cellar_added">В погребе: %d</string>
+
+    <string name="widget_recent_title">Недавние вина</string>
+    <string name="widget_recent_empty">Сканирований пока нет</string>
+    <string name="widget_scan">Сканировать</string>
+    <string name="widget_open">Открыть</string>
+
+    <string name="winepath_title">Винный путь</string>
+    <string name="winepath_empty">Сканируйте этикетки — открывайте винодельческие регионы России</string>
+    <string name="winepath_level">Уровень %d</string>
+    <string name="winepath_points">%d очков</string>
+    <string name="winepath_stats">Территорий: %1$d из %2$d · Сканов: %3$d</string>
+    <string name="winepath_territories">Территории</string>
+    <string name="winepath_badges">Бейджи</string>
+    <string name="winepath_soon">Скоро</string>
+    <string name="winepath_progress">%1$d из %2$d вин</string>
+    <string name="winepath_celebration_title">Новая награда!</string>
+    <string name="winepath_celebration_points">+%d очков</string>
+    <string name="winepath_new_badge">Новая награда: %s</string>
+    <string name="winepath_your_wines">Ваши вина оттуда:</string>
+    <string name="winepath_locked_hint">Территория скоро откроется — следите за обновлениями каталога</string>
+    <string name="winepath_back">Назад</string>
+    <string name="winepath_zoom">К винным регионам</string>
+    <string name="winepath_sheet_hint">Потяните вверх — бейджи и территории</string>
+    <string name="winepath_scan">Сканировать вино</string>
 
     <string name="cancel">Отмена</string>
 

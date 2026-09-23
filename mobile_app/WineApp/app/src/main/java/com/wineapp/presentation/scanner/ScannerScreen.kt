@@ -68,7 +68,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.LifecycleOwner
 import com.wineapp.data.file.CameraHelper
 import com.wineapp.presentation.common.ui.ErrorMessage
-import com.wineapp.presentation.common.ui.LoadingOverlay
 
 @Composable
 fun ScannerScreen(
@@ -80,6 +79,7 @@ fun ScannerScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val state by viewModel.state.collectAsState()
+    val badgeMessage by viewModel.badgeMessage.collectAsState()
 
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -142,6 +142,8 @@ fun ScannerScreen(
         state = state,
         cameraHelper = viewModel.cameraHelper,
         lifecycleOwner = lifecycleOwner,
+        badgeMessage = badgeMessage,
+        onBadgeMessageShown = { viewModel.consumeBadgeMessage() },
         onToggleFlash = { viewModel.sendIntent(ScannerIntent.ToggleFlash) },
         onTakePicture = { path -> viewModel.sendIntent(ScannerIntent.CapturePhoto(path))},
         onRetry = { viewModel.sendIntent(ScannerIntent.RetryScan) },
@@ -169,8 +171,9 @@ fun ScannerScreenContent(
     onTakePicture: (String) -> Unit,
     onToggleFlash: () -> Unit,
     onRetry: () -> Unit,
+    badgeMessage: String? = null,
+    onBadgeMessageShown: () -> Unit = {},
 ) {
-    val context = LocalContext.current
     val flashMode = when (val s = state) {
         is ScannerState.Ready -> s.flashMode
         else -> androidx.camera.core.ImageCapture.FLASH_MODE_OFF
@@ -192,6 +195,13 @@ fun ScannerScreenContent(
     LaunchedEffect(notFoundMessage) {
         if (notFoundMessage != null) {
             snackbarHostState.showSnackbar(notFoundMessage, duration = SnackbarDuration.Short)
+        }
+    }
+
+    LaunchedEffect(badgeMessage) {
+        if (badgeMessage != null) {
+            snackbarHostState.showSnackbar(badgeMessage, duration = SnackbarDuration.Short)
+            onBadgeMessageShown()
         }
     }
 
@@ -256,7 +266,7 @@ fun ScannerScreenContent(
         }
 
         when (val current = state) {
-            is ScannerState.Processing -> LoadingOverlay(message = stringResource(com.wineapp.R.string.scanner_processing))
+            is ScannerState.Processing -> ScanProcessingOverlay(seed = current.seed, factIndex = current.factIndex)
             is ScannerState.Success -> { }
             is ScannerState.NotFound -> { }
             is ScannerState.Error -> ErrorMessage(message = current.message, onRetry = onRetry)

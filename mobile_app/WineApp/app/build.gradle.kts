@@ -115,6 +115,9 @@ dependencies {
     // EXIF orientation normalization (camera/gallery photos before Base64 upload)
     implementation("androidx.exifinterface:exifinterface:1.3.7")
 
+    // Home screen widget (recent wines + scanner shortcut)
+    implementation("androidx.glance:glance-appwidget:1.1.0")
+
     // Coroutines & Flow
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 

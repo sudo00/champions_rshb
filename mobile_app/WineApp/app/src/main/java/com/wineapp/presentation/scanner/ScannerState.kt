@@ -8,7 +8,13 @@ import com.wineapp.presentation.common.BaseIntent
 sealed interface ScannerState : BaseState {
     data class Ready(val flashMode: Int = 0) : ScannerState
     data class Capturing(val imagePath: String) : ScannerState
-    data class Processing(val imagePath: String) : ScannerState
+    data class Processing(
+        val imagePath: String,
+        /** Уникальный сид показа: каждый оверлей рисует другую сцену. Генерируется в ViewModel. */
+        val seed: Long = 0L,
+        /** Стартовый индекс факта о вине, гарантированно != факту прошлого показа. */
+        val factIndex: Int = 0
+    ) : ScannerState
     data class Success(val result: ScanResult, val imagePath: String) : ScannerState
     data class NotFound(
         val imagePath: String,

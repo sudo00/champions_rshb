@@ -12,4 +12,14 @@
     <color name="error">#CF6679</color>
     <color name="scanner_overlay">#80000000</color>
     <color name="rating_gold">#FFD700</color>
+
+    <!-- Виджет «Недавние вина» по макету: тёмная карточка, золото, бордо -->
+    <color name="widget_bg">#1D1316</color>
+    <color name="widget_title">#FFFFFF</color>
+    <color name="widget_dot">#D9A441</color>
+    <color name="widget_wine_name">#FFFFFF</color>
+    <color name="widget_wine_region">#9A8B8F</color>
+    <color name="widget_rating">#E5A83B</color>
+    <color name="widget_button_bg">#7A2231</color>
+    <color name="widget_button_text">#FFFFFF</color>
 </resources>

@@ -14,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.wineapp.presentation.agegate.AgeGateBottomSheet
+import com.wineapp.presentation.cellar.CellarScreen
 import com.wineapp.presentation.detail.DetailScreen
 import com.wineapp.presentation.favorites.FavoritesScreen
 import com.wineapp.presentation.notfound.NotFoundScreen
@@ -23,10 +24,10 @@ import com.wineapp.presentation.scanner.ScannerScreen
 import com.wineapp.presentation.scanresult.ScanResultScreen
 import com.wineapp.presentation.search.SearchScreen
 import com.wineapp.presentation.sommelier.SommelierScreen
-import kotlinx.serialization.json.Json
+import com.wineapp.presentation.winepath.WinePathScreen
 
 @Composable
-fun AppNavHost() {
+fun AppNavHost(startRoute: String? = null) {
     val navController = rememberNavController()
     val context = LocalContext.current
     val activity = context as? Activity
@@ -44,7 +45,7 @@ fun AppNavHost() {
         )
     }
 
-    NavHost(navController, startDestination = "search") {
+    NavHost(navController, startDestination = startRoute ?: "search") {
         composable("scanner") {
             ScannerScreen(
                 onNavigateToDetail = { wineId, photoPath, recognitionStatus ->
@@ -66,7 +67,9 @@ fun AppNavHost() {
                 onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") },
                 onNavigateToSommelier = { navController.navigate("sommelier") },
                 onNavigateToSavedScans = { navController.navigate("saved_scans") },
-                onNavigateToFavorites = { navController.navigate("favorites") }
+                onNavigateToFavorites = { navController.navigate("favorites") },
+                onNavigateToCellar = { navController.navigate("cellar") },
+                onNavigateToWinePath = { navController.navigate("wine_path") }
             )
         }
         composable(
@@ -200,6 +203,18 @@ fun AppNavHost() {
             FavoritesScreen(
                 onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") },
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable("cellar") {
+            CellarScreen(
+                onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") },
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable("wine_path") {
+            WinePathScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToScanner = { navController.navigate("scanner") }
             )
         }
         composable(

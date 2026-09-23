@@ -6,7 +6,7 @@ import com.wineapp.presentation.common.BaseIntent
 
 sealed interface DetailState : BaseState {
     data class Loading(val wineId: String) : DetailState
-    data class Success(val wine: Wine, val photoPath: String? = null, val confidence: Float = 1.0f, val isFavorite: Boolean = false) : DetailState
+    data class Success(val wine: Wine, val photoPath: String? = null, val confidence: Float = 1.0f, val isFavorite: Boolean = false, val isInCellar: Boolean = false, val cellarQuantity: Int = 0) : DetailState
     data class Error(val message: String) : DetailState
 }
 
@@ -15,4 +15,5 @@ sealed interface DetailIntent : BaseIntent {
     data object Retry : DetailIntent
     data object AddToHistory : DetailIntent
     data object ToggleFavorite : DetailIntent
+    data object ToggleCellar : DetailIntent
 }

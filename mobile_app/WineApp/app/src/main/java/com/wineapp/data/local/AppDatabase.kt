@@ -10,9 +10,12 @@ import com.wineapp.data.local.converter.Converters
         WineHistoryEntity::class,
         ScanHistoryEntity::class,
         ScanConversationEntity::class,
-        FavoriteEntity::class
+        FavoriteEntity::class,
+        CellarEntity::class,
+        UserBadgeEntity::class,
+        PointsEntry::class
     ],
-    version = 3,
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -20,4 +23,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun wineDao(): WineDao
     abstract fun scanHistoryDao(): ScanHistoryDao
     abstract fun favoriteDao(): FavoriteDao
+    abstract fun cellarDao(): CellarDao
+    abstract fun gameDao(): GameDao
 }

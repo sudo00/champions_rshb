@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.room.Room
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.wineapp.data.local.AppDatabase
+import com.wineapp.data.local.CellarDao
 import com.wineapp.data.local.FavoriteDao
+import com.wineapp.data.local.GameDao
 import com.wineapp.data.local.ScanHistoryDao
 import com.wineapp.data.local.WineDao
 import com.wineapp.data.remote.ApiService
@@ -12,10 +14,14 @@ import com.wineapp.data.remote.gigachat.GigaChatApiService
 import com.wineapp.data.remote.gigachat.GigaChatAuthService
 import com.wineapp.data.remote.gigachat.GigaChatSslConfig
 import com.wineapp.data.remote.gigachat.GigaChatTokenManager
+import com.wineapp.data.repository.CellarRepositoryImpl
+import com.wineapp.data.repository.BadgeRepositoryImpl
 import com.wineapp.data.repository.FavoriteRepositoryImpl
 import com.wineapp.data.repository.ScanHistoryRepositoryImpl
 import com.wineapp.data.repository.SommelierRepositoryImpl
 import com.wineapp.data.repository.WineRepositoryImpl
+import com.wineapp.domain.repository.CellarRepository
+import com.wineapp.domain.repository.BadgeRepository
 import com.wineapp.domain.repository.FavoriteRepository
 import com.wineapp.domain.repository.ScanHistoryRepository
 import com.wineapp.domain.repository.SommelierRepository
@@ -63,6 +69,18 @@ object DatabaseModule {
     @Singleton
     fun provideFavoriteDao(database: AppDatabase): FavoriteDao {
         return database.favoriteDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideCellarDao(database: AppDatabase): CellarDao {
+        return database.cellarDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideGameDao(database: AppDatabase): GameDao {
+        return database.gameDao()
     }
 }
 
@@ -205,6 +223,18 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideFavoriteRepository(impl: FavoriteRepositoryImpl): FavoriteRepository {
+        return impl
+    }
+
+    @Provides
+    @Singleton
+    fun provideCellarRepository(impl: CellarRepositoryImpl): CellarRepository {
+        return impl
+    }
+
+    @Provides
+    @Singleton
+    fun provideBadgeRepository(impl: BadgeRepositoryImpl): BadgeRepository {
         return impl
     }
 }

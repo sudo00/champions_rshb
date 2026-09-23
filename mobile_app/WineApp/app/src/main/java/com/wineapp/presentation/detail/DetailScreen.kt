@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.WineBar
 import androidx.compose.material3.Button
@@ -168,6 +169,8 @@ fun DetailContent(
 ) {
     val state by viewModel.state.collectAsState()
     val isFavorite = (state as? DetailState.Success)?.isFavorite ?: false
+    val isInCellar = (state as? DetailState.Success)?.isInCellar ?: false
+    val cellarQuantity = (state as? DetailState.Success)?.cellarQuantity ?: 0
     LazyColumn(
         modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
@@ -227,19 +230,37 @@ fun DetailContent(
                         }
                     }
                 }
-                // Favorite button
-                IconButton(
-                    onClick = { viewModel.sendIntent(DetailIntent.ToggleFavorite) },
+                // Favorite + cellar buttons
+                Column(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(8.dp)
+                        .padding(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(
-                        imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = stringResource(R.string.detail_favorite),
-                        tint = if (isFavorite) Color.Red else Color.White,
-                        modifier = Modifier.size(28.dp)
-                    )
+                    IconButton(
+                        onClick = { viewModel.sendIntent(DetailIntent.ToggleFavorite) }
+                    ) {
+                        Icon(
+                            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = stringResource(R.string.detail_favorite),
+                            tint = if (isFavorite) Color.Red else Color.White,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                    IconButton(
+                        onClick = { viewModel.sendIntent(DetailIntent.ToggleCellar) }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Inventory2,
+                            contentDescription = if (isInCellar) {
+                                stringResource(R.string.detail_cellar_added, cellarQuantity)
+                            } else {
+                                stringResource(R.string.detail_cellar)
+                            },
+                            tint = if (isInCellar) MaterialTheme.colorScheme.primary else Color.White,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
                 }
             }
         }

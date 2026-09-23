@@ -16,8 +16,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.CircularProgressIndicator
@@ -71,7 +73,9 @@ fun SearchScreen(
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToSommelier: () -> Unit = {},
     onNavigateToSavedScans: () -> Unit = {},
-    onNavigateToFavorites: () -> Unit = {}
+    onNavigateToFavorites: () -> Unit = {},
+    onNavigateToCellar: () -> Unit = {},
+    onNavigateToWinePath: () -> Unit = {}
 ) {
     val viewModel: SearchViewModel = hiltViewModel()
     val state by viewModel.state.collectAsState()
@@ -88,7 +92,9 @@ fun SearchScreen(
         onNavigateToDetail = onNavigateToDetail,
         onNavigateToSommelier = onNavigateToSommelier,
         onNavigateToSavedScans = onNavigateToSavedScans,
-        onNavigateToFavorites = onNavigateToFavorites
+        onNavigateToFavorites = onNavigateToFavorites,
+        onNavigateToCellar = onNavigateToCellar,
+        onNavigateToWinePath = onNavigateToWinePath
     )
 }
 
@@ -102,7 +108,9 @@ fun SearchScreenContent(
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateToSommelier: () -> Unit = {},
     onNavigateToSavedScans: () -> Unit = {},
-    onNavigateToFavorites: () -> Unit = {}
+    onNavigateToFavorites: () -> Unit = {},
+    onNavigateToCellar: () -> Unit = {},
+    onNavigateToWinePath: () -> Unit = {}
 ) {
     var query by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf(WineFilter.ALL) }
@@ -126,6 +134,12 @@ fun SearchScreenContent(
                 actions = {
                     IconButton(onClick = onNavigateToFavorites) {
                         Icon(Icons.Default.FavoriteBorder, contentDescription = stringResource(R.string.favorites_title))
+                    }
+                    IconButton(onClick = onNavigateToCellar) {
+                        Icon(Icons.Default.Inventory2, contentDescription = stringResource(R.string.cellar_title))
+                    }
+                    IconButton(onClick = onNavigateToWinePath) {
+                        Icon(Icons.Default.Explore, contentDescription = stringResource(R.string.winepath_title))
                     }
                     IconButton(onClick = onNavigateToSavedScans) {
                         Icon(Icons.Default.History, contentDescription = stringResource(R.string.saved_scans_title))
