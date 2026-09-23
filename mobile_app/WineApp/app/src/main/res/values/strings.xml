@@ -129,6 +129,10 @@
     <string name="cellar_delete">Удалить</string>
     <string name="cellar_delete_title">Убрать из погреба?</string>
     <string name="cellar_delete_confirm">Убрать «%s» из погреба?</string>
+    <string name="cellar_drink_today">Что выпить сегодня</string>
+    <string name="cellar_roulette_your_pick">Ваш выбор</string>
+    <string name="cellar_roulette_open">Открыть карточку</string>
+    <string name="cellar_roulette_reroll">Крутить ещё</string>
     <string name="detail_cellar">В погреб</string>
     <string name="detail_cellar_added">В погребе: %d</string>
 
