@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "recognizer": {
-    "bundle_dir": "weights/wine-recognizer-v5-score-release",
-    "archive": "weights/artifacts/wine-recognizer-v5-score.tar",
+    "bundle_dir": "weights/wine-recognizer-v5-sugar-release",
+    "archive": "weights/artifacts/wine-recognizer-v5-sugar.tar",
     "url": null,
     "bytes": 8085514240,
-    "sha256": "1932d89adcdeb2ff62758d5075913a92a6cda50f2a856587799dfab9252b91d5",
+    "sha256": "ecdd64c9e4fbfa626cad3d4c394c496f2d53e4152846f725ed0456ba9e045144",
     "catalog_sha256": "81a98401208c2e03bc74aab42b0d84ca6dc3d0f605c1817d696401a33c6e364f"
   },
   "catalog_images": {

@@ -12,6 +12,7 @@ sys.path.insert(0, str(ROOT))
 from worker.pipeline.wine_recognizer import WineRecognizer
 from backend.worker.catalog_refusal import CatalogRefusal, apply_refusal
 from backend.worker.candidate_scoring import CandidateScorer, apply_candidate_scores
+from backend.worker.sweetness import refine_sweetness
 
 _recognizer: WineRecognizer | None = None
 _refusal: CatalogRefusal | None = None
@@ -24,7 +25,7 @@ def initialize() -> WineRecognizer:
     with _initialization_lock:
         if _recognizer is None:
             recognizer = WineRecognizer(
-                os.environ.get("WINE_BUNDLE_DIR", str(ROOT/"weights/wine-recognizer-v5-score-release")),
+                os.environ.get("WINE_BUNDLE_DIR", str(ROOT/"weights/wine-recognizer-v5-sugar-release")),
                 ocr_python=os.environ.get("WINE_OCR_PYTHON", str(ROOT/".venv-ocr-gpu/bin/python")),
                 device=os.environ.get("WINE_DEVICE", "cuda:0"),
                 ocr_device=os.environ.get("WINE_OCR_DEVICE", "gpu:0"),
@@ -50,29 +51,43 @@ def shutdown() -> None:
             _scorer = None
 
 
-def run(image: bytes, includeAlternatives: bool = True, *, applyCatalogRefusal: bool = True) -> dict:
+def run(image: bytes, includeAlternatives: bool = True, *, applyCatalogRefusal: bool = True,
+        useReviewedSweetness: bool = True) -> dict:
     if not isinstance(image, bytes) or not image:
         raise ValueError("image must contain encoded image bytes")
     if not isinstance(includeAlternatives, bool):
         raise ValueError("includeAlternatives must be bool")
     if not isinstance(applyCatalogRefusal, bool):
         raise ValueError("applyCatalogRefusal must be bool")
+    if not isinstance(useReviewedSweetness, bool):
+        raise ValueError("useReviewedSweetness must be bool")
     # Retrieval always has the same candidate pool. The flag only limits output.
     recognizer = initialize()
     result = recognizer.predict(image, top_k=10)
+    # Presence decisions keep the validated legacy feature distribution.
+    decision = (_refusal.evaluate(result, recognizer.lookup)
+                if _refusal is not None and (_scorer is not None or applyCatalogRefusal) else None)
+    if useReviewedSweetness and not (decision and decision["reject"]):
+        started = time.perf_counter()
+        result = refine_sweetness(result, recognizer.lookup)
+        elapsed = time.perf_counter() - started
+        result["timings_seconds"] = {**result["timings_seconds"], "sweetness_ranking": elapsed,
+                                     "total": result["timings_seconds"].get("total", 0.) + elapsed}
+    else:
+        result = {**result, "sweetness_ranking": {"applied": False,
+                  "reason": "disabled_by_caller" if not useReviewedSweetness else "catalog_refusal"}}
     if _scorer is not None:
         started = time.perf_counter()
         # Score the full shortlist before refusal/truncation, including eval mode.
         # Low matchScore never changes ranking or causes an additional refusal.
-        rejects = (_refusal.evaluate(result, recognizer.lookup)["reject"]
-                   if _refusal is not None and result["status"] != "no_target" else False)
+        rejects = bool(decision and decision["reject"])
         result = apply_candidate_scores(result, _scorer, recognizer.lookup, refusal_rejects=rejects)
         elapsed = time.perf_counter() - started
         result["timings_seconds"] = {**result["timings_seconds"], "candidate_scoring": elapsed,
                                      "total": result["timings_seconds"].get("total", 0.) + elapsed}
     if _refusal is not None and applyCatalogRefusal:
         started = time.perf_counter()
-        result = apply_refusal(result, _refusal, recognizer.lookup)
+        result = apply_refusal(result, _refusal, recognizer.lookup, decision=decision)
         elapsed = time.perf_counter() - started
         result["timings_seconds"] = {**result["timings_seconds"], "catalog_refusal": elapsed,
                                      "total": result["timings_seconds"].get("total", 0.) + elapsed}
@@ -86,6 +101,7 @@ def run(image: bytes, includeAlternatives: bool = True, *, applyCatalogRefusal: 
         "recognitionStatus": result["status"],
         "catalogRefusal": result.get("catalog_refusal", {}),
         "candidateScoring": result.get("candidate_scoring", {}),
+        "sweetnessRanking": result.get("sweetness_ranking", {}),
         "scoreIsProbability": False,
         "observations": result["observations"],
         "observedFields": result["observed_fields"],

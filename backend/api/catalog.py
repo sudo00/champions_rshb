@@ -107,8 +107,15 @@ def wine_from_file(wine_id: str) -> WineDto | None:
         alcoholPercentage=None, imageUrl=f'/v1/wines/{raw["slug"]}/image' if image_path(wine_id) else None,
         description=raw.get("description"), foodPairing=[],
         winery=WineryDto(name=raw["winery"]) if raw.get("winery") else None,
-        category=raw.get("category"), grapes=raw.get("grapes"), colorShade=raw.get("color_shade"),
+        category=raw.get("category"), sweetness=reviewed_sweetness(raw), grapes=raw.get("grapes"), colorShade=raw.get("color_shade"),
     )
+
+
+def reviewed_sweetness(raw: dict) -> str | None:
+    review = raw.get("metadata_review") or {}
+    if review.get("status") in ("confirmed", "applied"):
+        return review.get("confirmed_attributes", {}).get("sweetness")
+    return None
 
 
 def wine_from_row(row: tuple) -> WineDto:
@@ -116,6 +123,10 @@ def wine_from_row(row: tuple) -> WineDto:
     payload.setdefault("id", row[0])
     payload.setdefault("slug", payload.get("id") or row[0])
     payload.setdefault("name", row[1])
+    # DB rows may predate the reviewed catalogue: don't lose verified sugar.
+    canonical = catalog_data()[0].get(payload["slug"], {})
+    if (sugar := reviewed_sweetness(canonical)) is not None:
+        payload["sweetness"] = sugar
     wine = WineDto.model_validate(payload)
     if wine.imageUrl:
         return wine

@@ -8,7 +8,7 @@ Android-приложение, FastAPI и GPU-worker для поиска вина
 
 ## Начало работы
 
-1. Получить `weights/wine-recognizer-v5-score-release/` с весами, индексом и осторожным фильтром отказа. Тестовый `/v1/eval/predict` обходит фильтр и сохраняет поисковый Top-1.
+1. Получить `weights/wine-recognizer-v5-sugar-release/` с весами, индексом и осторожным фильтром отказа. Тестовый `/v1/eval/predict` обходит фильтр и сохраняет поисковый Top-1.
 2. Распаковать `catalog-images-v1.tar` в `data/deployment/catalog-images/`.
 3. На Linux с NVIDIA GPU и Container Toolkit выполнить `make env`, затем `make dev`.
 4. Дождаться `http://localhost:8000/ready`; Swagger — `http://localhost:8000/docs`.

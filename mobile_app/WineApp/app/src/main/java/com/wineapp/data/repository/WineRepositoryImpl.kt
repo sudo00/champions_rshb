@@ -170,7 +170,7 @@ class WineRepositoryImpl @javax.inject.Inject constructor(
             // Нормализация EXIF-ориентации: BitmapFactory игнорирует EXIF,
             // а compress срезает его — без этого на бэк уходило повёрнутое фото.
             // Угол берётся из EXIF каждого файла, фиксированного поворота нет.
-            val jpegBytes = ImageOrientationHelper.encodeNormalizedJpeg(imagePath, quality = 85)
+            val jpegBytes = ImageOrientationHelper.encodeNormalizedJpeg(imagePath, quality = 90)
                 ?: return ""
             android.util.Base64.encodeToString(jpegBytes, android.util.Base64.NO_WRAP)
         } catch (e: Exception) {

@@ -18,9 +18,9 @@ def file_hash(path: Path) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bundle", type=Path,
-                        default=ROOT / "weights/wine-recognizer-v5-score-release")
+                        default=ROOT / "weights/wine-recognizer-v5-sugar-release")
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "weights/artifacts/wine-recognizer-v5-score.tar")
+                        default=ROOT / "weights/artifacts/wine-recognizer-v5-sugar.tar")
     args = parser.parse_args()
     manifest = json.loads((args.bundle / "manifest.json").read_text())
     for name, expected in manifest["files_sha256"].items():

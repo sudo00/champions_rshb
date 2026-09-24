@@ -11,17 +11,19 @@ sys.path.insert(0, str(ROOT))
 from worker.pipeline.wine_recognizer import WineRecognizer
 from backend.worker.catalog_refusal import CatalogRefusal, apply_refusal
 from backend.worker.candidate_scoring import CandidateScorer, apply_candidate_scores
+from backend.worker.sweetness import refine_sweetness
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("photos", nargs="+", type=Path)
-    parser.add_argument("--bundle", type=Path, default=ROOT/"weights/wine-recognizer-v5-score-release")
+    parser.add_argument("--bundle", type=Path, default=ROOT/"weights/wine-recognizer-v5-sugar-release")
     parser.add_argument("--ocr-python", type=Path, default=ROOT/".venv-ocr-gpu/bin/python")
     parser.add_argument("--ocr-device", default="gpu:0", help="gpu:N or cpu; match the selected OCR environment")
     parser.add_argument("--memory-policy", choices=["release", "retain"], default="release")
     parser.add_argument("--top-k", type=int, default=10)
     parser.add_argument("--output", type=Path, help="JSON file; otherwise write JSON to stdout")
+    parser.add_argument("--legacy-ranking", action="store_true")
     args = parser.parse_args()
     with WineRecognizer(args.bundle, ocr_python=args.ocr_python, ocr_device=args.ocr_device,
                         memory_policy=args.memory_policy) as recognizer:
@@ -30,9 +32,12 @@ def main() -> None:
         results = []
         for path in args.photos:
             result = recognizer.predict(path.read_bytes(), top_k=max(5,args.top_k))
-            rejects = policy.evaluate(result, recognizer.lookup)["reject"] if policy is not None and result["status"] != "no_target" else False
+            decision = policy.evaluate(result, recognizer.lookup) if policy is not None else None
+            rejects = bool(decision and decision["reject"])
+            if not args.legacy_ranking and not rejects:
+                result = refine_sweetness(result, recognizer.lookup)
             result = apply_candidate_scores(result, scorer, recognizer.lookup, refusal_rejects=rejects)
-            result = apply_refusal(result, policy, recognizer.lookup)
+            result = apply_refusal(result, policy, recognizer.lookup, decision=decision)
             result = {**result, "candidates": result["candidates"][:args.top_k]}
             results.append(result)
     encoded = json.dumps(results[0] if len(results) == 1 else results, ensure_ascii=False, indent=2)

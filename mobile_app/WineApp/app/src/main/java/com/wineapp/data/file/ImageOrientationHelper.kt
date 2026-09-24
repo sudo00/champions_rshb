@@ -23,7 +23,7 @@ import java.io.FileOutputStream
 object ImageOrientationHelper {
 
     private const val TAG = "ImageOrientationHelper"
-    private const val MAX_DIMENSION = 2048
+    private const val MAX_DIMENSION = 2560
 
     /**
      * Декодирует файл в Bitmap с уже применённой EXIF-ориентацией.
@@ -39,13 +39,23 @@ object ImageOrientationHelper {
             BitmapFactory.decodeFile(imagePath, bounds)
             if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
 
-            // 2. Подбираем inSampleSize чтобы длинная сторона <= maxDimension.
+            // 2. Декодируем без лишней потери деталей, затем точно уменьшаем.
             val longest = maxOf(bounds.outWidth, bounds.outHeight)
             var sampleSize = 1
-            while (longest / sampleSize > maxDimension) sampleSize *= 2
+            while (longest / (sampleSize * 2) >= maxDimension) sampleSize *= 2
 
             val opts = BitmapFactory.Options().apply { inSampleSize = sampleSize }
-            val raw = BitmapFactory.decodeFile(imagePath, opts) ?: return null
+            val decoded = BitmapFactory.decodeFile(imagePath, opts) ?: return null
+            val decodedLongest = maxOf(decoded.width, decoded.height)
+            val raw = if (decodedLongest > maxDimension) {
+                val scale = maxDimension.toDouble() / decodedLongest
+                Bitmap.createScaledBitmap(
+                    decoded,
+                    kotlin.math.round(decoded.width * scale).toInt().coerceAtLeast(1),
+                    kotlin.math.round(decoded.height * scale).toInt().coerceAtLeast(1),
+                    true
+                ).also { if (it !== decoded) decoded.recycle() }
+            } else decoded
 
             // 3. Читаем EXIF именно исходного файла (до даунскейла это не важно —
             // ориентация не зависит от размера).
@@ -75,7 +85,7 @@ object ImageOrientationHelper {
      * Кодирует файл в JPEG-байты с нормализованной ориентацией.
      * Используется перед Base64 для отправки на бэк.
      */
-    fun encodeNormalizedJpeg(imagePath: String, quality: Int = 85): ByteArray? {
+    fun encodeNormalizedJpeg(imagePath: String, quality: Int = 90): ByteArray? {
         val bitmap = decodeNormalizedBitmap(imagePath) ?: return null
         return try {
             val out = ByteArrayOutputStream()

@@ -123,7 +123,8 @@ def process_scan(payload: dict) -> None:
     update_scan(scan_id, "processing")
     image = load_image(payload.get("imageKey"))
     result = run(image, includeAlternatives=include_alternatives,
-                 applyCatalogRefusal=payload.get("applyCatalogRefusal", True))
+                 applyCatalogRefusal=payload.get("applyCatalogRefusal", True),
+                 useReviewedSweetness=payload.get("useReviewedSweetness", payload.get("applyCatalogRefusal", True)))
     update_scan(scan_id, "done", result=result)
 
 

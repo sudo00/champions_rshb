@@ -145,7 +145,7 @@ def test_eval_exact_multipart_contract():
         response=client.post('/v1/eval/predict',files={'image':('example.webp',image_bytes(),'image/webp')})
     assert response.status_code==200 and response.json()=={'slug':SLUG}
     assert submit.call_args.args==(image_bytes(),False)
-    assert submit.call_args.kwargs=={'apply_catalog_refusal':False}
+    assert submit.call_args.kwargs=={'apply_catalog_refusal':False,'use_reviewed_sweetness':True}
 
 
 def test_eval_refusal_bypass_is_forwarded_to_queue():
@@ -154,6 +154,7 @@ def test_eval_refusal_bypass_is_forwarded_to_queue():
         from api.main import submit_scan
         submit_scan(image_bytes(),False,apply_catalog_refusal=False)
     assert publish.call_args.args[0]['applyCatalogRefusal'] is False
+    assert publish.call_args.args[0]['useReviewedSweetness'] is True
 
 
 def test_eval_cold_worker_fails_before_enqueue():
@@ -174,3 +175,23 @@ def test_openapi_documents_both_scan_contracts():
     spec=client.get('/openapi.json').json()
     assert 'multipart/form-data' in spec['paths']['/v1/eval/predict']['post']['requestBody']['content']
     assert '/v1/wines/scan/{scan_id}' in spec['paths']
+
+
+def test_reviewed_sweetness_is_projected_into_catalogue_and_old_database_rows():
+    from api.catalog import wine_from_file, wine_from_row
+    base = 'zhemchuzhnaya-9-pino-nuar-muskat-rozovyj'
+    for suffix, sugar in [('', 'Сухое'), ('-1', 'Полусухое'), ('-2', 'Полусладкое')]:
+        slug = base + suffix
+        assert wine_from_file(slug).sweetness == sugar
+        old_payload = {'id': slug, 'name': 'Old name', 'imageUrl': '/old.jpg'}
+        card = wine_from_row((slug, 'Old name', old_payload, None))
+        assert card.sweetness == sugar
+        assert card.imageUrl == '/old.jpg'
+        assert 'sweetness' not in old_payload
+
+
+def test_sweetness_diagnostic_is_preserved_in_scan_response():
+    raw = result()
+    raw['sweetnessRanking'] = {'applied': True, 'reason': 'reviewed_sugar_matches_label'}
+    response = to_status_response(ScanJob('id', 'done', True, 'key', raw))
+    assert response.sweetnessRanking == raw['sweetnessRanking']

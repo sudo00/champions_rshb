@@ -110,7 +110,8 @@ def validate_image(data: bytes) -> None:
         image.verify()
 
 
-def submit_scan(image: bytes, include_alternatives: bool, *, apply_catalog_refusal: bool = True) -> ScanAcceptedResponse:
+def submit_scan(image: bytes, include_alternatives: bool, *, apply_catalog_refusal: bool = True,
+                use_reviewed_sweetness: bool = True) -> ScanAcceptedResponse:
     scan_id = str(uuid.uuid4())
     try:
         image_key = upload_scan_image(scan_id, image)
@@ -120,7 +121,7 @@ def submit_scan(image: bytes, include_alternatives: bool, *, apply_catalog_refus
     job = create_pending(include_alternatives, image_key=image_key, scan_id=scan_id)
     try:
         publish_scan({"scanId":job.scan_id, "imageKey":job.image_key, "includeAlternatives":include_alternatives,
-                      "applyCatalogRefusal":apply_catalog_refusal})
+                      "applyCatalogRefusal":apply_catalog_refusal, "useReviewedSweetness":use_reviewed_sweetness})
     except Exception as exc:
         mark_failed(job.scan_id, "Не удалось поставить задачу в очередь")
         raise HTTPException(503, "Queue unavailable") from exc
@@ -137,9 +138,9 @@ def eval_predict(image: UploadFile = File(...)) -> dict[str, str]:
         validate_image(data)
     except Exception as exc:
         raise HTTPException(422, "Invalid image") from exc
-    # Evaluation keeps retrieval Top-1 until the organizers clarify unknown wines.
-    # This is independent of includeAlternatives, which only controls list size.
-    accepted = submit_scan(data, False, apply_catalog_refusal=False)
+    # Evaluation uses reviewed sugar to resolve wine variants but never rejects
+    # retrieval candidates. Unknown-wine refusal remains a separate mobile policy.
+    accepted = submit_scan(data, False, apply_catalog_refusal=False, use_reviewed_sweetness=True)
     while time.monotonic() < deadline:
         job = get_job(accepted.scanId)
         if job and job.status == "done":

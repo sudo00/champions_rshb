@@ -620,6 +620,11 @@
             "title": "Candidatescoring",
             "description": "Абсолютные matchScore 0–1 для исходного Top-5; не вероятности и не дополнительный фильтр отказа"
           },
+          "sweetnessRanking": {
+            "type": "object",
+            "title": "Sweetnessranking",
+            "description": "Уточнение близких вариантов одной линейки по проверенному сахару и OCR"
+          },
           "recommendations": {
             "items": {
               "type": "object"
@@ -1085,6 +1090,18 @@
               }
             ],
             "title": "Category"
+          },
+          "sweetness": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sweetness",
+            "description": "Категория сахара из проверенных метаданных; не содержание в г/л"
           },
           "grapes": {
             "anyOf": [

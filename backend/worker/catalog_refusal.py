@@ -80,11 +80,11 @@ class CatalogRefusal:
             return {**decision, "reason": "invalid_evidence_keep_candidates"}
 
 
-def apply_refusal(result: dict, policy: CatalogRefusal | None, cards: dict) -> dict:
+def apply_refusal(result: dict, policy: CatalogRefusal | None, cards: dict, *, decision: dict | None = None) -> dict:
     """Apply before includeAlternatives truncation; preserve ranking on fallback."""
     if policy is None or result.get("status") == "no_target":
         return result
-    decision = policy.evaluate(result, cards)
+    decision = policy.evaluate(result, cards) if decision is None else decision
     updated = {**result, "catalog_refusal": decision}
     warnings = [w for w in result.get("warnings", []) if w != "unknown_rejection_not_calibrated"]
     updated["warnings"] = warnings + ["catalog_refusal_development_validated"]

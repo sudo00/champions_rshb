@@ -31,6 +31,7 @@ class WineDto(BaseModel):
     rating: float | None = Field(default=None, description="Рейтинг, если есть в источнике")
     reviewsCount: int | None = None
     category: str | None = None
+    sweetness: str | None = Field(default=None, description="Категория сахара из проверенных метаданных; не содержание в г/л")
     grapes: str | None = None
     colorShade: str | None = None
     price: float | None = Field(default=None, description="Цена")
@@ -73,6 +74,7 @@ class ScanStatusResponse(BaseModel):
     recognitionStatus: str | None = None
     catalogRefusal: dict = Field(default_factory=dict, description="Диагностика осторожного отказа; score не является вероятностью")
     candidateScoring: dict = Field(default_factory=dict, description="Абсолютные matchScore 0–1 для исходного Top-5; не вероятности и не дополнительный фильтр отказа")
+    sweetnessRanking: dict = Field(default_factory=dict, description="Уточнение близких вариантов одной линейки по проверенному сахару и OCR")
     recommendations: list[dict] = Field(default_factory=list, description="До пяти аналогов при not_in_catalog; отдельны от совпадений, с wine, textSimilarity и причинами подбора")
     recommendationContext: dict = Field(default_factory=dict, description="Прочитанные признаки, их источники и статус подбора аналогов")
     message: str | None = None

@@ -50,7 +50,7 @@ ML-ядром; реализация поиска находится в `worker/p
 сервиса — существующий Compose, не экспериментальные скрипты.
 CPU-скоринг и осторожный отказ находятся рядом с адаптером в `backend/worker/`.
 
-Перенос был зафиксирован bundle `v5-worker-layout`; текущий `v5-score`
+Перенос был зафиксирован bundle `v5-worker-layout`; текущий `v5-sugar`
 содержит осторожный отказ, его обход в тестовом API и отдельный `matchScore`. Ранжирование и версия ответа
 `wine-prototype-v5` сохранены, но пути и SHA исходников изменились. Прежний
 bundle `v5-producer` требует прежнего кода и не подходит новому образу.
@@ -178,7 +178,7 @@ score у верно распознанного Denisov. При отказе ди
 
 ## Что передать вместе с Git-репозиторием
 
-1. Папку `weights/wine-recognizer-v5-score-release/` — примерно 8,09 GB. Внутри веса SAM 3 и SigLIP2, модели OCR, `features.npy`, `views.json`, `catalog.jsonl`, `manifest.json` и конфигурации моделей.
+1. Папку `weights/wine-recognizer-v5-sugar-release/` — примерно 8,09 GB. Внутри веса SAM 3 и SigLIP2, модели OCR, `features.npy`, `views.json`, `catalog.jsonl`, `manifest.json` и конфигурации моделей.
 2. `data/deployment/catalog-images-v1.tar` и его `.manifest.json` — 2 103 изображения, около 152 MB. Распаковать в `data/deployment/catalog-images/`; внутри должна появиться папка `images/`.
 3. При необходимости повторения оценки — отдельно `data/eval/` с исходным скриптом и примерами. Эти данные не входят в Git.
 
@@ -199,7 +199,7 @@ score у верно распознанного Denisov. При отказе ди
 
 Ресурсы теперь разделены:
 
-- `weights/wine-recognizer-v5-score-release/`: актуальный автономный bundle;
+- `weights/wine-recognizer-v5-sugar-release/`: актуальный автономный bundle;
 - `weights/research/`, `weights/source/`, `weights/cache/`: модели экспериментов, исходные веса и кэши;
 - `weights/archive/`: прежние версии, не нужны для запуска текущего сервиса;
 - `data/deployment/catalog-images/`: изображения каталога; исходные фото и отчёты тоже остаются в `data/`.
@@ -215,7 +215,7 @@ Bundle содержит также индекс и снимок каталога
 При обновлении пересоздать API и worker вместе: старый контейнер может содержать
 старый каталог. Активация фильтра требует новой версии API и worker; тестовый endpoint обходит фильтр.
 
-Для переноса подготовлен архив `weights/artifacts/wine-recognizer-v5-score.tar`
+Для переноса подготовлен архив `weights/artifacts/wine-recognizer-v5-sugar.tar`
 и файл `.tar.sha256`. Он содержит только ресурсы под `weights/`; код берётся из
 этого Git checkout. Сборка архива: `python3 scripts/package_recognizer.py`;
 существующий архив команда не перезаписывает. Размеры, SHA-256 и пути ресурсов записаны в [../build_env/artifacts.json](../build_env/artifacts.json).
@@ -227,9 +227,9 @@ Bundle содержит также индекс и снимок каталога
 
 ```bash
 # Из каталога, где лежат полученные архив и его .sha256:
-sha256sum -c wine-recognizer-v5-score.tar.sha256
+sha256sum -c wine-recognizer-v5-sugar.tar.sha256
 # Затем из корня репозитория:
-tar -xf /path/to/wine-recognizer-v5-score.tar
+tar -xf /path/to/wine-recognizer-v5-sugar.tar
 ```
 
 После копирования bundle и архива изображений:
@@ -351,3 +351,15 @@ Compose монтирует `weights/recommendations-v1` в `/recommendations`; A
 Мобильному разработчику: отобразить `recommendations[].wine` отдельным блоком
 с `reasons` и источниками критериев. `textSimilarity` — не уверенность узнавания;
 не смешивать с `candidates[].matchScore`. Полный контракт — в `API_RECOGNITION.md`.
+
+
+### Обновление сахара и телефонной отправки
+
+В карточках API добавлено nullable `sweetness` из подтверждённых метаданных.
+Worker различает близкие варианты одной линейки по уверенному OCR сахара;
+эта поправка включена и в `/v1/eval/predict`, при сохранении обхода отказа.
+Диагностика: `sweetnessRanking`; подробные условия — в `API_RECOGNITION.md`.
+Канонический каталог и векторный индекс не изменились. Нужен новый sugar bundle
+с контрольными суммами обновлённого worker. Модели скоринга не переобучались.
+Android отправляет JPEG 90 с длинной стороной не более 2560 px и применённым EXIF.
+Для телефонов нужно собрать и установить новую версию приложения.
