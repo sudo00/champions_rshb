@@ -36,7 +36,12 @@ fun AppNavHost(startRoute: String? = null) {
     var ageVerified by remember { mutableStateOf(AgeGatePrefs.isVerified(context)) }
 
     NavHost(navController, startDestination = startRoute ?: "search") {
-        composable("scanner") {
+        composable(
+            route = "scanner?pickGallery={pickGallery}",
+            arguments = listOf(
+                navArgument("pickGallery") { type = NavType.BoolType; defaultValue = false }
+            )
+        ) { backStackEntry ->
             ScannerScreen(
                 onNavigateToDetail = { wineId, photoPath, recognitionStatus ->
                     val encoded = photoPath?.let { Uri.encode(it) } ?: ""
@@ -48,12 +53,14 @@ fun AppNavHost(startRoute: String? = null) {
                     val status = recognitionStatus?.let { Uri.encode(it) } ?: ""
                     navController.navigate("scan_result/$confidence/$mainWineId/$altIds?photoPath=$encoded&recognitionStatus=$status")
                 },
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                startGalleryPicker = backStackEntry.arguments?.getBoolean("pickGallery") ?: false
             )
         }
         composable("search") {
             SearchScreen(
                 onNavigateToScanner = { navController.navigate("scanner") },
+                onNavigateToGallery = { navController.navigate("scanner?pickGallery=true") },
                 onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") },
                 onNavigateToSommelier = { navController.navigate("sommelier") },
                 onNavigateToSavedScans = { navController.navigate("saved_scans") },

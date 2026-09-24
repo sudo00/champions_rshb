@@ -3,7 +3,7 @@
     <string name="app_name">Винный сканер</string>
 
     <string name="age_gate_title">Подтверждение возраста</string>
-    <string name="age_gate_message">Вам должно быть не менее 18 лет для использования этого приложения</string>
+    <string name="age_gate_message">Нажимая кнопку «Начать», вы подтверждаете,\nчто Вам исполнилось 18 лет</string>
     <string name="age_gate_confirm">Мне есть 18+</string>
     <string name="age_gate_deny">Выйти</string>
 
@@ -12,6 +12,12 @@
     <string name="scanner_gallery">Галерея</string>
     <string name="scanner_flash_on">Вспышка вкл</string>
     <string name="scanner_flash_off">Вспышка выкл</string>
+    <string name="scanner_flash_auto_short">АВТО</string>
+    <string name="scanner_flash_on_short">ВКЛ</string>
+    <string name="scanner_flash_off_short">ВЫКЛ</string>
+    <string name="scanner_hint">Наведите камеру на этикетку</string>
+    <string name="scanner_onboarding_title">Выбирайте подходящее вино</string>
+    <string name="scanner_onboarding_subtitle">Быстро сравнивая несколько сканов здесь</string>
     <string name="scanner_processing">Обработка…</string>
     <string name="scanner_stage_upload">Отправляем фото…</string>
     <string name="scanner_stage_recognize">Распознаём этикетку…</string>
@@ -25,6 +31,12 @@
 
     <string name="search_title">Поиск вин</string>
     <string name="search_hint">Поиск по названию, региону или сорту</string>
+    <string name="home_title">Найти вино</string>
+    <string name="home_subtitle">Сфотографируйте этикетку или загрузите фото</string>
+    <string name="home_scan">Сфотографировать</string>
+    <string name="home_gallery">Загрузить фото</string>
+    <string name="home_all">Все вина</string>
+    <string name="home_filter">Фильтр</string>
     <string name="search_no_results">Вина не найдены</string>
     <string name="search_no_results_for">Вина не найдены по запросу «%s»</string>
     <string name="search_recent">Недавние запросы</string>

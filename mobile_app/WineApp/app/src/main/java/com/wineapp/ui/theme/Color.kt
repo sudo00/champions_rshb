@@ -13,6 +13,18 @@ val SurfaceDark = Color(0xFF1E1E1E)
 val SurfaceVariantDark = Color(0xFF2C2C2C)
 val RatingGold = Color(0xFFFFD700)
 
+// Фирменная палитра из фигмы (Brand/*). Используется экранами онбординга/гейта,
+// в Material-схему не входит — применяется точечно.
+val BrandCream50 = Color(0xFFFEFDF9)
+val BrandCream100 = Color(0xFFFEFAEC)
+val BrandCream300 = Color(0xFFF8EDC9)
+val BrandCream400 = Color(0xFFDFC795)
+val BrandCream500 = Color(0xFFD8B76A)
+val BrandBurgundy600 = Color(0xFF8E3C42)
+val BrandBurgundy700 = Color(0xFF713035)
+val BrandTextPrimary = Color(0xFF292925)
+val BrandTextSecondary = Color(0xFF69645F)
+
 private val DarkColorScheme = androidx.compose.material3.darkColorScheme(
     primary = Purple700,
     primaryContainer = Purple500,
