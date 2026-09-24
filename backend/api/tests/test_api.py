@@ -54,6 +54,7 @@ def test_scan_preserves_image_and_alternatives_flag():
     assert response.json()['scanId']=='id'
     assert upload.call_args.args[1]==image
     assert publish.call_args.args[0]['includeAlternatives'] is False
+    assert publish.call_args.args[0]['applyCatalogRefusal'] is True
 
 
 @pytest.mark.parametrize('data',['','garbage',base64.b64encode(b'not image').decode()])
@@ -89,10 +90,52 @@ def test_catalogue_mismatch_does_not_return_wrong_card():
         to_status_response(ScanJob('id','done',True,result=data))
 
 
+def test_audited_metadata_only_revision_keeps_old_scan_readable():
+    data=result();data['catalogSha256']='383f3e6bb73c8892dec0a58b39ca7f4b8ed026f4433a865b69cce65a6ab56576'
+    body=to_status_response(ScanJob('id','done',True,result=data))
+    assert body.wine.slug==data['slug'] and body.catalogSha256==data['catalogSha256']
+
+
 def test_no_target_is_unknown_without_fabricated_card():
     data=result();data.update(slug='unknown',candidates=[],recognitionStatus='no_target')
     body=to_status_response(ScanJob('id','done',True,result=data))
     assert body.slug=='unknown' and body.wine is None and not body.candidates
+
+
+def test_catalogue_refusal_preserves_evidence_without_proposing_wrong_card():
+    data=result();data.update(slug='unknown',candidates=[],recognitionStatus='not_in_catalog',
+                              catalogRefusal={'reject':True,'score_is_probability':False},
+                              message='Вино не найдено в каталоге.')
+    for flag in (True,False):
+        body=to_status_response(ScanJob('id','done',flag,result=data))
+        assert body.slug=='unknown' and body.wine is None and body.candidates==[] and body.alternatives==[]
+        assert body.recognitionStatus=='not_in_catalog' and body.catalogRefusal['reject']
+        assert body.observations==data['observations'] and body.confidence is None
+
+
+def test_match_scores_survive_projection_including_refusal_and_output_limit():
+    data=result()
+    for i,candidate in enumerate(data['candidates']):
+        candidate.update(matchScore=.09-i*.01,matchScoreIsProbability=False)
+    diagnostic={'status':'scored','scoreIsProbability':False,'candidates':[
+        {k:c[k] for k in ('slug','matchScore','rank')} for c in data['candidates']]}
+    data['candidateScoring']=diagnostic
+    for flag in (True,False):
+        body=to_status_response(ScanJob('id','done',flag,result=data))
+        assert body.candidates[0]['matchScore']==.09 and body.candidates[0]['score']==.7
+        assert body.candidateScoring==diagnostic and body.confidence is None
+    data.update(slug='unknown',candidates=[],recognitionStatus='not_in_catalog')
+    body=to_status_response(ScanJob('id','done',True,result=data))
+    assert body.wine is None and body.candidates==[] and body.candidateScoring==diagnostic
+
+
+def test_eval_returns_flat_unknown_when_no_target_was_detected():
+    from api.contracts import ScanAcceptedResponse
+    accepted=ScanAcceptedResponse(success=True,scanId='id',status='pending')
+    data=result();data.update(slug='unknown',candidates=[],recognitionStatus='no_target')
+    with patch('api.main.recognition_ready',return_value=True), patch('api.main.submit_scan',return_value=accepted), patch('api.main.get_job',return_value=ScanJob('id','done',False,result=data)):
+        response=client.post('/v1/eval/predict',files={'image':('example.webp',image_bytes(),'image/webp')})
+    assert response.status_code==200 and response.json()=={'slug':'unknown'}
 
 
 def test_eval_exact_multipart_contract():
@@ -102,6 +145,15 @@ def test_eval_exact_multipart_contract():
         response=client.post('/v1/eval/predict',files={'image':('example.webp',image_bytes(),'image/webp')})
     assert response.status_code==200 and response.json()=={'slug':SLUG}
     assert submit.call_args.args==(image_bytes(),False)
+    assert submit.call_args.kwargs=={'apply_catalog_refusal':False}
+
+
+def test_eval_refusal_bypass_is_forwarded_to_queue():
+    job=ScanJob('id','pending',False,'key')
+    with patch('api.main.upload_scan_image',return_value='key'), patch('api.main.create_pending',return_value=job), patch('api.main.publish_scan') as publish:
+        from api.main import submit_scan
+        submit_scan(image_bytes(),False,apply_catalog_refusal=False)
+    assert publish.call_args.args[0]['applyCatalogRefusal'] is False
 
 
 def test_eval_cold_worker_fails_before_enqueue():

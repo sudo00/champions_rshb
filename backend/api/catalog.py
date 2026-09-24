@@ -70,6 +70,22 @@ def catalog_data() -> tuple[dict[str, dict], str]:
     return cards, checksum
 
 
+def result_catalog_compatible(checksum: str | None) -> bool:
+    """Allow stored results from explicitly audited metadata-only revisions.
+
+    Readiness still requires the worker's exact current catalogue checksum.
+    Never infer compatibility from the number of cards or matching slug alone.
+    """
+    current = catalog_data()[1]
+    if checksum == current:
+        return True
+    path = catalog_path().with_name("manifest.json")
+    if not path.is_file():
+        return False
+    manifest = json.loads(path.read_text())
+    return manifest.get("catalog_sha256") == current and checksum in manifest.get("compatible_result_catalog_sha256", [])
+
+
 def image_path(slug: str) -> Path | None:
     raw = catalog_data()[0].get(slug)
     if raw is None or not raw.get("reference_path"):

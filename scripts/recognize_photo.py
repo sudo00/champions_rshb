@@ -7,14 +7,16 @@ from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT/"worker"))
-from pipeline.wine_recognizer import WineRecognizer
+sys.path.insert(0, str(ROOT))
+from worker.pipeline.wine_recognizer import WineRecognizer
+from backend.worker.catalog_refusal import CatalogRefusal, apply_refusal
+from backend.worker.candidate_scoring import CandidateScorer, apply_candidate_scores
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("photos", nargs="+", type=Path)
-    parser.add_argument("--bundle", type=Path, default=ROOT/"weights/wine-recognizer-v5-worker-layout-release")
+    parser.add_argument("--bundle", type=Path, default=ROOT/"weights/wine-recognizer-v5-score-release")
     parser.add_argument("--ocr-python", type=Path, default=ROOT/".venv-ocr-gpu/bin/python")
     parser.add_argument("--ocr-device", default="gpu:0", help="gpu:N or cpu; match the selected OCR environment")
     parser.add_argument("--memory-policy", choices=["release", "retain"], default="release")
@@ -23,7 +25,16 @@ def main() -> None:
     args = parser.parse_args()
     with WineRecognizer(args.bundle, ocr_python=args.ocr_python, ocr_device=args.ocr_device,
                         memory_policy=args.memory_policy) as recognizer:
-        results = [recognizer.predict(path.read_bytes(), top_k=args.top_k) for path in args.photos]
+        policy = CatalogRefusal.from_bundle(recognizer.bundle, recognizer.manifest)
+        scorer = CandidateScorer.from_bundle(recognizer.bundle, recognizer.manifest)
+        results = []
+        for path in args.photos:
+            result = recognizer.predict(path.read_bytes(), top_k=max(5,args.top_k))
+            rejects = policy.evaluate(result, recognizer.lookup)["reject"] if policy is not None and result["status"] != "no_target" else False
+            result = apply_candidate_scores(result, scorer, recognizer.lookup, refusal_rejects=rejects)
+            result = apply_refusal(result, policy, recognizer.lookup)
+            result = {**result, "candidates": result["candidates"][:args.top_k]}
+            results.append(result)
     encoded = json.dumps(results[0] if len(results) == 1 else results, ensure_ascii=False, indent=2)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)

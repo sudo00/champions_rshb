@@ -610,6 +610,29 @@
             ],
             "title": "Recognitionstatus"
           },
+          "catalogRefusal": {
+            "type": "object",
+            "title": "Catalogrefusal",
+            "description": "Диагностика осторожного отказа; score не является вероятностью"
+          },
+          "candidateScoring": {
+            "type": "object",
+            "title": "Candidatescoring",
+            "description": "Абсолютные matchScore 0–1 для исходного Top-5; не вероятности и не дополнительный фильтр отказа"
+          },
+          "recommendations": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Recommendations",
+            "description": "До пяти аналогов при not_in_catalog; отдельны от совпадений, с wine, textSimilarity и причинами подбора"
+          },
+          "recommendationContext": {
+            "type": "object",
+            "title": "Recommendationcontext",
+            "description": "Прочитанные признаки, их источники и статус подбора аналогов"
+          },
           "message": {
             "anyOf": [
               {

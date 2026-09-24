@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "note": "Supplement for recommendations only. Site snapshot, not inferred from query photographs. Does not override reviewed recognition catalogue.",
+  "items": {
+    "fanagoriya-velvet-season-muskat-ottonel-beloe-sladkoe-13": {
+      "food_pairing": [
+        "Десерты",
+        "Сыры"
+      ],
+      "serving_temperature": {
+        "min": 5.0,
+        "max": 7.0,
+        "unit": "C"
+      },
+      "description": "В аромате медово-цветочный, абрикос, тропические фрукты, роза. Вкус сладкий, с оттенками абрикосового джема и орехов.",
+      "source": {
+        "url": "https://vino-svoe.ru/wines/fanagoriya-velvet-season-muskat-ottonel-beloe-sladkoe-13",
+        "retrievedAt": "2026-09-24T09:28:27.919548+00:00",
+        "snapshotSha256": "abc9e42c6d55519744f68c1c7d0fe1c92d7f9f1e062432bf246110d2ffef590d"
+      }
+    },
+    "zhemchuzhnaya-9-pino-nuar-muskat-rozovyj-1": {
+      "food_pairing": [
+        "Блюда из птицы",
+        "Салаты",
+        "Сыры"
+      ],
+      "serving_temperature": {
+        "min": 10.0,
+        "max": 12.0,
+        "unit": "C"
+      },
+      "description": "Во вкусе и аромате: садовая земляника, цветочный мёд, малиновый джем. Нежное и округлое, как тёплый вечер на веранде.\n",
+      "source": {
+        "url": "https://vino-svoe.ru/wines/zhemchuzhnaya-9-pino-nuar-muskat-rozovyj-1",
+        "retrievedAt": "2026-09-24T09:28:27.922786+00:00",
+        "snapshotSha256": "6800a0f1fa1e923cef3f3c5e1e4ffbebae4a8d6e8e7631318a5a3cb5473629f9"
+      }
+    },
+    "zhemchuzhnaya-9-pino-nuar-muskat-rozovyj-2": {
+      "food_pairing": [
+        "Азиатская кухня",
+        "Десерты",
+        "Паштеты"
+      ],
+      "serving_temperature": {
+        "min": 10.0,
+        "max": 12.0,
+        "unit": "C"
+      },
+      "description": "Вкус и аромат: цветочный аромат с оттенком лепестков роз и земляники. Вкус нежный, чуть сладковатый, с лёгкой терпкостью, как ягода, которую только что сорвали.\n",
+      "source": {
+        "url": "https://vino-svoe.ru/wines/zhemchuzhnaya-9-pino-nuar-muskat-rozovyj-2",
+        "retrievedAt": "2026-09-24T09:28:27.924248+00:00",
+        "snapshotSha256": "3518d46452d7a5f44054680216c5b2d0057dc8896546f4ad6985cf6eba5689d9"
+      }
+    },
+    "zhemchuzhnaya-9-pino-nuar-muskat-rozovyj": {
+      "food_pairing": [
+        "Блюда из птицы",
+        "Сыры"
+      ],
+      "serving_temperature": {
+        "min": 10.0,
+        "max": 12.0,
+        "unit": "C"
+      },
+      "description": "Вкус и аромат: первая клубника, лепестки роз, лёгкий намёк на медовые травы. Воздушное, освежающее, с бархатной ягодной волной. \nСочетания: креветки, салаты с клубникой и козьим сыром, куриная грудка на гриле.",
+      "source": {
+        "url": "https://vino-svoe.ru/wines/zhemchuzhnaya-9-pino-nuar-muskat-rozovyj",
+        "retrievedAt": "2026-09-24T09:28:27.921503+00:00",
+        "snapshotSha256": "881a2ae73f1c83c5084d1f7f6f1228c6916cb901f4634d612de97eea99c998e7"
+      }
+    }
+  }
+}

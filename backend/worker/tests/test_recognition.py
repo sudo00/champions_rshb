@@ -43,13 +43,44 @@ class AdapterTests(unittest.TestCase):
             init.assert_not_called()
 
     def test_initialize_loads_once_and_shutdown_clears_instance(self):
-        with patch.object(recognition,'_recognizer',None), patch.object(recognition,'WineRecognizer') as cls:
+        with patch.object(recognition,'_recognizer',None), patch.object(recognition,'WineRecognizer') as cls, patch.object(recognition.CatalogRefusal,'from_bundle',return_value=None), patch.object(recognition.CandidateScorer,'from_bundle',return_value=None):
             first=recognition.initialize()
             self.assertIs(first,recognition.initialize())
             cls.assert_called_once()
             recognition.shutdown()
             first.close.assert_called_once()
             self.assertIsNone(recognition._recognizer)
+
+    def test_refusal_precedes_output_limit_and_preserves_ocr(self):
+        model=MagicMock(); model.predict.side_effect=lambda *a,**kw: prediction()
+        policy=MagicMock(); policy.evaluate.return_value={'reject':True,'reason':'below_threshold'}
+        with patch.object(recognition,'initialize',return_value=model), patch.object(recognition,'_refusal',policy):
+            for flag in (True,False):
+                result=recognition.run(b'image',flag)
+                self.assertEqual(result['slug'],'unknown')
+                self.assertEqual(result['recognitionStatus'],'not_in_catalog')
+                self.assertEqual(result['candidates'],[])
+                self.assertEqual(result['observations'],prediction()['observations'])
+                self.assertEqual(len(policy.evaluate.call_args.args[0]['candidates']),10)
+
+    def test_uncertain_refusal_keeps_original_order_and_scores(self):
+        model=MagicMock(); model.predict.return_value=prediction()
+        policy=MagicMock(); policy.evaluate.return_value={'reject':False,'reason':'keep_candidates'}
+        with patch.object(recognition,'initialize',return_value=model), patch.object(recognition,'_refusal',policy):
+            result=recognition.run(b'image',True)
+        self.assertEqual(result['slug'],'wine-0')
+        self.assertEqual([c['slug'] for c in result['candidates']],[f'wine-{i}' for i in range(5)])
+        self.assertEqual([c['score'] for c in result['candidates']],[c['score'] for c in prediction()['candidates'][:5]])
+
+    def test_evaluation_returns_top1_even_when_mobile_policy_would_reject(self):
+        model=MagicMock(); model.predict.return_value=prediction()
+        policy=MagicMock(); policy.evaluate.return_value={'reject':True,'reason':'below_threshold'}
+        with patch.object(recognition,'initialize',return_value=model), patch.object(recognition,'_refusal',policy):
+            result=recognition.run(b'image',False,applyCatalogRefusal=False)
+        self.assertEqual(result['slug'],'wine-0')
+        self.assertEqual(result['catalogRefusal']['reason'],'disabled_for_evaluation')
+        self.assertEqual(result['recognitionStatus'],'candidates_unverified')
+        policy.evaluate.assert_not_called()
 
 
 if __name__=='__main__': unittest.main()

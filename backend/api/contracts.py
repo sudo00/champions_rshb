@@ -71,6 +71,10 @@ class ScanStatusResponse(BaseModel):
     slug: str | None = None
     candidates: list[dict] = Field(default_factory=list, description="До пяти кандидатов; первый совпадает с wine")
     recognitionStatus: str | None = None
+    catalogRefusal: dict = Field(default_factory=dict, description="Диагностика осторожного отказа; score не является вероятностью")
+    candidateScoring: dict = Field(default_factory=dict, description="Абсолютные matchScore 0–1 для исходного Top-5; не вероятности и не дополнительный фильтр отказа")
+    recommendations: list[dict] = Field(default_factory=list, description="До пяти аналогов при not_in_catalog; отдельны от совпадений, с wine, textSimilarity и причинами подбора")
+    recommendationContext: dict = Field(default_factory=dict, description="Прочитанные признаки, их источники и статус подбора аналогов")
     message: str | None = None
     cylinder: dict = Field(default_factory=dict)
     scoreIsProbability: bool = False

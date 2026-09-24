@@ -4,9 +4,10 @@ from typing import Any
 
 import psycopg
 
-from api.catalog import get_wine, catalog_data
+from api.catalog import get_wine, catalog_data, result_catalog_compatible
 from api.config import DATABASE_URL
 from api.contracts import ScanStatusResponse, WineDto
+from api.recommendations import recommendation_index
 
 STATUS_PENDING = "pending"
 STATUS_PROCESSING = "processing"
@@ -87,9 +88,9 @@ def to_status_response(job: ScanJob) -> ScanStatusResponse:
     details = {}
     if job.status == STATUS_DONE:
         if job.result:
-            if job.result.get("catalogSha256") != catalog_data()[1]:
+            if not result_catalog_compatible(job.result.get("catalogSha256")):
                 raise RuntimeError("API and recognizer catalogues differ")
-            details = {k:v for k,v in job.result.items() if k in ScanStatusResponse.model_fields and k not in ("success", "scanId", "status", "error", "wine", "alternatives", "confidence")}
+            details = {k:v for k,v in job.result.items() if k in ScanStatusResponse.model_fields and k not in ("success", "scanId", "status", "error", "wine", "alternatives", "confidence", "recommendations", "recommendationContext")}
             candidates = []
             for item in job.result.get("candidates", [])[:5 if job.include_alternatives else 1]:
                 card = get_wine(item["slug"])
@@ -99,6 +100,15 @@ def to_status_response(job: ScanJob) -> ScanStatusResponse:
             details["candidates"] = candidates
             wine = get_wine(candidates[0]["slug"]) if candidates else None
             alternatives = [get_wine(c["slug"]) for c in candidates[1:]]
+            if job.result.get("recognitionStatus") == "not_in_catalog":
+                recommended = recommendation_index().recommend(job.result, limit=5 if job.include_alternatives else 1)
+                details["recommendationContext"] = {k: v for k, v in recommended.items() if k != "items"}
+                details["recommendations"] = []
+                for item in recommended["items"]:
+                    card = get_wine(item["slug"])
+                    if card is None:
+                        raise RuntimeError("Recommended slug missing from catalogue")
+                    details["recommendations"].append({**item, "wine": card.model_dump()})
         else:
             raise RuntimeError("Completed scan has no recognition result")
     return ScanStatusResponse(

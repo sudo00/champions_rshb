@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "recognizer": {
-    "bundle_dir": "weights/wine-recognizer-v5-worker-layout-release",
-    "archive": "weights/artifacts/wine-recognizer-v5-worker-layout.tar",
+    "bundle_dir": "weights/wine-recognizer-v5-score-release",
+    "archive": "weights/artifacts/wine-recognizer-v5-score.tar",
     "url": null,
-    "bytes": 8085504000,
-    "sha256": "89d749facc21d7fbe5aa2833daefbfb9f80d9c1da71b5faec76c9c6a4bc9cfcc",
-    "catalog_sha256": "383f3e6bb73c8892dec0a58b39ca7f4b8ed026f4433a865b69cce65a6ab56576"
+    "bytes": 8085514240,
+    "sha256": "1932d89adcdeb2ff62758d5075913a92a6cda50f2a856587799dfab9252b91d5",
+    "catalog_sha256": "81a98401208c2e03bc74aab42b0d84ca6dc3d0f605c1817d696401a33c6e364f"
   },
   "catalog_images": {
     "directory": "data/deployment/catalog-images",
@@ -15,5 +15,14 @@
     "bytes": 151992320,
     "sha256": "d064913a910a1db886dae75e0ac1930e80e53709f13150441aab74e436fe3ab8"
   },
-  "note": "Resource inventory only; no downloader is implemented. URLs must be supplied by the deployment owner."
+  "note": "Resource inventory only; no downloader is implemented. URLs must be supplied by the deployment owner.",
+  "recommendations": {
+    "directory": "weights/recommendations-v1",
+    "archive": "weights/artifacts/recommendations-v1.tar.gz",
+    "url": null,
+    "bytes": 3180248,
+    "sha256": "e6d965dad351a6d3aad7d8672d73e9ef9a7879d47275e2643f7d657406bc16c6",
+    "catalog_sha256": "81a98401208c2e03bc74aab42b0d84ca6dc3d0f605c1817d696401a33c6e364f",
+    "note": "Offline multilingual-e5-small text vectors. Runtime API uses CPU dot products; encoder weights not required."
+  }
 }

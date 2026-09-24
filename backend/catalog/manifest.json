@@ -1,5 +1,9 @@
 {
-  "catalog_sha256": "383f3e6bb73c8892dec0a58b39ca7f4b8ed026f4433a865b69cce65a6ab56576",
+  "catalog_sha256": "81a98401208c2e03bc74aab42b0d84ca6dc3d0f605c1817d696401a33c6e364f",
   "count": 2103,
-  "source": "Reviewed catalogue; exact bytes match recognition bundle v4. No synthetic prices, ratings or vintages."
+  "source": "Reviewed catalogue; exact bytes match wine-recognizer-v5-sweetness-release. Three Zhemchuzhnaya sweetness attributes confirmed from reference labels and by user. No synthetic prices, ratings or vintages.",
+  "compatible_result_catalog_sha256": [
+    "383f3e6bb73c8892dec0a58b39ca7f4b8ed026f4433a865b69cce65a6ab56576"
+  ],
+  "result_compatibility_note": "Audited 2026-09-24: only metadata_review and empty original_metadata added to three cards; all other fields, slug set and image references are identical. Readiness still requires exact current hash."
 }
