@@ -21,6 +21,7 @@ import androidx.core.net.toUri
 class ScannerViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val scanWineUseCase: ScanWineUseCase,
+    private val wineRepository: com.wineapp.domain.repository.WineRepository,
     private val saveScanUseCase: SaveScanUseCase,
     private val badgeRepository: com.wineapp.domain.repository.BadgeRepository,
     val cameraHelper: CameraHelper
@@ -66,39 +67,28 @@ class ScannerViewModel @Inject constructor(
     private var lastFactIndex: Int = -1
 
     private fun handleCapture(imagePath: String) {
+        if (_state.value is ScannerState.Processing) return
         updateState(ScannerState.Capturing(imagePath))
         sendIntent(ScannerIntent.ProcessImage(imagePath))
     }
 
     private fun handleProcess(imagePath: String) {
+        if (_state.value is ScannerState.Processing) return
         updateState(ScannerState.Processing(imagePath, nextSeed(), nextFactIndex()))
         viewModelScope.launch {
             val result = scanWineUseCase(imagePath)
             result.onSuccess { scanResult ->
-                if (scanResult.wine != null) {
-                    // Автосейв каждого успешного скана — до перехода в лучшую карточку.
-                    // Без фанатизма по ошибкам: скан уже распознан, история вторична.
-                    viewModelScope.launch {
-                        saveScanUseCase(
-                            SavedScan(
-                                id = java.util.UUID.randomUUID().toString(),
-                                wine = scanResult.wine,
-                                labelPhotoPath = imagePath,
-                                confidence = scanResult.confidence,
-                                conversation = emptyList(),
-                                scannedAt = System.currentTimeMillis()
-                            )
-                        ).onFailure { e ->
-                            Log.e("ScannerViewModel", "Auto-save scan failed", e)
-                        }
-                    }
+                if (scanResult.wine != null || scanResult.recognitionStatus == "not_in_catalog") {
                     updateState(ScannerState.Success(scanResult, imagePath))
                 } else {
                     updateState(ScannerState.NotFound(imagePath, scanResult.matches, scanResult.recognitionStatus, scanResult.message))
                 }
             }.onFailure { error ->
                 Log.e("ScannerViewModel", "Scan failed", error)
-                updateState(ScannerState.Error(error.message ?: "Ошибка сканирования"))
+                Log.e("ScannerViewModel", "Scan failed", error)
+                updateState(ScannerState.Error(if (error is java.io.IOException)
+                    "Не удалось связаться с сервером. Проверьте подключение и попробуйте ещё раз."
+                    else "Не удалось распознать фото. Попробуйте ещё раз."))
             }
         }
     }
@@ -175,6 +165,31 @@ class ScannerViewModel @Inject constructor(
 
     fun resetToReady() {
         updateState(ScannerState.Ready())
+    }
+
+    fun confirmCandidate(slug: String) {
+        val current = _state.value as? ScannerState.Success ?: return
+        val scanId = current.result.scanId ?: return
+        if (current.confirming || current.result.scoredCandidates.none { it.slug == slug }) return
+        updateState(current.copy(confirming = true, confirmationError = null))
+        viewModelScope.launch {
+            wineRepository.confirmScan(scanId, slug).onSuccess { result ->
+                if ((_state.value as? ScannerState.Success)?.result?.scanId == scanId) {
+                    updateState(current.copy(result = result, confirming = false))
+                    result.scoredCandidates.firstOrNull { it.slug == result.userConfirmedSlug }?.let { selected ->
+                        saveScanUseCase(SavedScan(
+                            id = scanId, wine = selected.wine, labelPhotoPath = current.imagePath,
+                            confidence = selected.matchScore ?: 0f, conversation = emptyList(),
+                            scannedAt = System.currentTimeMillis()
+                        )).onFailure { Log.e("ScannerViewModel", "Save confirmed scan failed", it) }
+                    }
+                }
+            }.onFailure {
+                if ((_state.value as? ScannerState.Success)?.result?.scanId == scanId) {
+                    updateState(current.copy(confirming = false, confirmationError = "Не удалось сохранить выбор. Попробуйте ещё раз."))
+                }
+            }
+        }
     }
 
     fun consumeBadgeMessage() {

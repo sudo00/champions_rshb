@@ -1,0 +1,56 @@
+{
+  "status": "integrated_experimental_camera_detector",
+  "model": "wine_label_yolo26n_320.tflite",
+  "sha256": "ecd817f904b8d159ee924c15b2ca06dce80bf28e4c6d7086a35601cca5a59abf",
+  "bytes": 9757969,
+  "classes": [
+    "wine_label"
+  ],
+  "input": {
+    "shape": [
+      1,
+      3,
+      320,
+      320
+    ],
+    "dtype": "float32",
+    "layout": "NCHW",
+    "color": "RGB",
+    "normalization": "divide by 255",
+    "resize": "aspect-preserving letterbox, bilinear, center padding RGB(114,114,114), rect=False"
+  },
+  "output": {
+    "shape": [
+      1,
+      5,
+      2100
+    ],
+    "dtype": "float32",
+    "channels": [
+      "center_x_normalized",
+      "center_y_normalized",
+      "width_normalized",
+      "height_normalized",
+      "class_score"
+    ],
+    "sigmoid_already_applied": true,
+    "embedded_nms": false
+  },
+  "postprocess": {
+    "confidence": 0.7,
+    "nms_iou": 0.7,
+    "max_detections": 100,
+    "coordinates": "multiply xywh by 320; convert to xyxy; undo actual letterbox padding and scale; map rotation/crop to preview"
+  },
+  "recommended_runtime": "LiteRT 2.2.0 CompiledModel GPU with CPU fallback",
+  "gpu_validation": "S25+ LiteRT 2.2 GPU: one fixed 320px photo parity checked against desktop CPU; score 0.936035 vs 0.934663; max coordinate delta < 0.001; full camera video quality pending",
+  "quality_report": "docs/MOBILE_HANDOFF.md",
+  "automatic_capture_enabled": false,
+  "source": {
+    "dataset": "https://zenodo.org/records/16410628",
+    "training": "Ultralytics 8.4.162, YOLO26n, GRAIN, 15 epochs, imgsz=416",
+    "weights_license": "AGPL-3.0 (Ultralytics pretrained model; see upstream LICENSE)",
+    "upstream_license": "https://github.com/ultralytics/ultralytics/blob/main/LICENSE"
+  },
+  "automatic_capture": "user switch; stable single central label for 900ms / 6 frames; manual capture retained"
+}

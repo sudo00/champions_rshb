@@ -1,4 +1,5 @@
 import java.util.Properties
+import java.net.URI
 
 plugins {
     id("com.android.application")
@@ -17,6 +18,41 @@ val localProperties = Properties().apply {
     }
 }
 
+val apiBaseUrl = (providers.gradleProperty("WINE_API_BASE_URL").orNull
+    ?: providers.environmentVariable("WINE_API_BASE_URL").orNull
+    ?: localProperties.getProperty("WINE_API_BASE_URL", "http://10.0.2.2:8000/"))
+    .trim().trimEnd('/') + "/"
+val apiUri = URI(apiBaseUrl)
+require(apiUri.scheme in listOf("http", "https") && apiUri.host != null &&
+        apiUri.rawUserInfo == null && apiUri.rawQuery == null && apiUri.rawFragment == null) {
+    "WINE_API_BASE_URL must be an http(s) URL without credentials, query or fragment"
+}
+fun buildConfigString(value: String): String =
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+// Keep HTTP permission scoped to the configured API host, without committing its address.
+val apiNetworkResources = layout.buildDirectory.dir("generated/res/apiNetwork")
+val generateApiNetworkConfig = tasks.register("generateApiNetworkConfig") {
+    inputs.property("apiHost", apiUri.host)
+    inputs.property("allowHttp", apiUri.scheme == "http")
+    outputs.dir(apiNetworkResources)
+    doLast {
+        val output = apiNetworkResources.get().file("xml/network_security_config.xml").asFile
+        output.parentFile.mkdirs()
+        output.writeText("""
+            <?xml version="1.0" encoding="utf-8"?>
+            <network-security-config>
+                <base-config cleartextTrafficPermitted="false">
+                    <trust-anchors><certificates src="system" /></trust-anchors>
+                </base-config>
+                <domain-config cleartextTrafficPermitted="${apiUri.scheme == "http"}">
+                    <domain includeSubdomains="false">${apiUri.host}</domain>
+                </domain-config>
+            </network-security-config>
+        """.trimIndent() + "\n")
+    }
+}
+
 android {
     namespace = "com.wineapp"
     compileSdk = 35
@@ -32,11 +68,15 @@ android {
             useSupportLibrary = true
         }
 
-        buildConfigField("String", "BASE_URL", "\"http://109.248.37.178:8000\"")
+        buildConfigField("String", "BASE_URL", buildConfigString(apiBaseUrl))
         buildConfigField("String", "GIGACHAT_AUTH_KEY", "\"${localProperties.getProperty("GIGACHAT_AUTH_KEY", "")}\"")
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -46,13 +86,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
     buildFeatures {
         compose = true
         buildConfig = true
     }
+    sourceSets.getByName("main").res.srcDir(apiNetworkResources)
+    androidResources { noCompress += "tflite" }
     packagingOptions {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -60,7 +99,14 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) }
+}
+
+tasks.named("preBuild").configure { dependsOn(generateApiNetworkConfig) }
+
 dependencies {
+    implementation("com.google.ai.edge.litert:litert:2.2.0")
     // Core Android
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
@@ -83,8 +129,8 @@ dependencies {
     implementation("androidx.navigation:navigation-fragment-ktx:2.7.7")
 
     // Hilt
-    implementation("com.google.dagger:hilt-android:2.52")
-    ksp("com.google.dagger:hilt-android-compiler:2.52")
+    implementation("com.google.dagger:hilt-android:2.58")
+    ksp("com.google.dagger:hilt-android-compiler:2.58")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
     // Room
@@ -125,7 +171,8 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.6.7")
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.9.0")
+    debugImplementation("androidx.compose.ui:ui-test-manifest:1.9.0")
     debugImplementation("androidx.compose.ui:ui-tooling:1.6.7")
     debugImplementation("androidx.compose.ui:ui-tooling-preview:1.6.7")
 }

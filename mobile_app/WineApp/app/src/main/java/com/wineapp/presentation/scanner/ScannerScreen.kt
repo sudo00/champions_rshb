@@ -44,6 +44,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -53,6 +54,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -111,34 +114,36 @@ fun ScannerScreen(
         }
     }
 
-    LaunchedEffect(state) {
-        when (val current = state) {
-            is ScannerState.Success -> {
-                com.wineapp.util.HapticHelper.vibrateSuccess(context)
-                val result = current.result
-                val allWines = result.matches
-                val mainWine = result.wine
-                val mainWineId = mainWine?.id
-                if (mainWineId == null) {
-                    viewModel.resetToReady()
-                    return@LaunchedEffect
-                }
-                if (allWines.size <= 1) {
-                    viewModel.resetToReady()
-                    onNavigateToDetail(mainWineId ?: "", current.imagePath, result.recognitionStatus)
-                } else {
-                    val altIds = allWines.filter { it.id != mainWineId }.joinToString("|") { it.id }
-                    viewModel.resetToReady()
-                    onNavigateToScanResult(result.confidence, mainWineId, altIds, current.imagePath, result.recognitionStatus)
-                }
-            }
-            else -> {}
-        }
+    LaunchedEffect((state as? ScannerState.Success)?.result?.scanId) {
+        if (state is ScannerState.Success) com.wineapp.util.HapticHelper.vibrateSuccess(context)
     }
 
     DisposableEffect(lifecycleOwner) {
         onDispose { viewModel.cameraHelper.shutdown() }
     }
+    LaunchedEffect(state) { viewModel.cameraHelper.setAnalysisEnabled(state is ScannerState.Ready) }
+    LaunchedEffect(viewModel.cameraHelper) {
+        viewModel.cameraHelper.onAutoCapture = { file ->
+            viewModel.sendIntent(ScannerIntent.CapturePhoto(file.absolutePath))
+        }
+    }
+
+    val success = state as? ScannerState.Success
+    if (success != null) {
+        ScanSummaryScreen(
+            state = success,
+            onConfirm = viewModel::confirmCandidate,
+            onOpenWine = { id, isRecognition ->
+                onNavigateToDetail(id, if (isRecognition) success.imagePath else null,
+                    if (isRecognition && success.result.userConfirmedSlug == id) "confirmed_by_user"
+                    else if (isRecognition) success.result.recognitionStatus else null)
+            },
+            onNewPhoto = viewModel::resetToReady,
+            onBack = onNavigateBack
+        )
+        return
+    }
+
     ScannerScreenContent(
         state = state,
         cameraHelper = viewModel.cameraHelper,
@@ -175,6 +180,7 @@ fun ScannerScreenContent(
     badgeMessage: String? = null,
     onBadgeMessageShown: () -> Unit = {},
 ) {
+    val detector by cameraHelper.detectorPreview.collectAsState()
     val flashMode = when (val s = state) {
         is ScannerState.Ready -> s.flashMode
         else -> androidx.camera.core.ImageCapture.FLASH_MODE_OFF
@@ -196,6 +202,7 @@ fun ScannerScreenContent(
     LaunchedEffect(notFoundMessage) {
         if (notFoundMessage != null) {
             snackbarHostState.showSnackbar(notFoundMessage, duration = SnackbarDuration.Short)
+            onRetry()
         }
     }
 
@@ -226,6 +233,12 @@ fun ScannerScreenContent(
         )
 
         ScannerFrameOverlay(modifier = Modifier.fillMaxSize())
+        Canvas(Modifier.fillMaxSize()) {
+            detector.boxes.forEach { box ->
+                drawRect(Color(0xFF77DD88), Offset(box.left, box.top),
+                    Size(box.width(), box.height()), style = Stroke(3.dp.toPx()))
+            }
+        }
 
         Box(
             modifier = Modifier
@@ -253,10 +266,27 @@ fun ScannerScreenContent(
             verticalArrangement = Arrangement.Bottom,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            if (state is ScannerState.Ready) {
+                Surface(color = Color.Black.copy(alpha = .65f), shape = MaterialTheme.shapes.medium) {
+                    Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Автосъёмка · эксперимент", color = Color.White, modifier = Modifier.weight(1f))
+                            Switch(checked = detector.autoCapture, onCheckedChange = cameraHelper::setAutoCapture,
+                                enabled = detector.error == null)
+                        }
+                        Text(detector.error ?: when {
+                            detector.boxes.isEmpty() -> "Поместите этикетку в центр кадра"
+                            detector.autoCapture -> "Держите одну этикетку по центру неподвижно"
+                            else -> "Этикетка обнаружена · ${detector.milliseconds.toInt()} мс · ${detector.backend}"
+                        }, color = Color.White, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
             ScannerControls(
                 flashMode = flashMode,
                 onGalleryClick = onGalleryClick,
                 onCaptureClick = {
+                    if (state !is ScannerState.Ready) return@ScannerControls
                     cameraHelper.takePicture(
                         onSuccess = { file -> onTakePicture(file.absolutePath) },
                         onError = { }

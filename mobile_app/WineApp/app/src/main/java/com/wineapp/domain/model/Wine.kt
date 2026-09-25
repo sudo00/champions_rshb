@@ -22,6 +22,10 @@ data class Wine(
     val winery: String?
 )
 
+data class ScoredWine(val wine: Wine, val slug: String, val rank: Int, val matchScore: Float?)
+
+data class RecommendedWine(val wine: Wine, val reasons: List<String>)
+
 data class ScanResult(
     val wine: Wine?,
     val confidence: Float,
@@ -40,7 +44,14 @@ data class ScanResult(
     val version: String? = null,
     val catalogSha256: String? = null,
     val timingsSeconds: Map<String, Any> = emptyMap(),
-    val scoreIsProbability: Boolean = false
+    val scoreIsProbability: Boolean = false,
+    val scanId: String? = null,
+    val scoredCandidates: List<ScoredWine> = emptyList(),
+    val recommendations: List<RecommendedWine> = emptyList(),
+    val recommendationStatus: String? = null,
+    val recommendationBasis: String? = null,
+    val recommendationCriteria: Map<String, String> = emptyMap(),
+    val userConfirmedSlug: String? = null
 )
 
 @Serializable

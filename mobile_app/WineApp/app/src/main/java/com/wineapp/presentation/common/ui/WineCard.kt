@@ -62,7 +62,7 @@ fun WineCard(
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current).data(wine.imageUrl?.let { BuildConfig.BASE_URL + it }).crossfade(true).build(),
+                    model = ImageRequest.Builder(LocalContext.current).data(com.wineapp.util.apiImageUrl(wine.imageUrl)).crossfade(true).build(),
                     contentDescription = wine.name,
                     modifier = Modifier.fillMaxSize().padding(8.dp),
                     contentScale = ContentScale.FillHeight
@@ -115,7 +115,7 @@ fun WineCard(
                 }
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
+                    if (wine.rating != null) Surface(
                         shape = RoundedCornerShape(4.dp),
                         color = Color(0xFFFFF8E1)
                     ) {

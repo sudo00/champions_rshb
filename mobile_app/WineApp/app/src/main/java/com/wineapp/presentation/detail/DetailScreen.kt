@@ -190,7 +190,7 @@ fun DetailContent(
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current).data(wine.imageUrl?.let { BuildConfig.BASE_URL + it }).crossfade(true).build(),
+                    model = ImageRequest.Builder(LocalContext.current).data(com.wineapp.util.apiImageUrl(wine.imageUrl)).crossfade(true).build(),
                     contentDescription = wine.name,
                     modifier = Modifier.fillMaxSize().padding(16.dp),
                     contentScale = ContentScale.FillHeight

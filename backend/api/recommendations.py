@@ -7,7 +7,7 @@ import math
 import re
 import unicodedata
 
-VERSION = "attribute-recommendations-v1"
+VERSION = "attribute-recommendations-v2"
 COLORS = {"Белое": ["белое", "белый", "white"], "Красное": ["красное", "красный", "red"],
           "Розовое": ["розовое", "розовый", "rose", "rosé"], "Оранжевое": ["оранжевое", "orange"]}
 SWEETNESS = {
@@ -137,12 +137,18 @@ class RecommendationIndex:
 
     def recommend(self, result: dict, limit: int = 5) -> dict:
         profile = self.observed(result.get("observations", []))
-        shortlist = result.get("candidates") or result.get("candidateScoring", {}).get("candidates") or []
+        status = result.get("recognitionStatus")
+        # An absent wine has no catalogue anchor: diagnostic Top-5 is not evidence.
+        observed_only = status == "not_in_catalog"
+        confirmed = status == "confirmed"
+        shortlist = [] if observed_only else result.get("candidates") or []
         anchor_slug = shortlist[0].get("slug") if shortlist else None
         anchor = self.cards.get(anchor_slug)
         semantic_scores = self.semantic.scores(anchor_slug) if self.semantic and anchor else {}
         output = dict(version=VERSION, status="insufficient_evidence", profile=profile, items=[],
-                      anchor=dict(slug=anchor_slug, source="retrieval_top1", isRecognizedWine=False) if anchor else None,
+                      basis="photo_ocr" if observed_only else "confirmed_wine" if confirmed else "retrieval_top1",
+                      anchor=dict(slug=anchor_slug, source="confirmed_wine" if confirmed else "retrieval_top1",
+                                  isRecognizedWine=confirmed) if anchor else None,
                       semanticStatus="available" if semantic_scores else "unavailable",
                       semanticModel=self.semantic.model if self.semantic else None)
         if any(profile[k]["status"] == "ambiguous" for k in ("color", "sweetness")):
@@ -155,7 +161,7 @@ class RecommendationIndex:
             for key in query:
                 if not query[key] and profile[key]["status"] == "missing" and anchor[key]:
                     query[key] = anchor[key]
-                    sources[key] = "retrieval_top1_reference"
+                    sources[key] = "confirmed_wine" if confirmed else "retrieval_top1_reference"
         output["criteria"] = query
         output["criteriaSources"] = sources
         if not (query["grapes"] or query["producer"] or query["color"] and query["sweetness"]):

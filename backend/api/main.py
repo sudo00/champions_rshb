@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.catalog import get_wine, search_wines, image_path, catalog_data
 from api.contracts import (
     ScanAcceptedResponse,
+    ScanConfirmationRequest,
     ScanRequest,
     ScanStatusResponse,
     SearchResponse,
@@ -23,7 +24,7 @@ from api.contracts import (
     WineDetailResponse,
 )
 from api.infra import init_infra, publish_scan, upload_scan_image, recognition_ready
-from api.scans import create_pending, get_job, mark_failed, to_status_response
+from api.scans import create_pending, get_job, mark_failed, to_status_response, confirm_job
 from api.sommelier import reply
 
 log = logging.getLogger("api")
@@ -183,6 +184,22 @@ def wine_image(wine_id: str):
     if path is None:
         raise HTTPException(404, "Catalogue image unavailable")
     return FileResponse(path)
+
+
+@app.post(
+    "/v1/wines/scan/{scan_id}/confirmation",
+    tags=["wines"],
+    summary="Пользователь подтвердил кандидата кнопкой «Это моё вино»",
+    response_model=ScanStatusResponse,
+)
+def confirm_scan(scan_id: uuid.UUID, body: ScanConfirmationRequest) -> ScanStatusResponse:
+    try:
+        job = confirm_job(str(scan_id), body.slug)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    if job is None:
+        raise HTTPException(404, "Scan not found")
+    return to_status_response(job)
 
 
 @app.get(

@@ -38,6 +38,20 @@ def test_real_catalogue_and_nullable_unknown_metadata():
     assert client.get('/v1/wines/not-a-real-slug').json()['wine'] is None
 
 
+def test_scan_confirmation_route_keeps_model_result_and_returns_user_choice():
+    import uuid
+    scan_id = str(uuid.uuid4())
+    data = result()
+    data['userConfirmation'] = {'slug': data['candidates'][1]['slug'], 'source': 'user'}
+    with patch('api.main.confirm_job', return_value=ScanJob(scan_id, 'done', True, result=data)):
+        response = client.post(f'/v1/wines/scan/{scan_id}/confirmation', json={'slug': data['userConfirmation']['slug']})
+    assert response.status_code == 200
+    assert response.json()['userConfirmation'] == data['userConfirmation']
+    assert response.json()['slug'] == data['slug']
+    with patch('api.main.confirm_job', side_effect=ValueError('not a candidate')):
+        assert client.post(f'/v1/wines/scan/{scan_id}/confirmation', json={'slug': 'wrong'}).status_code == 409
+
+
 def test_health_and_readiness_are_distinct():
     assert client.get('/health').status_code==200
     with patch('api.main.recognition_ready',return_value=False):

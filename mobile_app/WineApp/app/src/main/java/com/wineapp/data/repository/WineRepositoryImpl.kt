@@ -8,6 +8,7 @@ import com.wineapp.data.remote.mapper.ScanMapper
 import com.wineapp.data.remote.mapper.SearchMapper
 import com.wineapp.data.remote.mapper.WineMapper
 import com.wineapp.data.remote.dto.ScanRequest
+import com.wineapp.data.remote.dto.ScanConfirmationRequest
 import com.wineapp.data.remote.dto.ScanStatusResponse
 import com.wineapp.data.remote.dto.ScanAcceptedResponse
 import com.wineapp.domain.model.ScanResult
@@ -30,6 +31,19 @@ class WineRepositoryImpl @javax.inject.Inject constructor(
 
     private var currentScanId: String? = null
 
+    override suspend fun confirmScan(scanId: String, slug: String): Result<ScanResult> =
+        withContext(Dispatchers.IO) {
+            try {
+                val result = ScanMapper.toDomain(apiService.confirmScan(scanId, ScanConfirmationRequest(slug)))
+                result.scoredCandidates.firstOrNull { it.slug == result.userConfirmedSlug }?.let { saveToHistory(it.wine) }
+                Result.success(result)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
     override suspend fun scanWineLabel(imagePath: String): Result<ScanResult> {
         return withContext(Dispatchers.IO) {
             try {
@@ -43,7 +57,6 @@ class WineRepositoryImpl @javax.inject.Inject constructor(
                 currentScanId = scanId
                 val statusResponse = pollScanStatus(scanId)
                 val result = ScanMapper.toDomain(statusResponse)
-                result.wine?.let { saveToHistory(it) }
                 Result.success(result)
             } catch (e: Exception) {
                 Log.e("WineRepositoryImpl", "Scan failed", e)

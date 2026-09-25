@@ -33,7 +33,7 @@ def test_read_producer_is_fallback_and_anchor_is_not_observed_evidence():
     assert ix.recommend(observed("DENISOV"))["items"][0]["tier"] == "same_producer"
     result = ix.recommend(observed("unreadable"))
     assert result["items"] == [] and result["status"] == "insufficient_evidence"
-    result = ix.recommend({**observed("unreadable"), "candidateScoring": {"candidates": [{"slug": "a", "matchScore": .01}]}})
+    result = ix.recommend({**observed("unreadable"), "candidates": [{"slug": "a", "matchScore": .01}]})
     assert result["anchor"]["slug"] == "a" and result["anchor"]["isRecognizedWine"] is False
     assert result["profile"]["color"]["value"] is None
     assert result["criteriaSources"]["color"] == "retrieval_top1_reference"
@@ -88,7 +88,7 @@ def test_api_keeps_unknown_and_exposes_separate_analog_cards_without_gpu():
     assert all(c["attributes"]["color"] == "Белое" and c["attributes"]["sweetness"] == "Полусухое" for c in top5.recommendations)
     assert top5.recommendations[0]["wine"]["slug"] == top5.recommendations[0]["slug"]
     with patch("api.scans.recommendation_index") as index:
-        for status in ("no_target", "candidates_unverified"):
+        for status in ("no_target",):
             body = to_status_response(ScanJob("id", "done", True, result={**data, "recognitionStatus": status}))
             assert body.recommendations == []
         index.assert_not_called()
@@ -100,7 +100,7 @@ def test_text_similarity_orders_compatible_wines_and_cannot_override_ocr():
     cards = {c["slug"]: c for c in [card("anchor", color="Красное"), card("wrong", color="Красное"),
                                     card("near", producer="Other"), card("far")]}
     ix = RecommendationIndex(cards, semantic=semantic)
-    result = ix.recommend({**observed("белое сухое рислинг"), "candidateScoring": {"candidates": [{"slug": "anchor"}]}})
+    result = ix.recommend({**observed("белое сухое рислинг"), "candidates": [{"slug": "anchor"}]})
     assert [i["slug"] for i in result["items"]] == ["near", "far"]
     assert result["criteria"]["color"] == "Белое" and result["criteriaSources"]["color"] == "photo_ocr"
     assert result["items"][0]["textSimilarity"] == .9
@@ -130,3 +130,80 @@ def test_text_index_rejects_wrong_catalogue_or_corrupt_vectors(tmp_path, monkeyp
     (tmp_path / "vectors.f32").write_bytes(raw[:-1] + b"1")
     with pytest.raises(ValueError, match="checksum"):
         TextIndex(tmp_path, {"a": {}, "b": {}}, "catalog")
+
+
+def test_absent_wine_never_uses_rejected_top1_metadata_or_embeddings():
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    semantic = SimpleNamespace(model="test", metadata={}, scores=Mock(return_value={"white": .99}))
+    ix = RecommendationIndex({"red": card("red", color="Красное"), "white": card("white")}, semantic)
+    data = dict(recognitionStatus="not_in_catalog", candidates=[],
+                candidateScoring={"candidates": [{"slug": "red"}]}, **observed("unreadable"))
+    output = ix.recommend(data)
+    assert output["items"] == [] and output["anchor"] is None
+    assert output["basis"] == "photo_ocr"
+    assert all(value == "missing" for value in output["criteriaSources"].values())
+    semantic.scores.assert_not_called()
+    output = ix.recommend({**data, **observed("white dry riesling")})
+    assert [item["slug"] for item in output["items"]] == ["white"]
+    assert all(value == "photo_ocr" for key, value in output["criteriaSources"].items() if key != "producer")
+
+
+def test_unverified_scan_recommends_from_top1_without_confirming_it():
+    data = dict(slug="a", recognitionStatus="candidates_unverified", candidates=[{"slug": "a"}],
+                catalogSha256=catalog_data()[1], **observed("unreadable"))
+    ix = RecommendationIndex({"a": card("a"), "b": card("b")})
+    with patch("api.scans.get_wine", side_effect=lambda slug: wine_from_file(next(iter(catalog_data()[0])))), \
+            patch("api.scans.recommendation_index", return_value=ix):
+        body = to_status_response(ScanJob("id", "done", True, result=data))
+    assert body.recognitionStatus == "candidates_unverified"
+    assert body.userConfirmation is None
+    assert body.recommendationContext["basis"] == "retrieval_top1"
+    assert body.recommendationContext["anchor"]["isRecognizedWine"] is False
+
+
+def test_user_confirmation_anchors_selected_candidate_without_reranking():
+    from api.scans import validated_confirmation
+    slugs = list(catalog_data()[0])[:2]
+    data = dict(slug=slugs[0], recognitionStatus="candidates_unverified",
+                candidates=[{"slug": slug, "rank": i + 1, "matchScore": .9 - i * .1} for i, slug in enumerate(slugs)],
+                catalogSha256=catalog_data()[1], **observed("wrong OCR"))
+    job = ScanJob("id", "done", True, result=data)
+    job.result = {**data, "userConfirmation": validated_confirmation(job, slugs[1])}
+    with patch("api.scans.get_wine", side_effect=wine_from_file):
+        body = to_status_response(job)
+    assert body.slug == slugs[0] and [c["slug"] for c in body.candidates] == slugs
+    assert body.candidates[1]["matchScore"] == .8
+    assert body.recognitionStatus == "candidates_unverified"
+    assert body.userConfirmation == {"slug": slugs[1], "source": "user"}
+    assert body.recommendationContext["anchor"]["slug"] == slugs[1]
+    assert body.recommendationContext["anchor"]["isRecognizedWine"] is True
+    assert slugs[1] not in [item["slug"] for item in body.recommendations]
+
+
+def test_confirmation_rejects_unknown_hidden_and_unfinished_candidates():
+    import pytest
+    from api.scans import validated_confirmation
+    data = {"recognitionStatus": "candidates_unverified", "candidates": [{"slug": "a"}, {"slug": "b"}]}
+    for job, slug in [(ScanJob("id", "pending", True, result=data), "a"),
+                      (ScanJob("id", "done", False, result=data), "b"),
+                      (ScanJob("id", "done", True, result=data), "unknown"),
+                      (ScanJob("id", "done", True, result={**data, "recognitionStatus": "not_in_catalog"}), "a")]:
+        with pytest.raises(ValueError):
+            validated_confirmation(job, slug)
+
+
+def test_confirmation_persists_in_scan_json_and_keeps_original_candidate_scores():
+    from unittest.mock import MagicMock
+    from api.scans import confirm_job
+    original = {"recognitionStatus": "candidates_unverified", "candidates": [{"slug": "a", "matchScore": .87}]}
+    connection = MagicMock()
+    connection.execute.return_value.fetchone.return_value = ("done", True, "image", original, None)
+    with patch("api.scans.psycopg.connect") as connect:
+        connect.return_value.__enter__.return_value = connection
+        result = confirm_job("id", "a")
+    assert result.result["userConfirmation"]["slug"] == "a"
+    assert result.result["candidates"] == original["candidates"]
+    saved_json = connection.execute.call_args_list[1].args[1][0].obj
+    assert saved_json == result.result
+    connection.commit.assert_called_once()
