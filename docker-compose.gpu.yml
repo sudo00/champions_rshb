@@ -6,8 +6,8 @@ services:
       WINE_CATALOG_IMAGES: /catalog-images
       WINE_RECOMMENDATIONS_DIR: /recommendations
     volumes:
-      - ./data/deployment/catalog-images/images:/catalog-images:ro
-      - ./weights/recommendations-v1:/recommendations:ro
+      - ./data/deployment/catalog-images-v2/images:/catalog-images:ro
+      - ./weights/recommendations-v2:/recommendations:ro
   worker:
     build:
       dockerfile: ./build_env/worker/Dockerfile.gpu
@@ -17,7 +17,7 @@ services:
       WINE_DEVICE: cuda:0
       WINE_OCR_DEVICE: gpu:0
     volumes:
-      - ./weights/wine-recognizer-v5-sugar-release:/models:ro
+      - ./weights/wine-recognizer-v5-muscat-release:/models:ro
     deploy:
       resources:
         reservations:

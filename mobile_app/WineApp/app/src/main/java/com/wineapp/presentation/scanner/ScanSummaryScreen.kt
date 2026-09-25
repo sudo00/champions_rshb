@@ -49,7 +49,7 @@ fun ScanSummaryScreen(
                         absent -> "Вино не найдено в каталоге"
                         choosingCandidate -> "Выберите своё вино"
                         confirmed != null -> "Ваше вино"
-                        else -> "Похожие варианты из каталога"
+                        else -> "Совпадение не подтверждено"
                     }, style = MaterialTheme.typography.headlineSmall
                 )
                 Spacer(Modifier.height(8.dp))
@@ -59,13 +59,13 @@ fun ScanSummaryScreen(
                         choosingCandidate -> "Выберите правильную карточку среди результатов поиска."
                         confirmation?.source == "score_confirmed" -> "Вино распознано автоматически."
                         confirmed != null -> "Вы подтвердили совпадение."
-                        else -> "Совпадение пока не подтверждено. Выберите своё вино среди результатов поиска."
+                        else -> "Не удалось уверенно распознать вино. Ниже — рекомендации; они не являются результатом распознавания."
                     }, style = MaterialTheme.typography.bodyMedium
                 )
             }
             if (confirmed != null && !choosingCandidate) {
                 item { CandidateCard(confirmed, false, false, {}, { onOpenWine(confirmed.wine.id, true) }) }
-            } else if (!absent) {
+            } else if (!absent && choosingCandidate) {
                 items(result.scoredCandidates, key = { "candidate:${it.slug}" }) { candidate ->
                     CandidateCard(candidate, result.scanId != null, state.confirming,
                         { onConfirm(candidate.slug) }, { onOpenWine(candidate.wine.id, true) })
@@ -87,9 +87,18 @@ fun ScanSummaryScreen(
             item {
                 HorizontalDivider()
                 Spacer(Modifier.height(12.dp))
-                Text(if (!absent && confirmed == null) "Рекомендации по первому кандидату" else "Рекомендуем также",
+                val familyRecommendations = result.recommendationBasis in setOf("retrieval_family", "retrieval_producer")
+                Text(when {
+                    familyRecommendations -> "Визуально похожие вина"
+                    !absent && confirmed == null && result.recommendationBasis == "photo_ocr" -> "Рекомендации по этикетке"
+                    !absent && confirmed == null -> "Рекомендации по первому кандидату"
+                    else -> "Рекомендуем также"
+                },
                     style = MaterialTheme.typography.titleLarge)
-                if (!absent && confirmed == null) {
+                if (familyRecommendations) {
+                    Text("Подбор по сходству этикеток и предполагаемому производителю. Прочитанное название линейки уточняет выбор; совпадение не подтверждено.",
+                        style = MaterialTheme.typography.bodySmall)
+                } else if (!absent && confirmed == null && result.recommendationBasis != "photo_ocr") {
                     Text("Подбор ориентируется на первую карточку поиска; она может отличаться от вина на фото.",
                         style = MaterialTheme.typography.bodySmall)
                 }

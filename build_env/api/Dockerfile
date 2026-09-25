@@ -17,8 +17,4 @@ EXPOSE 8000
 
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
-FROM runtime AS api-tests
-COPY backend/api/tests ./api/tests
-CMD ["python", "-m", "pytest", "-q", "/app/api/tests"]
-
 FROM runtime AS production

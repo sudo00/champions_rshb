@@ -71,7 +71,7 @@ def catalog_data() -> tuple[dict[str, dict], str]:
 
 
 def result_catalog_compatible(checksum: str | None) -> bool:
-    """Allow stored results from explicitly audited metadata-only revisions.
+    """Allow stored results from explicitly audited compatible catalogue revisions.
 
     Readiness still requires the worker's exact current catalogue checksum.
     Never infer compatibility from the number of cards or matching slug alone.

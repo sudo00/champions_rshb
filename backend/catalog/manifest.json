@@ -1,9 +1,10 @@
 {
-  "catalog_sha256": "81a98401208c2e03bc74aab42b0d84ca6dc3d0f605c1817d696401a33c6e364f",
+  "catalog_sha256": "40e6d559fefee605c579e5bc01fde1f943deab7da5f36c9d700c64b7a079a72d",
   "count": 2103,
-  "source": "Reviewed catalogue; exact bytes match wine-recognizer-v5-sweetness-release. Three Zhemchuzhnaya sweetness attributes confirmed from reference labels and by user. No synthetic prices, ratings or vintages.",
+  "source": "Reviewed catalogue; one user-confirmed Velvet Season MUSCAT photo replaced the incorrect SAPERAVI reference. Product metadata unchanged.",
   "compatible_result_catalog_sha256": [
-    "383f3e6bb73c8892dec0a58b39ca7f4b8ed026f4433a865b69cce65a6ab56576"
+    "383f3e6bb73c8892dec0a58b39ca7f4b8ed026f4433a865b69cce65a6ab56576",
+    "81a98401208c2e03bc74aab42b0d84ca6dc3d0f605c1817d696401a33c6e364f"
   ],
-  "result_compatibility_note": "Audited 2026-09-24: only metadata_review and empty original_metadata added to three cards; all other fields, slug set and image references are identical. Readiness still requires exact current hash."
+  "result_compatibility_note": "Audited 2026-09-25: same 2103 slugs and product metadata; one corrected reference image. Historical recognition scores remain historical; fresh readiness requires the current hash."
 }

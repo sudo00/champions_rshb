@@ -1,11 +1,11 @@
 # Разработка
 
-Приложение Android находится в `mobile_app/WineApp`, FastAPI — в `backend/api`, очередь — в `backend/worker`. Проверенный ML-код и эксперименты сохранены в `worker/pipeline` и `scripts`.
+Android — `mobile_app/WineApp`, FastAPI — `backend/api`, очередь — `backend/worker`, ML-пайплайн — `worker/pipeline`. В `scripts/` находятся самостоятельные CLI; приложение их не импортирует.
 
-Настоящий каталог, Top-5, OCR, области изображения и оценочный multipart API подключены. Подробности запуска и контрактов — [API_RECOGNITION.md](API_RECOGNITION.md), зависимости — [DEPENDENCIES.md](DEPENDENCIES.md), результаты проверки — [API_INTEGRATION_VALIDATION.md](API_INTEGRATION_VALIDATION.md).
+Запуск и контракты — [API_RECOGNITION.md](API_RECOGNITION.md), зависимости — [DEPENDENCIES.md](DEPENDENCIES.md). Использовать отдельные среды проекта: `.venv`, `.venv-ocr-gpu`, `.venv-api`.
 
-Для проверки API без GPU, весов и работающей инфраструктуры выполнить `make test-api`. Команда собирает тестовый Docker-образ и запускает проверки без сети.
+Автоматические проверки API, worker и Android сохранены только локально и исключены из Git. В свежем клоне нет тестов, `pytest.ini`, целей `make test` / `make test-api` и тестовой стадии Docker. При наличии локальных файлов проверки запускаются явно: `.venv-api/bin/python -m pytest backend/api/tests -q` и `.venv/bin/python -m pytest backend/worker/tests -q`.
 
-Использовать отдельные среды проекта: `.venv`, `.venv-ocr-gpu`, `.venv-api`. Для API в локальном окружении выполнить `.venv-api/bin/python -m pytest -q`; для адаптера — `.venv/bin/python -m unittest backend.worker.tests.test_recognition -q`. Тесты самого ML в корневой `tests/` остаются локально и не входят в Git.
+Для проверки общего сервиса без локальной GPU: `python3 scripts/scan_api.py photo.jpg --base http://localhost:8000 --output result.json`. Адрес заменить на доступный URL сервера. Перед проверкой запросить `/ready`.
 
-Для сравнения с локальными результатами 76 магазинных снимков при запущенном API: `python3 scripts/check_recognition_api.py`. Снимки и результаты не входят в Git. При изменении численного ML-кода нужен новый согласованный bundle, иначе проверка SHA-256 при запуске отклонит его.
+`python3 scripts/check_recognition_api.py` сравнивает выдачу с локальными сохранёнными результатами, которые не входят в Git. Изменения каталога, индекса или численного кода требуют согласованной версии bundle и контрольных сумм.

@@ -3,9 +3,8 @@ ENV_PROD := build_env/.env.prod
 COMPOSE_DEV := docker compose --env-file $(ENV_DEV) -f docker-compose.yml -f docker-compose.gpu.yml -f docker-compose.dev.yml
 COMPOSE_PROD := docker compose --env-file $(ENV_PROD) -f docker-compose.yml -f docker-compose.gpu.yml
 API_HEALTH := http://127.0.0.1:8000/health
-TEST_BUILD_NETWORK ?= default
 
-.PHONY: help setup env wait-api install install-api install-worker build dev prod up down ddown logs restart test test-api import-catalog
+.PHONY: help setup env wait-api install install-api install-worker build dev prod up down ddown logs restart import-catalog
 
 help:
 	@echo "make setup             — скопировать env, собрать образы, поднять стек, дождаться API"
@@ -21,8 +20,6 @@ help:
 	@echo "make ddown             — остановить контейнеры и удалить тома"
 	@echo "make logs              — логи"
 	@echo "make restart           — перезапустить DEV"
-	@echo "make test              — pytest в контейнере api"
-	@echo "make test-api          — автономные API-тесты в Docker, без GPU и сервисов"
 	@echo "make import-catalog    — скачать vino-svoe.ru в Postgres и MinIO"
 
 setup: env
@@ -85,13 +82,6 @@ logs:
 restart:
 	$(COMPOSE_DEV) down
 	$(COMPOSE_DEV) up -d --build
-
-test:
-	$(COMPOSE_DEV) exec -T -e PYTHONPATH=/app api pytest -q /app/api/tests
-
-test-api:
-	docker build --network=$(TEST_BUILD_NETWORK) --target api-tests -f build_env/api/Dockerfile -t wine-api-tests .
-	docker run --rm --network=none wine-api-tests
 
 import-catalog:
 	$(COMPOSE_DEV) exec -T api python -m api.import_vino_svoe

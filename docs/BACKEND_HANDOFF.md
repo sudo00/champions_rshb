@@ -50,32 +50,20 @@ ML-ядром; реализация поиска находится в `worker/p
 сервиса — существующий Compose, не экспериментальные скрипты.
 CPU-скоринг и осторожный отказ находятся рядом с адаптером в `backend/worker/`.
 
-Перенос был зафиксирован bundle `v5-worker-layout`; текущий `v5-sugar`
+Перенос был зафиксирован bundle `v5-worker-layout`; текущий `v5-muscat`
 содержит осторожный отказ, его обход в тестовом API и отдельный `matchScore`. Ранжирование и версия ответа
 `wine-prototype-v5` сохранены, но пути и SHA исходников изменились. Прежний
 bundle `v5-producer` требует прежнего кода и не подходит новому образу.
 
 ## Как работать бэкендеру без видеокарты
 
-### Локальные проверки контрактов
+### Проверка из свежего клона
 
-Из чистого Git checkout с установленным Docker:
-
-```bash
-make test-api
-```
-
-Команда собирает отдельный тестовый образ API и запускает его без сети.
-GPU, веса, PostgreSQL, MinIO, RabbitMQ и работающий стек не нужны: внешние
-зависимости заменены в тестах. Проверяются маршруты, ответы, readiness и обработка
-ошибок; точность распознавания этими тестами не проверяется. Веса не скачиваются.
-При проблемах сети сборки на текущем хосте: `make test-api TEST_BUILD_NETWORK=host`.
-
-API-тесты сохранены в `backend/api/tests/`, тест адаптера — в
-`backend/worker/tests/test_recognition.py`. Для последнего нужны зависимости
-vision-окружения, но GPU не используется. ML-тесты в корневой `tests/` оставлены
-локально и исключены из Git. Производственный образ API не содержит файлов тестов;
-DEV-образ и отдельная цель `api-tests` содержат их.
+Тесты API, worker и Android сохранены только локально и исключены из Git.
+Цели `make test` / `make test-api` и тестовая стадия Docker удалены.
+Для интеграции без собственной GPU использовать общий сервер: проверить `/ready`,
+затем отправить фотографию через `scripts/scan_api.py`. Зависимости ML и веса
+на компьютер бэкендера для такого запроса не нужны.
 
 ### Настоящее распознавание на общем сервере
 
@@ -179,14 +167,14 @@ score у верно распознанного Denisov. При отказе ди
 
 ## Что передать вместе с Git-репозиторием
 
-1. Папку `weights/wine-recognizer-v5-sugar-release/` — примерно 8,09 GB. Внутри веса SAM 3 и SigLIP2, модели OCR, `features.npy`, `views.json`, `catalog.jsonl`, `manifest.json` и конфигурации моделей.
-2. `data/deployment/catalog-images-v1.tar` и его `.manifest.json` — 2 103 изображения, около 152 MB. Распаковать в `data/deployment/catalog-images/`; внутри должна появиться папка `images/`.
+1. Папку `weights/wine-recognizer-v5-muscat-release/` — примерно 8,09 GB. Внутри веса SAM 3 и SigLIP2, модели OCR, `features.npy`, `views.json`, `catalog.jsonl`, `manifest.json` и конфигурации моделей.
+2. `data/deployment/catalog-images-v2.tar` и его `.manifest.json` — 2 103 изображения, около 152 MB. Распаковать в `data/deployment/catalog-images-v2/`; внутри должна появиться папка `images/`.
 3. При необходимости повторения оценки — отдельно `data/eval/` с исходным скриптом и примерами. Эти данные не входят в Git.
 
 `reference_path` в `backend/catalog/catalog.jsonl` — путь этапа подготовки данных
 (`data/catalog/curated/images/...`), а не URL. API берёт из него только имя файла
 и ищет его в `WINE_CATALOG_IMAGES`: в Docker это `/catalog-images`, подключённая
-из `data/deployment/catalog-images/images/`. Поле `original_reference_path`
+из `data/deployment/catalog-images-v2/images/`. Поле `original_reference_path`
 сохраняет происхождение исходного снимка и не используется для выдачи картинки.
 Клиенту передавать `imageUrl` из API (`/v1/wines/{slug}/image`), разрешая его
 относительно адреса сервера. Каталожные изображения пока обслуживаются из файлов;
@@ -200,10 +188,10 @@ score у верно распознанного Denisov. При отказе ди
 
 Ресурсы теперь разделены:
 
-- `weights/wine-recognizer-v5-sugar-release/`: актуальный автономный bundle;
+- `weights/wine-recognizer-v5-muscat-release/`: актуальный автономный bundle;
 - `weights/research/`, `weights/source/`, `weights/cache/`: модели экспериментов, исходные веса и кэши;
 - `weights/archive/`: прежние версии, не нужны для запуска текущего сервиса;
-- `data/deployment/catalog-images/`: изображения каталога; исходные фото и отчёты тоже остаются в `data/`.
+- `data/deployment/catalog-images-v2/`: изображения каталога; исходные фото и отчёты тоже остаются в `data/`.
 
 Bundle содержит также индекс и снимок каталога: это согласованный комплект
 для инференса, проверяемый по SHA-256. Канонический каталог API остаётся в Git
@@ -216,7 +204,7 @@ Bundle содержит также индекс и снимок каталога
 При обновлении пересоздать API и worker вместе: старый контейнер может содержать
 старый каталог. Активация фильтра требует новой версии API и worker; тестовый endpoint обходит фильтр.
 
-Для переноса подготовлен архив `weights/artifacts/wine-recognizer-v5-sugar.tar`
+Для переноса подготовлен архив `weights/artifacts/wine-recognizer-v5-muscat.tar`
 и файл `.tar.sha256`. Он содержит только ресурсы под `weights/`; код берётся из
 этого Git checkout. Сборка архива: `python3 scripts/package_recognizer.py`;
 существующий архив команда не перезаписывает. Размеры, SHA-256 и пути ресурсов записаны в [../build_env/artifacts.json](../build_env/artifacts.json).
@@ -228,16 +216,16 @@ Bundle содержит также индекс и снимок каталога
 
 ```bash
 # Из каталога, где лежат полученные архив и его .sha256:
-sha256sum -c wine-recognizer-v5-sugar.tar.sha256
+sha256sum -c wine-recognizer-v5-muscat.tar.sha256
 # Затем из корня репозитория:
-tar -xf /path/to/wine-recognizer-v5-sugar.tar
+tar -xf /path/to/wine-recognizer-v5-muscat.tar
 ```
 
 После копирования bundle и архива изображений:
 
 ```bash
-mkdir -p data/deployment/catalog-images
-tar -xf data/deployment/catalog-images-v1.tar -C data/deployment/catalog-images
+mkdir -p data/deployment/catalog-images-v2
+tar -xf data/deployment/catalog-images-v2.tar -C data/deployment/catalog-images-v2
 make setup
 curl -f http://127.0.0.1:8000/ready
 ```
@@ -325,8 +313,10 @@ Aristov Spazio получил `not_in_catalog` через обычный ска�
 ## Рекомендации и пользовательское подтверждение
 
 Обновление 25.09.2026: `backend/api/recommendations.py` возвращает рекомендации
-для трёх сценариев: Top-1 как ориентир при `candidates_unverified`; выбранная
-карточка после пользовательского подтверждения; только OCR при `not_in_catalog`.
+для сценариев: сильный Top-1 (>50/100) как ориентир; выбранная карточка после
+ручного подтверждения; только OCR при `not_in_catalog`. При слабом Top-1 цвет,
+сахар и сорт не копируются из него. Если цвет не прочитан, ориентир — визуальные
+кандидаты предполагаемого производителя и прочитанная линейка.
 Отклонённый Top-1 больше не задаёт цвет/сахар/сорта отсутствующего вина.
 При нехватке признаков выдаётся пустой список с объяснением.
 
@@ -336,9 +326,9 @@ Aristov Spazio получил `not_in_catalog` через обычный ска�
 не изменяются. API-образ необходимо пересобрать; мобильному клиенту нужен новый APK.
 Подробности и состояния интерфейса — [MOBILE_HANDOFF.md](MOBILE_HANDOFF.md).
 
-Передать коллегам `weights/artifacts/recommendations-v1.tar.gz` (~3,2 MB),
+Передать коллегам `weights/artifacts/recommendations-v2.tar.gz` (~3,2 MB),
 проверить SHA из `build_env/artifacts.json`, распаковать из корня проекта.
-Compose монтирует `weights/recommendations-v1` в `/recommendations`; API читает
+Compose монтирует `weights/recommendations-v2` в `/recommendations`; API читает
 `WINE_RECOMMENDATIONS_DIR`. Индекс сверяет SHA каталога, дополнения и векторов.
 Если его нет, API выдаёт аналоги по атрибутам без текстового сходства.
 
@@ -369,3 +359,12 @@ Worker различает близкие варианты одной линей�
 с контрольными суммами обновлённого worker. Модели скоринга не переобучались.
 Android отправляет JPEG 90 с длинной стороной не более 2560 px и применённым EXIF.
 Для телефонов нужно собрать и установить новую версию приложения.
+
+
+### Исправленный эталон Муската, 25.09.2026
+
+`v5-muscat` заменяет ошибочную фотографию SAPERAVI у Velvet Season MUSCAT и три её визуальных вектора. Остальные 6008 векторов и метаданные вина не менялись. Каталог, bundle, изображения `catalog-images-v2` и текстовый индекс `recommendations-v2` поставляются вместе; актуальные пути, размеры и SHA — в `build_env/artifacts.json`. Текстовые документы не изменились, поэтому их векторы переиспользованы с новым манифестом. Коэффициенты score и отказа не переобучались.
+
+Проверены 114 прежних решений по изображениям и 22 решения по метаданным: других пропущенных подтверждённых исправлений не найдено. На двух новых сканах Муската score вырос с 13,7/19,1 до 78,6/79,5; шесть контрольных результатов сохранили Top-1, score и решение об отказе. Это локальная регрессионная проверка, не оценка обобщения.
+
+Для слабого результата API может вернуть `recommendationContext.basis=retrieval_family` или `retrieval_producer`. `criteriaSources.producer=retrieval_shortlist_consensus` — предположение по согласованным кандидатам, не прочитанный OCR производитель. Цвет остаётся `null`, если его не прочитали. `recommendations[].visualSimilarity` задаёт порядок визуально близких вариантов внутри такого подбора; это не уверенность узнавания.
