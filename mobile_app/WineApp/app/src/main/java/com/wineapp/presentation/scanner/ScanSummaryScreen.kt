@@ -46,20 +46,19 @@ fun ScanSummaryScreen(
                 }
                 Text(
                     when {
-                        absent -> "Вино не найдено в каталоге"
+                        absent -> "Мы не нашли ваше вино"
                         choosingCandidate -> "Выберите своё вино"
-                        confirmed != null -> "Ваше вино"
-                        else -> "Совпадение не подтверждено"
+                        confirmed != null -> "Мы нашли ваше вино"
+                        else -> "Скорее всего, мы нашли ваше вино"
                     }, style = MaterialTheme.typography.headlineSmall
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
                     when {
-                        absent -> "Не удалось найти это вино. Ниже — рекомендации по характеристикам, прочитанным на этикетке."
+                        absent -> if (result.recommendations.isNotEmpty()) "Но можем порекомендовать похожие вина." else "Попробуйте сфотографировать этикетку ближе."
                         choosingCandidate -> "Выберите правильную карточку среди результатов поиска."
-                        confirmation?.source == "score_confirmed" -> "Вино распознано автоматически."
-                        confirmed != null -> "Вы подтвердили совпадение."
-                        else -> "Не удалось уверенно распознать вино. Ниже — рекомендации; они не являются результатом распознавания."
+                        confirmed != null -> "Откройте карточку, чтобы узнать о нём больше."
+                        else -> if (result.recommendations.isNotEmpty()) "Посмотрите подборку похожих вин." else "Попробуйте сфотографировать этикетку ближе."
                     }, style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -69,10 +68,6 @@ fun ScanSummaryScreen(
                 items(result.scoredCandidates, key = { "candidate:${it.slug}" }) { candidate ->
                     CandidateCard(candidate, result.scanId != null, state.confirming,
                         { onConfirm(candidate.slug) }, { onOpenWine(candidate.wine.id, true) })
-                }
-                if (result.scoredCandidates.isNotEmpty()) {
-                    item { Text("Совпадение — оценка сходства от 0 до 100, а не вероятность правильного ответа.",
-                        style = MaterialTheme.typography.bodySmall) }
                 }
             }
             if (confirmed != null && result.scoredCandidates.size > 1) {
@@ -87,39 +82,21 @@ fun ScanSummaryScreen(
             item {
                 HorizontalDivider()
                 Spacer(Modifier.height(12.dp))
-                val familyRecommendations = result.recommendationBasis in setOf("retrieval_family", "retrieval_producer")
-                Text(when {
-                    familyRecommendations -> "Визуально похожие вина"
-                    !absent && confirmed == null && result.recommendationBasis == "photo_ocr" -> "Рекомендации по этикетке"
-                    !absent && confirmed == null -> "Рекомендации по первому кандидату"
-                    else -> "Рекомендуем также"
-                },
+                Text(if (confirmed != null) "Рекомендуем также" else "Похожие вина",
                     style = MaterialTheme.typography.titleLarge)
-                if (familyRecommendations) {
-                    Text("Подбор по сходству этикеток и предполагаемому производителю. Прочитанное название линейки уточняет выбор; совпадение не подтверждено.",
-                        style = MaterialTheme.typography.bodySmall)
-                } else if (!absent && confirmed == null && result.recommendationBasis != "photo_ocr") {
-                    Text("Подбор ориентируется на первую карточку поиска; она может отличаться от вина на фото.",
-                        style = MaterialTheme.typography.bodySmall)
-                }
-                val labels = mapOf("color" to "Цвет", "sweetness" to "Сахар", "grapes" to "Виноград", "producer" to "Производитель")
-                result.recommendationCriteria.forEach { (key, value) ->
-                    labels[key]?.let { label -> Text("$label: $value", style = MaterialTheme.typography.bodySmall) }
-                }
             }
             items(result.recommendations, key = { "recommendation:${it.wine.id}" }) { recommendation ->
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     WineCard(recommendation.wine, modifier = Modifier.fillMaxWidth(),
                         onClick = { onOpenWine(recommendation.wine.id, false) })
-                    recommendation.reasons.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
                 }
             }
             if (result.recommendations.isEmpty()) {
                 item {
                     Text(when (result.recommendationStatus) {
-                        "ambiguous_evidence" -> "Прочитанные характеристики противоречат друг другу. Попробуйте более чёткое фото."
-                        "no_suitable_analogs" -> "В каталоге пока нет рекомендаций с такими характеристиками."
-                        else -> "Недостаточно данных для подбора рекомендаций. Попробуйте сфотографировать этикетку ближе."
+                        "ambiguous_evidence" -> "Не удалось подобрать похожие вина. Попробуйте более чёткое фото этикетки."
+                        "no_suitable_analogs" -> "Похожих вин пока нет в каталоге."
+                        else -> "Не удалось подобрать похожие вина. Попробуйте сфотографировать этикетку ближе."
                     })
                 }
             }
