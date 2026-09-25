@@ -24,12 +24,14 @@ class LabelGeometryTest {
     @Test fun captureWaitsForStabilityAndFiresOnlyOnceUntilTargetLeaves() {
         val gate = LabelCaptureGate()
         val target = listOf(LabelBox(.25f, .25f, .75f, .75f, .9f))
-        for (time in 0L..800L step 100) assertFalse(gate.update(target, time))
-        assertTrue(gate.update(target, 900))
-        for (time in 1000L..2000L step 100) assertFalse(gate.update(target, time))
+        assertFalse(gate.update(target, 0))
+        assertFalse(gate.update(target, 33))
+        assertTrue(gate.update(target, 66))
+        for (time in 99L..2000L step 33) assertFalse(gate.update(target, time))
         gate.update(emptyList(), 4000)
-        for (time in 4100L..4900L step 100) assertFalse(gate.update(target, time))
-        assertTrue(gate.update(target, 5000))
+        assertFalse(gate.update(target, 4100))
+        assertFalse(gate.update(target, 4133))
+        assertTrue(gate.update(target, 4166))
     }
 
     @Test fun severalTargetsOrGapsCannotTriggerCapture() {
@@ -38,5 +40,18 @@ class LabelGeometryTest {
         val two = LabelBox(.5f, .2f, .8f, .8f, .9f)
         for (time in 0L..2000L step 100) assertFalse(gate.update(listOf(one, two), time))
         for (time in 3000L..9000L step 500) assertFalse(gate.update(listOf(one), time))
+    }
+
+    @Test fun resumeOrRejectedCaptureCanRearmWithoutRemovingBottle() {
+        val gate = LabelCaptureGate()
+        val target = listOf(LabelBox(.25f, .25f, .75f, .75f, .9f))
+        repeat(3) { session ->
+            gate.reset()
+            val start = session * 1000L
+            assertFalse(gate.update(target, start))
+            assertFalse(gate.update(target, start + 33))
+            assertTrue(gate.update(target, start + 66))
+            assertFalse(gate.update(target, start + 99))
+        }
     }
 }

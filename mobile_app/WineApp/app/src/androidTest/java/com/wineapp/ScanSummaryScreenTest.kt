@@ -21,7 +21,7 @@ class ScanSummaryScreenTest {
     private val first = wine("a", "Рислинг — первый кандидат")
     private val second = wine("b", "Рислинг — второй кандидат")
     private fun base() = ScanResult(first, 0f, scanId = "scan", recognitionStatus = "candidates_unverified",
-        scoredCandidates = listOf(ScoredWine(first, "a", 1, .87f), ScoredWine(second, "b", 2, .35f)),
+        scoredCandidates = listOf(ScoredWine(first, "a", 1, .70f), ScoredWine(second, "b", 2, .35f)),
         recommendations = listOf(RecommendedWine(wine("c", "Вино для рекомендации"), listOf("Совпадают цвет и сахар"))),
         recommendationStatus = "available", recommendationCriteria = mapOf("color" to "Белое", "sweetness" to "Сухое"))
 
@@ -38,7 +38,7 @@ class ScanSummaryScreenTest {
             ScanSummaryScreen(ScannerState.Success(base(), ""), { selected = it }, { _, _ -> }, {}, {})
         } }
         compose.onNodeWithText("Похожие варианты из каталога").assertIsDisplayed()
-        compose.onNodeWithText("Совпадение 87/100").assertIsDisplayed()
+        compose.onNodeWithText("Совпадение 70/100").assertIsDisplayed()
         compose.onAllNodesWithText("Это моё вино")[0].performClick()
         compose.runOnIdle { assertEquals("a", selected) }
         screenshot("scan_unverified")
@@ -53,6 +53,21 @@ class ScanSummaryScreenTest {
         compose.onNodeWithText(first.name).assertDoesNotExist()
         compose.onNodeWithText("Рекомендуем также").assertIsDisplayed()
         screenshot("scan_confirmed")
+    }
+
+    @Test fun highScoreAutomaticallyShowsWineAndAllowsCorrection() {
+        val result = base().let { it.copy(scoredCandidates =
+            listOf(it.scoredCandidates.first().copy(matchScore = .87f)) + it.scoredCandidates.drop(1)) }
+        compose.setContent { WineAppTheme {
+            ScanSummaryScreen(ScannerState.Success(result, ""), {}, { _, _ -> }, {}, {})
+        } }
+        compose.onNodeWithText("Ваше вино").assertIsDisplayed()
+        compose.onNodeWithText("Вино распознано автоматически.").assertIsDisplayed()
+        compose.onNodeWithText("Совпадение 87/100").assertIsDisplayed()
+        compose.onNodeWithText("Вы подтвердили совпадение.").assertDoesNotExist()
+        screenshot("scan_auto_confirmed")
+        compose.onNodeWithText("Выбрать другое вино").performScrollTo().performClick()
+        compose.onAllNodesWithText("Это моё вино")[0].performScrollTo().assertIsDisplayed()
     }
 
     @Test fun absentWineShowsRecommendationsWithoutSearchCandidates() {

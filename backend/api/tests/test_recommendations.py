@@ -48,6 +48,47 @@ def test_neighbors_low_confidence_and_ambiguous_colors_cannot_drive_recommendati
     assert result["status"] == "ambiguous_evidence" and result["items"] == []
 
 
+def test_absent_massandra_ocr_glyphs_recommend_only_red_dry_and_keep_evidence():
+    cards = [card("red-dry", color="Красное"), card("rose", color="Розовое"),
+             card("red-sweet", color="Красное", sugar="Сладкое"), card("white")]
+    ix = RecommendationIndex({c["slug"]: c for c in cards})
+    data = dict(recognitionStatus="not_in_catalog", candidates=[{"slug": "rose"}], observations=[
+        dict(text="KPACHOE", confidence=.9840547442, on_target_bottle=True, source="body:russian"),
+        dict(text="CVXOE", confidence=.8110778928, on_target_bottle=True, source="body:latin"),
+    ])
+    output = ix.recommend(data)
+    assert [item["slug"] for item in output["items"]] == ["red-dry"]
+    assert output["basis"] == "photo_ocr" and output["anchor"] is None
+    assert output["criteria"]["color"] == "Красное"
+    assert output["criteria"]["sweetness"] == "Сухое"
+    assert output["profile"]["sweetness"]["readings"][0]["evidence"][0]["text"] == "CVXOE"
+    assert data["observations"][0]["text"] == "KPACHOE"
+
+
+def test_attribute_ocr_normalization_preserves_sugar_boundaries_and_ambiguity():
+    ix = RecommendationIndex({"a": card("a")})
+    profile = ix.observed(observed("KРАСНOE ПОЛУ CVXOE")["observations"])
+    assert profile["color"]["value"] == "Красное"
+    assert profile["sweetness"]["value"] == "Полусухое"
+    assert len(profile["sweetness"]["readings"]) == 1
+    assert ix.recommend(observed("KPACHOE CVXOE", "white"))["status"] == "ambiguous_evidence"
+    assert ix.observed(observed("XKPACHOEX XCVXOEX CXOE")["observations"])["sweetness"]["status"] == "missing"
+    assert ix.observed(observed("XKPACHOEX")["observations"])["color"]["status"] == "missing"
+
+
+def test_ocr_glyph_aliases_do_not_bypass_evidence_filters_or_grape_color_guard():
+    ix = RecommendationIndex({"a": card("a", grapes="Мускат Белый")})
+    for extra in [dict(confidence=.79), dict(on_target_bottle=False), dict(confidence=float("nan"))]:
+        row = dict(text="KPACHOE CVXOE", confidence=.99, on_target_bottle=True)
+        assert ix.recommend({"observations": [{**row, **extra}]})["items"] == []
+    profile = ix.observed(observed("Мускат БEЛЫЙ CVXOE")["observations"])
+    assert profile["color"]["value"] is None
+    assert profile["sweetness"]["value"] == "Сухое"
+    # Metadata and producer/grape evidence are not rewritten by attribute OCR repair.
+    assert ix.observed(observed("MАССАНДРА")["observations"])["producer"]["status"] == "missing"
+    assert RecommendationIndex({"a": card("a", color="KPACHOE")}).cards["a"]["color"] is None
+
+
 def test_sweetness_uses_complete_words_and_reviewed_catalogue_values():
     assert find_values("полусухое semi-dry", SWEETNESS) == ["Полусухое"]
     assert find_values("extra brut", SWEETNESS) == ["Экстра брют"]

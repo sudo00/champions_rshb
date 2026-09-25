@@ -7,7 +7,7 @@ import math
 import re
 import unicodedata
 
-VERSION = "attribute-recommendations-v2"
+VERSION = "attribute-recommendations-v3"
 COLORS = {"Белое": ["белое", "белый", "white"], "Красное": ["красное", "красный", "red"],
           "Розовое": ["розовое", "розовый", "rose", "rosé"], "Оранжевое": ["оранжевое", "orange"]}
 SWEETNESS = {
@@ -40,6 +40,30 @@ def normalize(text: str) -> str:
     text = unicodedata.normalize("NFKD", str(text).casefold().replace("ё", "е"))
     text = "".join(c for c in text if not unicodedata.combining(c))
     return " ".join(re.findall(r"[^\W_]+", text))
+
+
+# OCR can read Russian capitals as Latin glyphs (КРАСНОЕ -> KPACHOE).
+# V/Y are allowed only inside a complete known attribute word, never as a
+# general transliteration of names, grapes, catalogue metadata or raw evidence.
+OCR_ATTRIBUTE_GLYPHS = str.maketrans({
+    "a": "а", "b": "в", "c": "с", "e": "е", "h": "н", "k": "к",
+    "m": "м", "o": "о", "p": "р", "t": "т", "x": "х", "y": "у", "v": "у",
+})
+
+
+@lru_cache(maxsize=1)
+def attribute_words() -> frozenset[str]:
+    return frozenset(word for vocabulary in (COLORS, SWEETNESS)
+                     for value, aliases in vocabulary.items() for alias in [value, *aliases]
+                     for word in normalize(alias).split() if re.fullmatch(r"[а-я]+", word))
+
+
+def normalize_ocr_attributes(text: str) -> str:
+    words = []
+    for word in normalize(text).split():
+        decoded = word.translate(OCR_ATTRIBUTE_GLYPHS)
+        words.append(decoded if decoded in attribute_words() else word)
+    return " ".join(words)
 
 
 @lru_cache(maxsize=64)
@@ -122,12 +146,14 @@ class RecommendationIndex:
             text = str(line.get("text") or "")
             evidence = {k: line.get(k) for k in ("text", "confidence", "source", "polygon_original")}
             # "Мускат Белый" is a grape name, not evidence that this wine is white.
-            color_text = normalize(text)
-            for grape in find_values(text, self.grapes):
+            attribute_text = normalize_ocr_attributes(text)
+            color_text = attribute_text
+            for grape in find_values(attribute_text, self.grapes):
                 for alias in [grape, *self.grapes[grape]]:
                     color_text = re.sub(r"(?<!\w)" + re.escape(normalize(alias)) + r"(?!\w)", " ", color_text)
             for key, vocabulary in [("color", COLORS), ("sweetness", SWEETNESS), ("grapes", self.grapes), ("producer", self.producers)]:
-                for value in find_values(color_text if key == "color" else text, vocabulary):
+                search_text = color_text if key == "color" else attribute_text if key == "sweetness" else text
+                for value in find_values(search_text, vocabulary):
                     if len(groups[key][value]) < 3:
                         groups[key][value].append(evidence)
         return {key: dict(value=sorted(values) if key == "grapes" else single(sorted(values)),

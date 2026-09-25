@@ -15,6 +15,47 @@ import org.json.JSONObject
 
 @RunWith(AndroidJUnit4::class)
 class LabelDetectorSmokeTest {
+    @Test fun preloadedModelSurvivesRepeatedCameraSessions() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val runtime = (context.applicationContext as WineApplication).labelDetectorRuntime
+        runtime.preload()
+        runtime.executor.submit {
+            val detector = runtime.detector()
+            val fixture = File(context.filesDir, "detector_fixture.png")
+            val bitmap = if (fixture.exists()) requireNotNull(BitmapFactory.decodeFile(fixture.path))
+                else Bitmap.createBitmap(320, 320, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.GRAY) }
+            try {
+                val reference = detector.detect(bitmap)
+                val heapBefore = android.os.Debug.getNativeHeapAllocatedSize()
+                val timings = mutableListOf<Long>()
+                repeat(3) {
+                    val analyzer = com.wineapp.data.detector.CameraLabelAnalyzer(runtime) { }
+                    repeat(100) {
+                        val start = android.os.SystemClock.elapsedRealtimeNanos()
+                        val boxes = runtime.detector().detect(bitmap)
+                        timings += (android.os.SystemClock.elapsedRealtimeNanos() - start) / 1_000_000
+                        assertEquals(reference.size, boxes.size)
+                        boxes.zip(reference).forEach { (actual, expected) ->
+                            assertEquals(expected.score, actual.score, 0.001f)
+                            assertEquals(expected.left, actual.left, 0.001f)
+                            assertEquals(expected.top, actual.top, 0.001f)
+                            assertEquals(expected.right, actual.right, 0.001f)
+                            assertEquals(expected.bottom, actual.bottom, 0.001f)
+                        }
+                    }
+                    analyzer.close()
+                    runtime.preload()
+                    assertSame(detector, runtime.detector())
+                }
+                val sorted = timings.sorted()
+                android.util.Log.i("LabelDetectorSmoke", "Shared runtime: frames=${timings.size} " +
+                    "fixture=${fixture.exists()} boxes=${reference.size} medianMs=${sorted[150]} " +
+                    "p95Ms=${sorted[284]} maxMs=${sorted.last()} " +
+                    "nativeHeapDeltaBytes=${android.os.Debug.getNativeHeapAllocatedSize() - heapBefore}")
+            } finally { bitmap.recycle() }
+        }.get(60, java.util.concurrent.TimeUnit.SECONDS)
+    }
+
     @Test fun bundledModelLoadsAndRunsOnDevice() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val bytes = context.assets.open("models/wine_label_yolo26n_320.tflite").use { it.readBytes() }

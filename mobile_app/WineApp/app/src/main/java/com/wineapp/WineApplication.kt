@@ -6,4 +6,11 @@ import dagger.hilt.android.HiltAndroidApp
 const val USE_MOCK = false
 
 @HiltAndroidApp
-class WineApplication : Application()
+class WineApplication : Application() {
+    @javax.inject.Inject lateinit var labelDetectorRuntime: com.wineapp.data.detector.LabelDetectorRuntime
+
+    override fun onCreate() {
+        super.onCreate()
+        labelDetectorRuntime.preload()
+    }
+}

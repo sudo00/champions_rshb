@@ -28,8 +28,11 @@ class ScanHistoryRepositoryImpl @Inject constructor(
     override suspend fun saveScan(scan: SavedScan): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
-                val savedPhotoPath = scan.labelPhotoPath?.let { copyPhotoToInternal(it) }
-                val territoryId = TerritoryRegistry.normalize(scan.wine.region)
+                val previous = scanHistoryDao.getScanById(scan.id)
+                val savedPhotoPath = previous?.labelPhotoPath?.takeIf { File(it).isFile }
+                    ?: scan.labelPhotoPath?.let { copyPhotoToInternal(it) }
+                val confirmed = scan.recognitionStatus in setOf("legacy", "user_confirmed", "score_confirmed")
+                val territoryId = if (confirmed) TerritoryRegistry.normalize(scan.wine.region) else null
 
                 val entity = ScanHistoryEntity(
                     id = scan.id,
@@ -51,14 +54,16 @@ class ScanHistoryRepositoryImpl @Inject constructor(
                     description = scan.wine.description,
                     foodPairing = scan.wine.foodPairing.joinToString(","),
                     winery = scan.wine.winery,
-                    scannedAt = scan.scannedAt,
-                    territoryId = territoryId
+                    scannedAt = previous?.scannedAt ?: scan.scannedAt,
+                    territoryId = territoryId,
+                    recognitionStatus = scan.recognitionStatus
                 )
                 scanHistoryDao.insertScan(entity)
 
                 // «Винный путь»: очки и бейджи за скан (идемпотентно, ошибки не роняют сохранение).
                 try {
-                    badgeRepository.awardForScan(scan.id, territoryId)
+                    if (confirmed && previous?.recognitionStatus !in setOf("legacy", "user_confirmed", "score_confirmed"))
+                        badgeRepository.awardForScan(scan.id, territoryId)
                 } catch (e: Exception) {
                     Log.e("ScanHistoryRepo", "Badge award failed", e)
                 }
@@ -117,6 +122,7 @@ class ScanHistoryRepositoryImpl @Inject constructor(
                     labelPhotoPath = entity.labelPhotoPath,
                     confidence = entity.confidence,
                     conversation = emptyList(),
+                    recognitionStatus = entity.recognitionStatus,
                     scannedAt = entity.scannedAt
                 )
             }
@@ -167,6 +173,7 @@ class ScanHistoryRepositoryImpl @Inject constructor(
                     labelPhotoPath = entity.labelPhotoPath,
                     confidence = entity.confidence,
                     conversation = conversation,
+                    recognitionStatus = entity.recognitionStatus,
                     scannedAt = entity.scannedAt
                 )
 
@@ -218,6 +225,7 @@ class ScanHistoryRepositoryImpl @Inject constructor(
             labelPhotoPath = entity.labelPhotoPath,
             confidence = entity.confidence,
             conversation = emptyList(),
+            recognitionStatus = entity.recognitionStatus,
             scannedAt = entity.scannedAt
         )
     }
@@ -229,9 +237,8 @@ class ScanHistoryRepositoryImpl @Inject constructor(
         val destFile = File(photosDir, "${UUID.randomUUID()}.jpg")
         val sourceFile = File(sourcePath)
 
-        if (sourceFile.exists()) {
-            sourceFile.copyTo(destFile, overwrite = true)
-        }
+        require(sourceFile.isFile) { "Scan photo is missing" }
+        sourceFile.copyTo(destFile, overwrite = true)
 
         return destFile.absolutePath
     }

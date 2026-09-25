@@ -5,13 +5,16 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.wineapp.data.file.CameraHelper
-import com.wineapp.domain.model.SavedScan
+import com.wineapp.domain.model.historySnapshot
 import com.wineapp.domain.usecase.SaveScanUseCase
 import com.wineapp.domain.usecase.ScanWineUseCase
 import com.wineapp.presentation.common.BaseViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
 import java.io.File
 import java.io.FileOutputStream
 import javax.inject.Inject
@@ -43,6 +46,8 @@ class ScannerViewModel @Inject constructor(
                         first.def.title
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("ScannerViewModel", "Fresh badges failed", e)
             }
@@ -65,6 +70,30 @@ class ScannerViewModel @Inject constructor(
     }
 
     private var lastFactIndex: Int = -1
+    private var scanScreenActive = false
+    private val scanHaptics = com.wineapp.util.ScanHapticSession(
+        start = { com.wineapp.util.HapticHelper.startScanWaiting(context) },
+        stop = { com.wineapp.util.HapticHelper.stopScanWaiting(context) }
+    )
+
+    fun setScanScreenActive(active: Boolean) {
+        scanScreenActive = active
+        cameraHelper.setScreenActive(active)
+        scanHaptics.setForeground(active)
+    }
+
+    fun onCaptureStarted() = startScanHaptic()
+
+    fun onCaptureFailed() = stopScanHaptic()
+
+    private fun startScanHaptic() = scanHaptics.begin()
+
+    private fun stopScanHaptic() = scanHaptics.finish()
+
+    override fun onCleared() {
+        stopScanHaptic()
+        super.onCleared()
+    }
 
     private fun handleCapture(imagePath: String) {
         if (_state.value is ScannerState.Processing) return
@@ -75,49 +104,67 @@ class ScannerViewModel @Inject constructor(
     private fun handleProcess(imagePath: String) {
         if (_state.value is ScannerState.Processing) return
         updateState(ScannerState.Processing(imagePath, nextSeed(), nextFactIndex()))
+        startScanHaptic()
         viewModelScope.launch {
-            val result = scanWineUseCase(imagePath)
-            result.onSuccess { scanResult ->
-                if (scanResult.wine != null || scanResult.recognitionStatus == "not_in_catalog") {
-                    updateState(ScannerState.Success(scanResult, imagePath))
-                } else {
-                    updateState(ScannerState.NotFound(imagePath, scanResult.matches, scanResult.recognitionStatus, scanResult.message))
+            try {
+                val result = scanWineUseCase(imagePath)
+                result.onSuccess { scanResult ->
+                    stopScanHaptic()
+                    if (scanScreenActive) com.wineapp.util.HapticHelper.vibrateScanResult(context)
+                    val snapshot = scanResult.historySnapshot(imagePath, System.currentTimeMillis())
+                    val saveError = snapshot?.let { saveScanUseCase(it).exceptionOrNull() }
+                    if (saveError != null) Log.e("ScannerViewModel", "Automatic scan save failed", saveError)
+                    if (scanResult.wine != null || scanResult.recognitionStatus == "not_in_catalog") {
+                        updateState(ScannerState.Success(scanResult, imagePath, confirmationError =
+                            if (saveError != null) "Результат получен, но сохранить сканирование не удалось." else null))
+                    } else {
+                        updateState(ScannerState.NotFound(imagePath, scanResult.matches, scanResult.recognitionStatus, scanResult.message))
+                    }
+                }.onFailure { error ->
+                    stopScanHaptic()
+                    Log.e("ScannerViewModel", "Scan failed", error)
+                    updateState(ScannerState.Error(if (error is java.io.IOException)
+                        "Не удалось связаться с сервером. Проверьте подключение и попробуйте ещё раз."
+                        else "Не удалось распознать фото. Попробуйте ещё раз."))
                 }
-            }.onFailure { error ->
-                Log.e("ScannerViewModel", "Scan failed", error)
-                Log.e("ScannerViewModel", "Scan failed", error)
-                updateState(ScannerState.Error(if (error is java.io.IOException)
-                    "Не удалось связаться с сервером. Проверьте подключение и попробуйте ещё раз."
-                    else "Не удалось распознать фото. Попробуйте ещё раз."))
+            } finally {
+                stopScanHaptic()
             }
         }
     }
 
     private fun handleGalleryPicked(uriString: String) {
+        if (_state.value is ScannerState.Processing || _state.value is ScannerState.Capturing) return
+        updateState(ScannerState.Capturing(uriString))
+        cameraHelper.setAnalysisEnabled(false)
+        startScanHaptic()
         viewModelScope.launch {
-            val uri = try {
-                uriString.toUri()
+            try {
+                val file = withContext(Dispatchers.IO) { copyUriToFile(uriString.toUri()) }
+                if (file != null) {
+                    handleProcess(file.absolutePath)
+                } else {
+                    stopScanHaptic()
+                    updateState(ScannerState.Error("Не удалось открыть фото из галереи. Попробуйте другое изображение."))
+                }
+            } catch (e: CancellationException) {
+                stopScanHaptic()
+                throw e
             } catch (e: Exception) {
-                Log.e("ScannerViewModel", "Invalid URI: $uriString", e)
-                return@launch
-            }
-            val file = copyUriToFile(uri)
-            if (file != null) {
-                sendIntent(ScannerIntent.ProcessImage(file.absolutePath))
-            } else {
-                Log.e("ScannerViewModel", "Failed to copy gallery image")
+                stopScanHaptic()
+                Log.e("ScannerViewModel", "Gallery import failed", e)
+                updateState(ScannerState.Error("Не удалось открыть фото из галереи."))
             }
         }
     }
 
     private fun copyUriToFile(uri: Uri): File? {
         return try {
-            val inputStream = context.contentResolver.openInputStream(uri) ?: return null
-            val tempFile = File.createTempFile("gallery_", ".jpg", context.cacheDir)
-            FileOutputStream(tempFile).use { outputStream ->
-                inputStream.copyTo(outputStream)
-            }
-            inputStream.close()
+            val tempFile = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                File.createTempFile("gallery_", ".jpg", context.cacheDir).also { file ->
+                    FileOutputStream(file).use { outputStream -> inputStream.copyTo(outputStream) }
+                }
+            } ?: return null
             // Путь галереи: копия сохраняет исходный EXIF. Нормализуем пиксели,
             // чтобы локальный файл и Base64 на бэк были upright.
             try {
@@ -175,13 +222,16 @@ class ScannerViewModel @Inject constructor(
         viewModelScope.launch {
             wineRepository.confirmScan(scanId, slug).onSuccess { result ->
                 if ((_state.value as? ScannerState.Success)?.result?.scanId == scanId) {
-                    updateState(current.copy(result = result, confirming = false))
-                    result.scoredCandidates.firstOrNull { it.slug == result.userConfirmedSlug }?.let { selected ->
-                        saveScanUseCase(SavedScan(
-                            id = scanId, wine = selected.wine, labelPhotoPath = current.imagePath,
-                            confidence = selected.matchScore ?: 0f, conversation = emptyList(),
-                            scannedAt = System.currentTimeMillis()
-                        )).onFailure { Log.e("ScannerViewModel", "Save confirmed scan failed", it) }
+                    val snapshot = result.historySnapshot(current.imagePath, System.currentTimeMillis())
+                    val saveError = snapshot?.let { saveScanUseCase(it).exceptionOrNull() }
+                    if ((_state.value as? ScannerState.Success)?.result?.scanId == scanId) {
+                        if (saveError == null && snapshot != null) {
+                            updateState(current.copy(result = result, confirming = false))
+                        } else {
+                            Log.e("ScannerViewModel", "Save confirmed scan failed", saveError)
+                            updateState(current.copy(confirming = false,
+                                confirmationError = "Не удалось сохранить выбор на телефоне. Попробуйте ещё раз."))
+                        }
                     }
                 }
             }.onFailure {

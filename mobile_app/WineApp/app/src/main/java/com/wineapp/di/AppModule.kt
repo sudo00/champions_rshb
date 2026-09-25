@@ -51,7 +51,7 @@ object DatabaseModule {
             context.applicationContext,
             AppDatabase::class.java,
             "wine_history.db"
-        ).fallbackToDestructiveMigration().build()
+        ).addMigrations(AppDatabase.MIGRATION_6_7).fallbackToDestructiveMigration().build()
     }
 
     @Provides

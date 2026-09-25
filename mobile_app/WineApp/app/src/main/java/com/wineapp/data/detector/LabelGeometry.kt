@@ -47,15 +47,14 @@ data class LabelLetterbox(val width: Int, val height: Int, val side: Int = 320) 
     }
 }
 
-/** A stable single central target can fire once; absence is required to rearm. */
+/** Three consecutive stable detections fire once; absence is required to rearm. */
 class LabelCaptureGate {
     private var previous: LabelBox? = null
-    private var since = 0L
     private var lastSeen = 0L
     private var frames = 0
     private var fired = false
 
-    fun reset() { previous = null; since = 0L; lastSeen = 0L; frames = 0; fired = false }
+    fun reset() { previous = null; lastSeen = 0L; frames = 0; fired = false }
 
     fun update(boxes: List<LabelBox>, now: Long): Boolean {
         val eligible = boxes.filter { it.eligible() }
@@ -66,10 +65,10 @@ class LabelCaptureGate {
         }
         val target = eligible.single()
         if (previous?.iou(target)?.let { it >= .75f } != true || now - lastSeen > 400) {
-            since = now; frames = 0
+            frames = 0
         }
         previous = target; lastSeen = now; frames++
-        if (!fired && frames >= 6 && now - since >= 900) { fired = true; return true }
+        if (!fired && frames >= 3) { fired = true; return true }
         return false
     }
 }

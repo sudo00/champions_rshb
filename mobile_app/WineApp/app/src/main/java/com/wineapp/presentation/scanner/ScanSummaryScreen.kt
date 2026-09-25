@@ -1,14 +1,21 @@
 package com.wineapp.presentation.scanner
 
+import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextOverflow
 import com.wineapp.domain.model.ScoredWine
+import com.wineapp.domain.model.confirmation
 import com.wineapp.presentation.common.ui.WineCard
 import kotlin.math.roundToInt
 
@@ -23,7 +30,9 @@ fun ScanSummaryScreen(
 ) {
     val result = state.result
     val absent = result.recognitionStatus == "not_in_catalog"
-    val confirmed = result.scoredCandidates.firstOrNull { it.slug == result.userConfirmedSlug }
+    val confirmation = result.confirmation()
+    val confirmed = confirmation?.candidate
+    var choosingCandidate by remember(result.scanId, result.userConfirmedSlug) { mutableStateOf(false) }
     Surface(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars),
@@ -38,6 +47,7 @@ fun ScanSummaryScreen(
                 Text(
                     when {
                         absent -> "Вино не найдено в каталоге"
+                        choosingCandidate -> "Выберите своё вино"
                         confirmed != null -> "Ваше вино"
                         else -> "Похожие варианты из каталога"
                     }, style = MaterialTheme.typography.headlineSmall
@@ -46,12 +56,14 @@ fun ScanSummaryScreen(
                 Text(
                     when {
                         absent -> "Не удалось найти это вино. Ниже — рекомендации по характеристикам, прочитанным на этикетке."
+                        choosingCandidate -> "Выберите правильную карточку среди результатов поиска."
+                        confirmation?.source == "score_confirmed" -> "Вино распознано автоматически."
                         confirmed != null -> "Вы подтвердили совпадение."
                         else -> "Совпадение пока не подтверждено. Выберите своё вино среди результатов поиска."
                     }, style = MaterialTheme.typography.bodyMedium
                 )
             }
-            if (confirmed != null) {
+            if (confirmed != null && !choosingCandidate) {
                 item { CandidateCard(confirmed, false, false, {}, { onOpenWine(confirmed.wine.id, true) }) }
             } else if (!absent) {
                 items(result.scoredCandidates, key = { "candidate:${it.slug}" }) { candidate ->
@@ -61,6 +73,13 @@ fun ScanSummaryScreen(
                 if (result.scoredCandidates.isNotEmpty()) {
                     item { Text("Совпадение — оценка сходства от 0 до 100, а не вероятность правильного ответа.",
                         style = MaterialTheme.typography.bodySmall) }
+                }
+            }
+            if (confirmed != null && result.scoredCandidates.size > 1) {
+                item {
+                    TextButton(onClick = { choosingCandidate = !choosingCandidate }, enabled = !state.confirming) {
+                        Text(if (choosingCandidate) "Вернуться к результату" else "Выбрать другое вино")
+                    }
                 }
             }
             if (state.confirming) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
@@ -102,6 +121,7 @@ fun ScanSummaryScreen(
 @Composable
 private fun CandidateCard(candidate: ScoredWine, canConfirm: Boolean, busy: Boolean,
                           onConfirm: () -> Unit, onOpen: () -> Unit) {
+    val view = LocalView.current
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("${candidate.rank}. ${candidate.wine.winery.orEmpty()}", style = MaterialTheme.typography.labelLarge,
@@ -109,6 +129,9 @@ private fun CandidateCard(candidate: ScoredWine, canConfirm: Boolean, busy: Bool
             candidate.matchScore?.let { Text("Совпадение ${(it * 100).roundToInt()}/100", style = MaterialTheme.typography.labelLarge) }
         }
         WineCard(candidate.wine, modifier = Modifier.fillMaxWidth(), onClick = onOpen)
-        if (canConfirm) OutlinedButton(onClick = onConfirm, enabled = !busy) { Text("Это моё вино") }
+        if (canConfirm) OutlinedButton(onClick = {
+            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            onConfirm()
+        }, enabled = !busy) { Text("Это моё вино") }
     }
 }

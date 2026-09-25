@@ -6,15 +6,18 @@ After=network-online.target
 [Service]
 Type=oneshot
 EnvironmentFile=/etc/wine-api-network.env
-# Run this narrow exception before VPN catch-all rules (observed at 99/8999/9999).
-# Priority 0 remains reserved for the local table. Remove legacy exceptions.
+# VPNs may install an inverted fwmark rule at priority 0. The dedicated nft
+# route hook marks only API replies, skips that VPN rule and reroutes via main.
+# Keep local-table rules and all other traffic unchanged. Remove legacy exceptions.
 ExecStartPre=-/usr/sbin/ip -4 rule del priority 10000 from ${WINE_API_SOURCE_IP}/32 ipproto tcp sport 8000 lookup main
 ExecStartPre=-/usr/sbin/ip -4 rule del priority 9000 from ${WINE_API_SOURCE_IP}/32 ipproto tcp sport 8000 lookup main
 ExecStartPre=-/usr/sbin/ip -4 rule del priority 100 from ${WINE_API_SOURCE_IP}/32 ipproto tcp sport 8000 lookup main
 ExecStartPre=-/usr/sbin/ip -4 rule del priority 1 from ${WINE_API_SOURCE_IP}/32 ipproto tcp sport 8000 lookup main
+ExecStart=/usr/sbin/nft --file /etc/wine-api-routing.nft
 ExecStart=/usr/sbin/ip -4 rule add priority 1 from ${WINE_API_SOURCE_IP}/32 ipproto tcp sport 8000 lookup main
 RemainAfterExit=yes
 ExecStop=-/usr/sbin/ip -4 rule del priority 1 from ${WINE_API_SOURCE_IP}/32 ipproto tcp sport 8000 lookup main
+ExecStop=-/usr/sbin/nft delete table ip wine_api_routing
 
 [Install]
 WantedBy=multi-user.target

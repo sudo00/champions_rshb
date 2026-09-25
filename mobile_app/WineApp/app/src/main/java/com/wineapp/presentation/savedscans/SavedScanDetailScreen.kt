@@ -241,6 +241,18 @@ private fun ScanResultCard(scan: SavedScan) {
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
+            scan.recognitionStatus.takeUnless { it == "legacy" }?.let { status ->
+                Text(
+                    text = when (status) {
+                        "user_confirmed" -> "Подтверждено вами"
+                        "score_confirmed" -> "Распознано автоматически"
+                        "not_in_catalog" -> "Нет в каталоге"
+                        else -> "Не подтверждено · первый кандидат"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(
@@ -259,19 +271,21 @@ private fun ScanResultCard(scan: SavedScan) {
                     }
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Star,
-                            contentDescription = null,
-                            tint = Color(0xFFFFD700),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            String.format("%.1f", scan.wine.rating),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                    if (scan.wine.rating != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Star,
+                                contentDescription = null,
+                                tint = Color(0xFFFFD700),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                String.format("%.1f", scan.wine.rating),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                     scan.wine.price?.let {
                         Spacer(modifier = Modifier.height(4.dp))

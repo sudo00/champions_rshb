@@ -27,5 +27,7 @@ data class ScanHistoryEntity(
     val winery: String?,
     val scannedAt: Long = System.currentTimeMillis(),
     /** Нормализованная территория «Винного пути» (TerritoryRegistry id), заполняется при сохранении. */
-    val territoryId: String? = null
+    val territoryId: String? = null,
+    @androidx.room.ColumnInfo(defaultValue = "'legacy'")
+    val recognitionStatus: String = "legacy"
 )

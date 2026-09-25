@@ -60,7 +60,6 @@ backend/.venv/
 !/scripts/export_recognizer_bundle.py
 !/scripts/package_recognizer.py
 !/scripts/package_catalog_images.py
-!/scripts/image_preprocessing.py
 !/scripts/prepare_scan_image.py
 !/scripts/README.md
 
