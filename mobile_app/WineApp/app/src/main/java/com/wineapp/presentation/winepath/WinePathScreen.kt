@@ -7,8 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -379,11 +378,16 @@ class WinePathMapState {
         return Offset((bx - offX) / drawW, (by - offY) / drawH)
     }
 
-    fun onTransform(zoomChange: Float, panChange: Offset) {
-        // Демпфируем щипок: сырой zoomChange слишком резкий, берём 40% отклонения от 1.
-        val dampedZoom = 1f + (zoomChange - 1f) * 0.4f
-        scale = (scale * dampedZoom).coerceIn(MAP_MIN_SCALE, MAP_MAX_SCALE)
-        offset = clamp(offset + panChange)
+    fun onTransformAround(centroid: Offset, pan: Offset, zoom: Float) {
+        // Демпфируем щипок: сырой zoom слишком резкий, берём 60% отклонения от 1.
+        val dampedZoom = 1f + (zoom - 1f) * 0.6f
+        val newScale = (scale * dampedZoom).coerceIn(MAP_MIN_SCALE, MAP_MAX_SCALE)
+        // Точка под пальцами стоит на месте: сначала пан, затем зум вокруг центроида.
+        // Формула согласована с graphicsLayer(transformOrigin = 0): screen = scale*base + offset.
+        val moved = offset + pan
+        val base = Offset((centroid.x - moved.x) / scale, (centroid.y - moved.y) / scale)
+        scale = newScale
+        offset = clamp(centroid - Offset(base.x * newScale, base.y * newScale))
     }
 
     fun isZoomed(): Boolean = scale > 2f
@@ -597,13 +601,14 @@ private fun WinePathMap(
 
         // Подписи рисуем только для выбранного региона (см. ниже) — карта остаётся чистой.
 
-        val transformState = rememberTransformableState { zoomChange, panChange, _ ->
-            mapUi.onTransform(zoomChange, panChange)
-        }
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .transformable(transformState)
+                .pointerInput(mapUi) {
+                    detectTransformGestures { centroid, pan, zoom, _ ->
+                        mapUi.onTransformAround(centroid, pan, zoom)
+                    }
+                }
                 .graphicsLayer(
                     scaleX = mapUi.scale,
                     scaleY = mapUi.scale,

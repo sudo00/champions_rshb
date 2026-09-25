@@ -9,6 +9,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -84,6 +85,7 @@ import androidx.lifecycle.LifecycleOwner
 import com.wineapp.data.file.CameraHelper
 import com.wineapp.domain.model.detailRecognitionStatus
 import com.wineapp.presentation.common.ui.ErrorMessage
+import com.wineapp.ui.theme.WineAppTheme
 
 @Composable
 fun ScannerScreen(
@@ -161,8 +163,6 @@ fun ScannerScreen(
     }
     LaunchedEffect(state) { viewModel.cameraHelper.setAnalysisEnabled(state is ScannerState.Ready) }
     LaunchedEffect(viewModel.cameraHelper) {
-        viewModel.cameraHelper.onCaptureStarted = viewModel::onCaptureStarted
-        viewModel.cameraHelper.onCaptureFailed = viewModel::onCaptureFailed
         viewModel.cameraHelper.onAutoCapture = { file ->
             viewModel.sendIntent(ScannerIntent.CapturePhoto(file.absolutePath))
         }
@@ -170,8 +170,10 @@ fun ScannerScreen(
 
     val success = state as? ScannerState.Success
     if (success != null) {
+        val alreadyTried by viewModel.alreadyTried.collectAsState()
         ScanSummaryScreen(
             state = success,
+            alreadyTried = alreadyTried,
             onConfirm = viewModel::confirmCandidate,
             onOpenWine = { id, isRecognition ->
                 onNavigateToDetail(id, if (isRecognition) success.imagePath else null,
@@ -211,6 +213,7 @@ fun ScannerScreenContent(
     onBadgeMessageShown: () -> Unit = {},
 ) {
     val detector by cameraHelper.detectorPreview.collectAsState()
+    val context = LocalContext.current
     val flashMode = when (val s = state) {
         is ScannerState.Ready -> s.flashMode
         else -> androidx.camera.core.ImageCapture.FLASH_MODE_OFF
@@ -244,6 +247,17 @@ fun ScannerScreenContent(
     }
 
     var showOnboarding by remember { mutableStateOf(false) }
+    // Этикетка в кадре: уголки желтеют + разовый тик строго на появление боксов.
+    // detector.highlight — уже строгий сигнал (1 eligible-бокс, 3 стабильных кадра),
+    // сырой boxes.isNotEmpty() давал ложные срабатывания на мусор детектора.
+    val labelDetected = state is ScannerState.Ready && detector.highlight
+    var wasDetected by remember { mutableStateOf(false) }
+    LaunchedEffect(labelDetected) {
+        if (labelDetected && !wasDetected) {
+            com.wineapp.util.HapticHelper.vibrateTick(context)
+        }
+        wasDetected = labelDetected
+    }
     LaunchedEffect(showOnboarding) { cameraHelper.setAutoCapture(!showOnboarding) }
     LaunchedEffect(detector.error) {
         detector.error?.let { snackbarHostState.showSnackbar(it, duration = SnackbarDuration.Short) }
@@ -268,7 +282,14 @@ fun ScannerScreenContent(
             modifier = Modifier.fillMaxSize()
         )
 
-        ScanWindowOverlay(modifier = Modifier.fillMaxSize())
+        ScanWindowOverlay(
+            modifier = Modifier.fillMaxSize(),
+            // Кадр уходит на бэк (съёмка/загрузка) — рамка уже жёлтая,
+            // даже если детектор к этому моменту боксы снял.
+            highlighted = labelDetected ||
+                state is ScannerState.Capturing ||
+                state is ScannerState.Processing
+        )
 
         ScannerTopBar(
             flashMode = flashMode,
@@ -335,7 +356,7 @@ private val BracketWidth = 6.dp
  * Скан-линия из прод-версии сохранена, ход пересчитан на высоту выреза.
  */
 @Composable
-fun ScanWindowOverlay(modifier: Modifier = Modifier) {
+fun ScanWindowOverlay(modifier: Modifier = Modifier, highlighted: Boolean = false) {
     val infiniteTransition = rememberInfiniteTransition()
     val scanLineY by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -345,6 +366,13 @@ fun ScanWindowOverlay(modifier: Modifier = Modifier) {
             repeatMode = RepeatMode.Reverse
         ),
         label = "scanLine"
+    )
+    // Подсветка уголков (этикетка в кадре / фото уходит на бэк) — плавный
+    // переход белый -> золотой. Вызов здесь: внутри Canvas @Composable запрещены.
+    val arcColor by animateColorAsState(
+        targetValue = if (highlighted) Color(0xFFFFD700) else Color.White,
+        animationSpec = tween(durationMillis = 350),
+        label = "scanCornerHighlight"
     )
 
     Box(modifier = modifier) {
@@ -381,10 +409,9 @@ fun ScanWindowOverlay(modifier: Modifier = Modifier) {
             val r = CutoutRadius.toPx()
             val sw = BracketWidth.toPx()
             val arcStyle = Stroke(width = sw, cap = StrokeCap.Round)
-            val white = Color.White
             fun cornerArc(cx: Float, cy: Float, startAngle: Float) {
                 drawArc(
-                    color = white,
+                    color = arcColor,
                     startAngle = startAngle,
                     sweepAngle = 90f,
                     useCenter = false,
@@ -618,9 +645,9 @@ fun ScannerOnboardingSheet(onDismiss: () -> Unit) {
 @Preview(showBackground = true, backgroundColor = 0xFF1A1A1A, heightDp = 800)
 @Composable
 private fun ScannerShutterPreview() {
-    com.wineapp.ui.theme.WineAppTheme {
+    WineAppTheme {
         Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1A1A1A))) {
-            ScanWindowOverlay(modifier = Modifier.fillMaxSize())
+        ScanWindowOverlay(modifier = Modifier.fillMaxSize(), highlighted = true)
             ScannerTopBar(
                 flashMode = androidx.camera.core.ImageCapture.FLASH_MODE_OFF,
                 onCloseClick = {},
@@ -652,7 +679,7 @@ private fun ScannerShutterPreview() {
 @Preview(showBackground = true, heightDp = 800)
 @Composable
 private fun ScannerScreenPreview() {
-    com.wineapp.ui.theme.WineAppTheme {
+    WineAppTheme {
         ScannerScreenContent(
             state = ScannerState.Ready(),
             cameraHelper = CameraHelper(LocalContext.current,

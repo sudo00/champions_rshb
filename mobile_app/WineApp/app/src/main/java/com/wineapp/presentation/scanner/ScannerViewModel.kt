@@ -5,12 +5,18 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.wineapp.data.file.CameraHelper
+import com.wineapp.data.local.FavoriteKind
+import com.wineapp.domain.model.confirmation
 import com.wineapp.domain.model.historySnapshot
+import com.wineapp.domain.usecase.GetCellarEntryUseCase
+import com.wineapp.domain.usecase.IsFavoriteUseCase
 import com.wineapp.domain.usecase.SaveScanUseCase
 import com.wineapp.domain.usecase.ScanWineUseCase
 import com.wineapp.presentation.common.BaseViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -30,6 +36,8 @@ class ScannerViewModel @Inject constructor(
     private val wineRepository: WineRepository,
     private val saveScanUseCase: SaveScanUseCase,
     private val badgeRepository: BadgeRepository,
+    private val getCellarEntryUseCase: GetCellarEntryUseCase,
+    private val isFavoriteUseCase: IsFavoriteUseCase,
     val cameraHelper: CameraHelper
 ) : BaseViewModel<ScannerState, ScannerIntent>() {
 
@@ -38,6 +46,10 @@ class ScannerViewModel @Inject constructor(
     /** Текст тоста о новой награде «Винного пути». Нуллабельный одноразовый сигнал для UI. */
     private val _badgeMessage = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val badgeMessage: kotlinx.coroutines.flow.StateFlow<String?> = _badgeMessage
+
+    /** Найденное вино уже пробовали: есть в погребе или в «Понравилось». Для баннера итога. */
+    private val _alreadyTried = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val alreadyTried: kotlinx.coroutines.flow.StateFlow<Boolean> = _alreadyTried
 
     init {
         viewModelScope.launch {
@@ -74,28 +86,10 @@ class ScannerViewModel @Inject constructor(
 
     private var lastFactIndex: Int = -1
     private var scanScreenActive = false
-    private val scanHaptics = com.wineapp.util.ScanHapticSession(
-        start = { HapticHelper.startScanWaiting(context) },
-        stop = { HapticHelper.stopScanWaiting(context) }
-    )
 
     fun setScanScreenActive(active: Boolean) {
         scanScreenActive = active
         cameraHelper.setScreenActive(active)
-        scanHaptics.setForeground(active)
-    }
-
-    fun onCaptureStarted() = startScanHaptic()
-
-    fun onCaptureFailed() = stopScanHaptic()
-
-    private fun startScanHaptic() = scanHaptics.begin()
-
-    private fun stopScanHaptic() = scanHaptics.finish()
-
-    override fun onCleared() {
-        stopScanHaptic()
-        super.onCleared()
     }
 
     private fun handleCapture(imagePath: String) {
@@ -106,33 +100,39 @@ class ScannerViewModel @Inject constructor(
 
     private fun handleProcess(imagePath: String) {
         if (_state.value is ScannerState.Processing) return
+        _alreadyTried.value = false
         updateState(ScannerState.Processing(imagePath, nextSeed(), nextFactIndex()))
-        startScanHaptic()
         viewModelScope.launch {
-            try {
-                val result = scanWineUseCase(imagePath)
-                result.onSuccess { scanResult ->
-                    stopScanHaptic()
-                    if (scanScreenActive) HapticHelper.vibrateScanResult(context)
-                    val snapshot = scanResult.historySnapshot(imagePath, System.currentTimeMillis())
-                    val saveError = snapshot?.let { saveScanUseCase(it).exceptionOrNull() }
-                    if (saveError != null) Log.e("ScannerViewModel", "Automatic scan save failed", saveError)
-                    if (scanResult.wine != null || scanResult.recognitionStatus == "not_in_catalog") {
-                        updateState(ScannerState.Success(scanResult, imagePath, confirmationError =
-                            if (saveError != null) "Результат получен, но сохранить сканирование не удалось." else null))
-                    } else {
-                        updateState(ScannerState.NotFound(imagePath, scanResult.matches, scanResult.recognitionStatus, scanResult.message))
-                    }
-                }.onFailure { error ->
-                    stopScanHaptic()
-                    Log.e("ScannerViewModel", "Scan failed", error)
-                    updateState(ScannerState.Error(if (error is java.io.IOException)
-                        "Не удалось связаться с сервером. Проверьте подключение и попробуйте ещё раз."
-                        else "Не удалось распознать фото. Попробуйте ещё раз."))
+            val result = scanWineUseCase(imagePath)
+            var triedCandidateId: String? = null
+            result.onSuccess { scanResult ->
+                val wineFound = scanResult.wine != null
+                if (scanScreenActive) {
+                    // Успешный ответ бэка — мощная победная вибрация,
+                    // остальные исходы — короткий штатный отклик.
+                    if (wineFound) HapticHelper.vibrateVictory(context)
+                    else HapticHelper.vibrateScanResult(context)
                 }
-            } finally {
-                stopScanHaptic()
+                val snapshot = scanResult.historySnapshot(imagePath, System.currentTimeMillis())
+                val saveError = snapshot?.let { saveScanUseCase(it).exceptionOrNull() }
+                if (saveError != null) Log.e("ScannerViewModel", "Automatic scan save failed", saveError)
+                if (scanResult.wine != null || scanResult.recognitionStatus == "not_in_catalog") {
+                    // ID найденного вина запоминаем здесь, а suspend-проверку погреба/
+                    // избранного делаем ниже — внутри onSuccess нет корутинного контекста.
+                    triedCandidateId = scanResult.confirmation()?.candidate?.wine?.id
+                        ?: scanResult.wine?.id
+                    updateState(ScannerState.Success(scanResult, imagePath, confirmationError =
+                        if (saveError != null) "Результат получен, но сохранить сканирование не удалось." else null))
+                } else {
+                    updateState(ScannerState.NotFound(imagePath, scanResult.matches, scanResult.recognitionStatus, scanResult.message))
+                }
+            }.onFailure { error ->
+                Log.e("ScannerViewModel", "Scan failed", error)
+                updateState(ScannerState.Error(if (error is java.io.IOException)
+                    "Не удалось связаться с сервером. Проверьте подключение и попробуйте ещё раз."
+                    else "Не удалось распознать фото. Попробуйте ещё раз."))
             }
+            triedCandidateId?.let { _alreadyTried.value = alreadyTriedWine(it) }
         }
     }
 
@@ -140,21 +140,17 @@ class ScannerViewModel @Inject constructor(
         if (_state.value is ScannerState.Processing || _state.value is ScannerState.Capturing) return
         updateState(ScannerState.Capturing(uriString))
         cameraHelper.setAnalysisEnabled(false)
-        startScanHaptic()
         viewModelScope.launch {
             try {
                 val file = withContext(Dispatchers.IO) { copyUriToFile(uriString.toUri()) }
                 if (file != null) {
                     handleProcess(file.absolutePath)
                 } else {
-                    stopScanHaptic()
                     updateState(ScannerState.Error("Не удалось открыть фото из галереи. Попробуйте другое изображение."))
                 }
             } catch (e: CancellationException) {
-                stopScanHaptic()
                 throw e
             } catch (e: Exception) {
-                stopScanHaptic()
                 Log.e("ScannerViewModel", "Gallery import failed", e)
                 updateState(ScannerState.Error("Не удалось открыть фото из галереи."))
             }
@@ -210,11 +206,29 @@ class ScannerViewModel @Inject constructor(
     }
 
     private fun handleRetry() {
+        _alreadyTried.value = false
         updateState(ScannerState.Ready())
     }
 
     fun resetToReady() {
+        _alreadyTried.value = false
         updateState(ScannerState.Ready())
+    }
+
+    /**
+     * Вино уже пробовали, если оно есть в погребе (статус неважен) или
+     * в избранном с kind LIKED («Понравилось», не «Хочу»).
+     */
+    private suspend fun alreadyTriedWine(wineId: String): Boolean {
+        return try {
+            combine(
+                getCellarEntryUseCase(wineId),
+                isFavoriteUseCase(wineId, FavoriteKind.LIKED)
+            ) { entry, liked -> entry != null || liked }.first()
+        } catch (e: Exception) {
+            Log.e("ScannerViewModel", "Already-tried check failed", e)
+            false
+        }
     }
 
     fun confirmCandidate(slug: String) {

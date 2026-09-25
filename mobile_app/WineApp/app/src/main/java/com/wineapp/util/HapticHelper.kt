@@ -5,49 +5,15 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
-import kotlin.math.exp
-import kotlin.math.roundToInt
 
 /**
- * Нарастающее ожидание сканирования и короткие отклики на результат/действия.
+ * Короткие отклики на результат/действия.
  * Работает с API 26 (minSdk проекта) без дополнительных проверок версий.
  */
 object HapticHelper {
 
-    /** One unbroken, softly eased rise. No repeated tail or intermediate off segments. */
-    fun startScanWaiting(context: Context) {
-        try {
-            val vibrator = vibrator(context) ?: return
-            val effect = if (vibrator.hasAmplitudeControl()) {
-                // Fine steps approximate a continuous envelope on amplitude-only motors.
-                // The response normally cancels this early; 60 s also bounds a stalled request.
-                val timings = LongArray(3000) { 20L }
-                val amplitudes = IntArray(timings.size) { index ->
-                    val seconds = index * .02
-                    (12 + 78 * (1 - exp(-seconds * seconds / 32))).roundToInt()
-                }
-                VibrationEffect.createWaveform(timings, amplitudes, -1)
-            } else {
-                // Avoid a continuous full-strength buzz on devices without amplitude control.
-                VibrationEffect.createOneShot(35, VibrationEffect.DEFAULT_AMPLITUDE)
-            }
-            vibrator.vibrate(effect)
-        } catch (e: Exception) {
-            android.util.Log.e("HapticHelper", "Scan haptic failed", e)
-        }
-    }
-
-    fun stopScanWaiting(context: Context) {
-        try {
-            vibrator(context)?.cancel()
-        } catch (e: Exception) {
-            android.util.Log.e("HapticHelper", "Stopping scan haptic failed", e)
-        }
-    }
-
     /** The answer lands with a crisp peak and a short tail, without a second pulse. */
-    fun vibrateScanResult(context: Context) {
-        try {
+    fun vibrateScanResult(context: Context) {        try {
             val vibrator = vibrator(context) ?: return
             val effect = if (vibrator.hasAmplitudeControl()) {
                 VibrationEffect.createWaveform(
@@ -61,6 +27,33 @@ object HapticHelper {
             vibrator.vibrate(effect)
         } catch (e: Exception) {
             android.util.Log.e("HapticHelper", "Result haptic failed", e)
+        }
+    }
+
+    /**
+     * Мощная победная вибрация на успешный ответ бэка: тройной нарастающий
+     * раскат ~0.7 с. Отличается от короткого vibrateScanResult именно весом.
+     */
+    fun vibrateVictory(context: Context) {
+        try {
+            val vibrator = vibrator(context) ?: return
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val effect = if (vibrator.hasAmplitudeControl()) {
+                    VibrationEffect.createWaveform(
+                        longArrayOf(0, 120, 80, 150, 80, 300),
+                        intArrayOf(0, 180, 0, 220, 0, 255),
+                        -1
+                    )
+                } else {
+                    VibrationEffect.createWaveform(longArrayOf(0, 120, 80, 150, 80, 300), -1)
+                }
+                vibrator.vibrate(effect)
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(longArrayOf(0, 120, 80, 150, 80, 300), -1)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("HapticHelper", "Victory haptic failed", e)
         }
     }
 

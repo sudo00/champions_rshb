@@ -18,7 +18,6 @@ import com.wineapp.presentation.agegate.AgeGateScreen
 import com.wineapp.presentation.cellar.CellarScreen
 import com.wineapp.presentation.detail.DetailScreen
 import com.wineapp.presentation.favorites.FavoritesScreen
-import com.wineapp.presentation.notfound.NotFoundScreen
 import com.wineapp.presentation.savedscans.SavedScanDetailScreen
 import com.wineapp.presentation.savedscans.SavedScansScreen
 import com.wineapp.presentation.scanner.ScannerScreen
@@ -146,12 +145,7 @@ fun AppNavHost(startRoute: String? = null) {
                 onNavigateBack = { navController.popBackStack() }
             )
         }
-        composable("not_found") {
-            NotFoundScreen(
-                onRetry = { navController.popBackStack() },
-                onSearch = { navController.navigate("search") }
-            )
-        }
+
         composable(
             route = "sommelier/{wineId}/{wineName}/{wineRegion}/{wineVariety}/{wineVintage}/{wineRating}/{wineStyle}?photoPath={photoPath}&confidence={confidence}",
             arguments = listOf(

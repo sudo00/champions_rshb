@@ -28,6 +28,7 @@
     <string name="scan_result_confidence">Точность определения</string>
     <string name="scan_result_best_match">Лучшее совпадение</string>
     <string name="scan_result_alternatives">Возможные варианты</string>
+    <string name="scan_result_already_tried">Вы уже пробовали это вино</string>
 
     <string name="search_title">Поиск вин</string>
     <string name="search_hint">Поиск по названию, региону или сорту</string>

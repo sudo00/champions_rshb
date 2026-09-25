@@ -3,29 +3,32 @@ package com.wineapp.data.file
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.RectF
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.UseCaseGroup
-import androidx.camera.view.transform.CoordinateTransform
-import android.graphics.RectF
-import com.wineapp.data.detector.CameraLabelAnalyzer
-import com.wineapp.data.detector.LabelFrame
-import com.wineapp.data.detector.LabelDetectorRuntime
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import androidx.camera.view.PreviewView
+import androidx.camera.view.TransformExperimental
+import androidx.camera.view.transform.CoordinateTransform
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
+import com.wineapp.data.detector.CameraLabelAnalyzer
+import com.wineapp.data.detector.LabelDetectorRuntime
+import com.wineapp.data.detector.LabelFrame
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import javax.inject.Inject
 
-class CameraHelper @javax.inject.Inject constructor(
+@TransformExperimental
+class CameraHelper @Inject constructor(
     @ApplicationContext private val context: Context,
     private val detectorRuntime: LabelDetectorRuntime
 ) {
@@ -41,8 +44,6 @@ class CameraHelper @javax.inject.Inject constructor(
     private var screenActive = false
     private var captureInFlight = false
     var onAutoCapture: ((File) -> Unit)? = null
-    var onCaptureStarted: (() -> Unit)? = null
-    var onCaptureFailed: (() -> Unit)? = null
     private var imageCapture: ImageCapture? = null
     var previewView: PreviewView? = null
         private set
@@ -132,7 +133,6 @@ class CameraHelper @javax.inject.Inject constructor(
         val generation = bindGeneration
         captureInFlight = true
         analyzer?.enabled = false
-        onCaptureStarted?.invoke()
         try {
             val photoFile = createImageFile()
             val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
@@ -160,7 +160,6 @@ class CameraHelper @javax.inject.Inject constructor(
                         if (generation != bindGeneration) return@execute
                         captureInFlight = false
                         rearmAnalysis()
-                        onCaptureFailed?.invoke()
                         onError(Exception(exception.message, exception))
                     }
                 }
@@ -168,7 +167,6 @@ class CameraHelper @javax.inject.Inject constructor(
         } catch (error: Exception) {
             captureInFlight = false
             rearmAnalysis()
-            onCaptureFailed?.invoke()
             onError(error)
         }
         return true
@@ -207,8 +205,6 @@ class CameraHelper @javax.inject.Inject constructor(
         lifecycleOwner = null
         previewView = null
         onAutoCapture = null
-        onCaptureStarted = null
-        onCaptureFailed = null
         cameraExecutor.shutdown()
     }
 
@@ -250,7 +246,7 @@ class CameraHelper @javax.inject.Inject constructor(
                 mapped.add(rect)
             }
         }
-        detectorMutable.value = DetectorPreview(mapped, frame.milliseconds, frame.backend, autoEnabled, frame.error)
+        detectorMutable.value = DetectorPreview(mapped, frame.milliseconds, frame.backend, autoEnabled, frame.error, frame.highlight)
         if (frame.trigger && autoEnabled && !captureInFlight) {
             // Detection already uses the shared camera viewport. Preview transforms may
             // still be null during rebind and must not consume the one-shot capture trigger.
@@ -266,4 +262,5 @@ class CameraHelper @javax.inject.Inject constructor(
 }
 
 data class DetectorPreview(val boxes: List<RectF> = emptyList(), val milliseconds: Float = 0f,
-    val backend: String = "", val autoCapture: Boolean = true, val error: String? = null)
+    val backend: String = "", val autoCapture: Boolean = true, val error: String? = null,
+    val highlight: Boolean = false)

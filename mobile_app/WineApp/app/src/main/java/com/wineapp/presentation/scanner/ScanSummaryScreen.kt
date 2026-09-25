@@ -23,6 +23,7 @@ import kotlin.math.roundToInt
 @Composable
 fun ScanSummaryScreen(
     state: ScannerState.Success,
+    alreadyTried: Boolean = false,
     onConfirm: (String) -> Unit,
     onOpenWine: (String, Boolean) -> Unit,
     onNewPhoto: () -> Unit,
@@ -64,6 +65,9 @@ fun ScanSummaryScreen(
             }
             if (confirmed != null && !choosingCandidate) {
                 item { CandidateCard(confirmed, false, false, {}, { onOpenWine(confirmed.wine.id, true) }) }
+                if (alreadyTried) {
+                    item { com.wineapp.presentation.common.ui.AlreadyTriedBanner() }
+                }
             } else if (!absent && choosingCandidate) {
                 items(result.scoredCandidates, key = { "candidate:${it.slug}" }) { candidate ->
                     CandidateCard(candidate, result.scanId != null, state.confirming,

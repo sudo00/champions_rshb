@@ -6,7 +6,11 @@ import com.wineapp.presentation.common.BaseState
 
 sealed interface ScanResultState : BaseState {
     data object Loading : ScanResultState
-    data class Success(val mainWine: Wine, val alternatives: List<Wine>) : ScanResultState
+    data class Success(
+        val mainWine: Wine,
+        val alternatives: List<Wine>,
+        val alreadyTried: Boolean = false
+    ) : ScanResultState
     data class Error(val message: String) : ScanResultState
 }
 
