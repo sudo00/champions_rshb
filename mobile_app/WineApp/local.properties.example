@@ -1,6 +1,0 @@
-# Copy settings into local.properties; Android Studio supplies sdk.dir there.
-# Android emulator -> API on the development computer:
-WINE_API_BASE_URL=http://10.0.2.2:8000/
-# For a physical phone, use the reachable API URL provided by the team.
-# Optional existing sommelier integration:
-GIGACHAT_AUTH_KEY=
