@@ -240,6 +240,18 @@ fun SavedScanCard(
                     overflow = TextOverflow.Ellipsis,
                     fontWeight = FontWeight.SemiBold
                 )
+                scan.recognitionStatus.takeUnless { it == "legacy" }?.let { status ->
+                    Text(
+                        text = when (status) {
+                            "user_confirmed" -> "Подтверждено вами"
+                            "score_confirmed" -> "Распознано автоматически"
+                            "not_in_catalog" -> "Нет в каталоге"
+                            else -> "Не подтверждено · первый кандидат"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 scan.wine.winery?.let {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
@@ -278,30 +290,32 @@ fun SavedScanCard(
                 }
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = Color(0xFFFFF8E1)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                    if (scan.wine.rating != null) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = Color(0xFFFFF8E1)
                         ) {
-                            Icon(
-                                Icons.Default.Star,
-                                contentDescription = null,
-                                tint = Color(0xFFFFC107),
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(3.dp))
-                            Text(
-                                String.format("%.1f", scan.wine.rating),
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF795548)
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Star,
+                                    contentDescription = null,
+                                    tint = Color(0xFFFFC107),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text(
+                                    String.format("%.1f", scan.wine.rating),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF795548)
+                                )
+                            }
                         }
+                        Spacer(modifier = Modifier.width(8.dp))
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         stringResource(R.string.saved_scans_confidence, (scan.confidence * 100).toInt()),
                         style = MaterialTheme.typography.bodySmall,

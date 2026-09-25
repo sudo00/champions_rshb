@@ -1,6 +1,7 @@
 package com.wineapp.data.remote.dto
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 @Serializable
 data class ScanRequest(
@@ -11,42 +12,62 @@ data class ScanRequest(
 @Serializable
 data class ScanAcceptedResponse(
     val success: Boolean,
-    val scanId: String?,
+    val scanId: String? = null,
     val status: String,
-    val error: String?
+    val error: String? = null
+)
+
+@Serializable
+data class ScanConfirmationRequest(val slug: String)
+
+@Serializable
+data class UserConfirmationDto(val slug: String, val source: String = "user")
+
+@Serializable
+data class RecommendationDto(
+    val slug: String,
+    val wine: WineDto,
+    val reasons: List<String> = emptyList(),
+    val matchedFields: List<String> = emptyList(),
+    val textSimilarity: Float? = null
 )
 
 @Serializable
 data class ScanStatusResponse(
     val success: Boolean,
-    val scanId: String?,
+    val scanId: String? = null,
     val status: String,
-    val wine: WineDto?,
-    val confidence: Float?,
+    val wine: WineDto? = null,
+    val confidence: Float? = null,
     val alternatives: List<WineDto> = emptyList(),
-    val slug: String?,
+    val slug: String? = null,
     val candidates: List<ScanCandidateDto> = emptyList(),
-    val recognitionStatus: String?,
-    val message: String?,
-    val cylinder: CylinderDto = CylinderDto(),
+    val recognitionStatus: String? = null,
+    val userConfirmation: UserConfirmationDto? = null,
+    val recommendations: List<RecommendationDto> = emptyList(),
+    val recommendationContext: JsonObject = JsonObject(emptyMap()),
+    val message: String? = null,
+    val cylinder: JsonObject = JsonObject(emptyMap()),
     val scoreIsProbability: Boolean = false,
     val observations: List<ObservationDto> = emptyList(),
     val observedFields: ObservedFieldsDto = ObservedFieldsDto(),
     val regions: List<RegionScanDto> = emptyList(),
     val imageSize: List<Int> = emptyList(),
-    val coordinateSystem: String?,
+    val coordinateSystem: String? = null,
     val target: TargetDto = TargetDto(),
     val warnings: List<String> = emptyList(),
-    val version: String?,
-    val catalogSha256: String?,
+    val version: String? = null,
+    val catalogSha256: String? = null,
     val timingsSeconds: TimingsDto = TimingsDto(),
-    val error: String?
+    val error: String? = null
 )
 
 @Serializable
 data class ScanCandidateDto(
     val slug: String = "",
     val rank: Int = 0,
+    val matchScore: Float? = null,
+    val matchScoreIsProbability: Boolean = false,
     val wine: WineDto = WineDto(
         id = "", slug = "", name = ""
     ),

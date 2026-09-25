@@ -1,14 +1,18 @@
 """Prepare a phone scan (default: EXIF -> Lanczos 2560 -> JPEG 90).
 
 Evaluation clients must send original files directly, without this step.
+Run from the repository root: python scripts/prepare_scan_image.py photo.jpg --output prepared.jpg
 """
 from __future__ import annotations
 
 import argparse
 import json
 from pathlib import Path
+import sys
 
-from image_preprocessing import PROFILES, prepare_image
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from worker.image_preprocessing import PROFILES, prepare_image
 
 
 def main():

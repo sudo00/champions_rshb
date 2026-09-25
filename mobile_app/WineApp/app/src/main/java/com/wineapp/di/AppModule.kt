@@ -1,6 +1,7 @@
 package com.wineapp.di
 
 import android.content.Context
+import com.wineapp.BuildConfig
 import androidx.room.Room
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.wineapp.data.local.AppDatabase
@@ -50,7 +51,7 @@ object DatabaseModule {
             context.applicationContext,
             AppDatabase::class.java,
             "wine_history.db"
-        ).fallbackToDestructiveMigration().build()
+        ).addMigrations(AppDatabase.MIGRATION_6_7).fallbackToDestructiveMigration().build()
     }
 
     @Provides
@@ -100,7 +101,7 @@ object NetworkModule {
     fun provideRetrofit(client: OkHttpClient): Retrofit {
         val json = Json { ignoreUnknownKeys = true }
         return Retrofit.Builder()
-            .baseUrl("http://109.248.37.178:8000/")
+            .baseUrl(BuildConfig.BASE_URL)
             .client(client)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()

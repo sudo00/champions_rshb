@@ -15,11 +15,18 @@ import com.wineapp.data.local.converter.Converters
         UserBadgeEntity::class,
         PointsEntry::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
+    companion object {
+        val MIGRATION_6_7 = object : androidx.room.migration.Migration(6, 7) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE scan_history ADD COLUMN recognitionStatus TEXT NOT NULL DEFAULT 'legacy'")
+            }
+        }
+    }
     abstract fun wineDao(): WineDao
     abstract fun scanHistoryDao(): ScanHistoryDao
     abstract fun favoriteDao(): FavoriteDao

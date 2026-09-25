@@ -62,6 +62,10 @@ class ScanAcceptedResponse(BaseModel):
     error: str | None = Field(default=None, description="Текст ошибки, если success=false")
 
 
+class ScanConfirmationRequest(BaseModel):
+    slug: str = Field(min_length=1, max_length=512, description="Slug выбранного пользователем кандидата сканирования")
+
+
 class ScanStatusResponse(BaseModel):
     success: bool
     scanId: str | None = Field(default=None, description="Идентификатор сканирования")
@@ -72,10 +76,11 @@ class ScanStatusResponse(BaseModel):
     slug: str | None = None
     candidates: list[dict] = Field(default_factory=list, description="До пяти кандидатов; первый совпадает с wine")
     recognitionStatus: str | None = None
+    userConfirmation: dict | None = Field(default=None, description="Явный выбор пользователя: slug, source=user. Не меняет ML-статус, порядок и matchScore")
     catalogRefusal: dict = Field(default_factory=dict, description="Диагностика осторожного отказа; score не является вероятностью")
     candidateScoring: dict = Field(default_factory=dict, description="Абсолютные matchScore 0–1 для исходного Top-5; не вероятности и не дополнительный фильтр отказа")
     sweetnessRanking: dict = Field(default_factory=dict, description="Уточнение близких вариантов одной линейки по проверенному сахару и OCR")
-    recommendations: list[dict] = Field(default_factory=list, description="До пяти аналогов при not_in_catalog; отдельны от совпадений, с wine, textSimilarity и причинами подбора")
+    recommendations: list[dict] = Field(default_factory=list, description="До пяти рекомендаций отдельно от совпадений. Для not_in_catalog — только признаки OCR; для кандидатов — Top-1 как ориентир. С wine и причинами подбора")
     recommendationContext: dict = Field(default_factory=dict, description="Прочитанные признаки, их источники и статус подбора аналогов")
     message: str | None = None
     cylinder: dict = Field(default_factory=dict)

@@ -24,5 +24,14 @@
     "sha256": "e6d965dad351a6d3aad7d8672d73e9ef9a7879d47275e2643f7d657406bc16c6",
     "catalog_sha256": "81a98401208c2e03bc74aab42b0d84ca6dc3d0f605c1817d696401a33c6e364f",
     "note": "Offline multilingual-e5-small text vectors. Runtime API uses CPU dot products; encoder weights not required."
+  },
+  "mobile_label_detector": {
+    "file": "mobile_app/WineApp/app/src/main/assets/models/wine_label_yolo26n_320.tflite",
+    "contract": "mobile_app/WineApp/app/src/main/assets/models/wine_label_yolo26n_320.json",
+    "distribution": "git",
+    "bytes": 9757969,
+    "sha256": "ecd817f904b8d159ee924c15b2ca06dce80bf28e4c6d7086a35601cca5a59abf",
+    "status": "integrated camera pilot; auto capture opt-in",
+    "documentation": "docs/MOBILE_HANDOFF.md"
   }
 }

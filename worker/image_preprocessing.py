@@ -1,4 +1,8 @@
-"""Reproducible client-side resize candidates; no production default is implied."""
+"""Reusable image preparation for explicit client-side resize profiles.
+
+The phone reference profile is lanczos2560_q90. Inference does not invoke this
+module automatically: evaluation requests retain their original resolution.
+"""
 from __future__ import annotations
 
 from io import BytesIO

@@ -16,7 +16,7 @@ zenodo_grain/
 venv/
 *.log
 pgvector_data/
-data/
+/data/
 AGENTS.md
 others/
 # Only shared integration/deployment documentation belongs in Git.
@@ -26,6 +26,7 @@ others/
 !/docs/architecture.mmd
 !/docs/API_RECOGNITION.md
 !/docs/BACKEND_HANDOFF.md
+!/docs/MOBILE_HANDOFF.md
 !/docs/DEPENDENCIES.md
 !/docs/DEVELOPMENT.md
 !/docs/API_INTEGRATION_VALIDATION.md
@@ -33,6 +34,9 @@ others/
 !/docs/examples/
 /docs/examples/*
 !/docs/examples/scan-response.json
+!/docs/examples/scan-unverified.jpg
+!/docs/examples/scan-confirmed.jpg
+!/docs/examples/scan-absent.jpg
 literature/
 notes.txt
 node_modules/
@@ -56,7 +60,6 @@ backend/.venv/
 !/scripts/export_recognizer_bundle.py
 !/scripts/package_recognizer.py
 !/scripts/package_catalog_images.py
-!/scripts/image_preprocessing.py
 !/scripts/prepare_scan_image.py
 !/scripts/README.md
 
@@ -71,3 +74,12 @@ backend/.venv/
 /requirements-local-matching.txt
 /requirements-ocr.lock.txt
 /requirements-vision.txt
+
+# Local mobile detector training/export environments.
+.venv-mobile-detector/
+.venv-mobile-export/
+
+# Ship only the selected small Android model and its integration contract.
+/mobile_app/WineApp/app/src/main/assets/models/*
+!/mobile_app/WineApp/app/src/main/assets/models/wine_label_yolo26n_320.tflite
+!/mobile_app/WineApp/app/src/main/assets/models/wine_label_yolo26n_320.json

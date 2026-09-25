@@ -15,7 +15,10 @@ sealed interface ScannerState : BaseState {
         /** Стартовый индекс факта о вине, гарантированно != факту прошлого показа. */
         val factIndex: Int = 0
     ) : ScannerState
-    data class Success(val result: ScanResult, val imagePath: String) : ScannerState
+    data class Success(
+        val result: ScanResult, val imagePath: String,
+        val confirming: Boolean = false, val confirmationError: String? = null
+    ) : ScannerState
     data class NotFound(
         val imagePath: String,
         val matches: List<Wine> = emptyList(),

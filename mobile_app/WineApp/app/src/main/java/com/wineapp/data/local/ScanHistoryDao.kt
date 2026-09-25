@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ScanHistoryDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @androidx.room.Upsert
     suspend fun insertScan(scan: ScanHistoryEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -23,7 +23,7 @@ interface ScanHistoryDao {
     @Query("SELECT * FROM scan_history WHERE id = :id")
     suspend fun getScanById(id: String): ScanHistoryEntity?
 
-    @Query("SELECT COUNT(*) FROM scan_history")
+    @Query("SELECT COUNT(*) FROM scan_history WHERE recognitionStatus IN ('legacy', 'user_confirmed', 'score_confirmed')")
     suspend fun getScansCount(): Int
 
     @Query("SELECT DISTINCT territoryId FROM scan_history WHERE territoryId IS NOT NULL")

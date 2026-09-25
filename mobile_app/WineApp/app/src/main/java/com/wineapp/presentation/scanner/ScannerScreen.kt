@@ -82,6 +82,7 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.LifecycleOwner
 import com.wineapp.data.file.CameraHelper
+import com.wineapp.domain.model.detailRecognitionStatus
 import com.wineapp.presentation.common.ui.ErrorMessage
 
 @Composable
@@ -144,34 +145,44 @@ fun ScannerScreen(
         }
     }
 
-    LaunchedEffect(state) {
-        when (val current = state) {
-            is ScannerState.Success -> {
-                com.wineapp.util.HapticHelper.vibrateSuccess(context)
-                val result = current.result
-                val allWines = result.matches
-                val mainWine = result.wine
-                val mainWineId = mainWine?.id
-                if (mainWineId == null) {
-                    viewModel.resetToReady()
-                    return@LaunchedEffect
-                }
-                if (allWines.size <= 1) {
-                    viewModel.resetToReady()
-                    onNavigateToDetail(mainWineId ?: "", current.imagePath, result.recognitionStatus)
-                } else {
-                    val altIds = allWines.filter { it.id != mainWineId }.joinToString("|") { it.id }
-                    viewModel.resetToReady()
-                    onNavigateToScanResult(result.confidence, mainWineId, altIds, current.imagePath, result.recognitionStatus)
-                }
-            }
-            else -> {}
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, _ ->
+            viewModel.setScanScreenActive(lifecycleOwner.lifecycle.currentState.isAtLeast(
+                androidx.lifecycle.Lifecycle.State.RESUMED))
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        viewModel.setScanScreenActive(lifecycleOwner.lifecycle.currentState.isAtLeast(
+            androidx.lifecycle.Lifecycle.State.RESUMED))
+        onDispose {
+            viewModel.setScanScreenActive(false)
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            viewModel.cameraHelper.shutdown()
+        }
+    }
+    LaunchedEffect(state) { viewModel.cameraHelper.setAnalysisEnabled(state is ScannerState.Ready) }
+    LaunchedEffect(viewModel.cameraHelper) {
+        viewModel.cameraHelper.onCaptureStarted = viewModel::onCaptureStarted
+        viewModel.cameraHelper.onCaptureFailed = viewModel::onCaptureFailed
+        viewModel.cameraHelper.onAutoCapture = { file ->
+            viewModel.sendIntent(ScannerIntent.CapturePhoto(file.absolutePath))
         }
     }
 
-    DisposableEffect(lifecycleOwner) {
-        onDispose { viewModel.cameraHelper.shutdown() }
+    val success = state as? ScannerState.Success
+    if (success != null) {
+        ScanSummaryScreen(
+            state = success,
+            onConfirm = viewModel::confirmCandidate,
+            onOpenWine = { id, isRecognition ->
+                onNavigateToDetail(id, if (isRecognition) success.imagePath else null,
+                    if (isRecognition) success.result.detailRecognitionStatus(id) else null)
+            },
+            onNewPhoto = viewModel::resetToReady,
+            onBack = onNavigateBack
+        )
+        return
     }
+
     ScannerScreenContent(
         state = state,
         cameraHelper = viewModel.cameraHelper,
@@ -199,6 +210,7 @@ fun ScannerScreenContent(
     badgeMessage: String? = null,
     onBadgeMessageShown: () -> Unit = {},
 ) {
+    val detector by cameraHelper.detectorPreview.collectAsState()
     val flashMode = when (val s = state) {
         is ScannerState.Ready -> s.flashMode
         else -> androidx.camera.core.ImageCapture.FLASH_MODE_OFF
@@ -220,6 +232,7 @@ fun ScannerScreenContent(
     LaunchedEffect(notFoundMessage) {
         if (notFoundMessage != null) {
             snackbarHostState.showSnackbar(notFoundMessage, duration = SnackbarDuration.Short)
+            onRetry()
         }
     }
 
@@ -231,6 +244,10 @@ fun ScannerScreenContent(
     }
 
     var showOnboarding by remember { mutableStateOf(false) }
+    LaunchedEffect(showOnboarding) { cameraHelper.setAutoCapture(!showOnboarding) }
+    LaunchedEffect(detector.error) {
+        detector.error?.let { snackbarHostState.showSnackbar(it, duration = SnackbarDuration.Short) }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
@@ -263,27 +280,25 @@ fun ScannerScreenContent(
                 .padding(top = 56.dp)
         )
 
-        ScanHintPill(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .offset(y = (112 + 520 - 51).dp)
-        )
-
-        ScannerShutterControls(
-            onGalleryClick = onGalleryClick,
-            onCaptureClick = {
-                cameraHelper.takePicture(
-                    onSuccess = { file -> onTakePicture(file.absolutePath) },
-                    onError = { }
-                )
-            },
-            onHelpClick = { showOnboarding = true },
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 56.dp)
-        )
+        Column(
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                .navigationBarsPadding().padding(horizontal = 16.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (state is ScannerState.Ready) ScanHintPill()
+            ScannerShutterControls(
+                onGalleryClick = onGalleryClick,
+                onCaptureClick = {
+                    if (state is ScannerState.Ready) cameraHelper.takePicture(
+                        onSuccess = { file -> onTakePicture(file.absolutePath) },
+                        onError = { }
+                    )
+                },
+                onHelpClick = { showOnboarding = true },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
 
         if (showOnboarding) {
             ScannerOnboardingSheet(onDismiss = { showOnboarding = false })
@@ -640,7 +655,8 @@ private fun ScannerScreenPreview() {
     com.wineapp.ui.theme.WineAppTheme {
         ScannerScreenContent(
             state = ScannerState.Ready(),
-            cameraHelper = CameraHelper(LocalContext.current),
+            cameraHelper = CameraHelper(LocalContext.current,
+                com.wineapp.data.detector.LabelDetectorRuntime(LocalContext.current)),
             lifecycleOwner = LocalLifecycleOwner.current,
             onGalleryClick = {},
             onTakePicture = {},

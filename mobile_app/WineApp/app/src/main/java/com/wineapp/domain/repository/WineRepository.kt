@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface WineRepository {
     suspend fun scanWineLabel(imagePath: String): Result<ScanResult>
+    suspend fun confirmScan(scanId: String, slug: String): Result<ScanResult>
     suspend fun searchWines(query: String, page: Int, pageSize: Int): Result<SearchResult>
     suspend fun getWineById(id: String): Result<Wine>
     suspend fun saveToHistory(wine: Wine): Result<Unit>

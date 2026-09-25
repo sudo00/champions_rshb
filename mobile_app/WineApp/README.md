@@ -1,142 +1,52 @@
-# WineApp - Vivino-like Wine Scanner
+# Своё вино — Android
 
-A complete Android application skeleton for a wine scanner app built with Clean Architecture + MVI pattern.
+Клиент на Kotlin, Jetpack Compose, CameraX, Hilt, Room и Retrofit. Сканирование использует общий API; локальный YOLO26n только находит этикетку в preview. Подробнее: [передача мобильному разработчику](../../docs/MOBILE_HANDOFF.md).
 
-## Tech Stack
+## Сборка
 
-- **Architecture**: Clean Architecture + MVI (Model-View-Intent)
-- **DI**: Hilt (Dagger)
-- **UI**: Jetpack Compose with Material3
-- **Navigation**: Navigation Compose
-- **Database**: Room
-- **Network**: Retrofit + Kotlinx Serialization
-- **Camera**: CameraX
-- **Image Loading**: Coil
-- **Language**: Kotlin
+JDK 17+ (локально проверяется JDK 21), Android SDK 35. Gradle Wrapper включён в репозиторий. Версии Kotlin/AGP/KSP закреплены в `build.gradle.kts`, зависимости приложения — в `app/build.gradle.kts`.
 
-## Project Structure
+В `local.properties` сохранить `sdk.dir`, добавленный Android Studio, и указать:
 
-```
-app/
-├── build.gradle.kts
-├── src/main/
-│   ├── AndroidManifest.xml
-│   ├── java/com/wineapp/
-│   │   ├── WineApplication.kt          # Hilt Application
-│   │   ├── MainActivity.kt             # Entry point with NavHost
-│   │   ├── di/
-│   │   │   └── AppModule.kt           # Hilt modules (Database, Network, Repository)
-│   │   ├── data/
-│   │   │   ├── local/                 # Room database
-│   │   │   │   ├── AppDatabase.kt
-│   │   │   │   ├── WineDao.kt
-│   │   │   │   ├── WineHistoryEntity.kt
-│   │   │   │   └── converter/Converters.kt
-│   │   │   ├── remote/                # Retrofit API
-│   │   │   │   ├── ApiService.kt
-│   │   │   │   ├── dto/ApiDtos.kt
-│   │   │   │   └── mapper/ (WineMapper, ScanMapper, SearchMapper)
-│   │   │   ├── repository/
-│   │   │   │   └── WineRepositoryImpl.kt
-│   │   │   └── file/                  # Camera & Gallery
-│   │   │       ├── CameraHelper.kt
-│   │   │       └── GalleryPicker.kt
-│   │   ├── domain/
-│   │   │   ├── model/                 # Domain models
-│   │   │   │   └── Wine.kt
-│   │   │   ├── repository/
-│   │   │   │   └── WineRepository.kt
-│   │   │   └── usecase/               # 5 UseCases
-│   │   │       ├── ScanWineUseCase.kt
-│   │   │       ├── SearchWinesUseCase.kt
-│   │   │       ├── GetWineDetailsUseCase.kt
-│   │   │       ├── SaveToHistoryUseCase.kt
-│   │   │       └── GetHistoryUseCase.kt
-│   │   └── presentation/
-│   │       ├── common/                # MVI Base classes & UI components
-│   │       │   ├── MviBase.kt
-│   │       │   └── UiComponents.kt
-│   │       ├── scanner/               # Scanner screen
-│   │       │   ├── ScannerState.kt
-│   │       │   ├── ScannerViewModel.kt
-│   │       │   └── ScannerScreen.kt
-│   │       ├── search/                # Search screen
-│   │       │   ├── SearchState.kt
-│   │       │   ├── SearchViewModel.kt
-│   │       │   └── SearchScreen.kt
-│   │       ├── detail/                # Wine detail screen
-│   │       │   ├── DetailState.kt
-│   │       │   ├── DetailViewModel.kt
-│   │       │   └── DetailScreen.kt
-│   │       ├── sommelier/             # AI Sommelier chat
-│   │       │   ├── SommelierState.kt
-│   │       │   ├── SommelierViewModel.kt
-│   │       │   └── SommelierScreen.kt
-│   │       ├── notfound/              # Wine not found screen
-│   │       │   └── NotFoundScreen.kt
-│   │       ├── agegate/               # Age verification screen
-│   │       │   └── AgeGateScreen.kt
-│   │       └── navigation/            # Navigation graph
-│   │           └── AppNavHost.kt
-│   └── res/                           # Resources
-│       ├── values/strings.xml
-│       ├── values/themes.xml
-│       ├── values/colors.xml
-│       └── xml/ (file_paths, backup_rules, data_extraction_rules)
-└── proguard-rules.pro
+```properties
+WINE_API_BASE_URL=http://10.0.2.2:8000/
 ```
 
-## MVI Pattern
-
-Each screen follows the MVI pattern:
-- **State**: Sealed interface representing all possible UI states
-- **Intent**: Sealed interface representing user actions
-- **Reducer**: Pure function (in ViewModel) that reduces Intent + State -> New State
-- **ViewModel**: Holds StateFlow, processes Intents through Reducer
-
-Example:
-```kotlin
-sealed interface ScannerState : BaseState {
-    data class Ready(val flashMode: Int = 0) : ScannerState
-    data class Processing(val imagePath: String) : ScannerState
-    data class Success(val result: ScanResult, val imagePath: String) : ScannerState
-    data class Error(override val message: String) : ScannerState, BaseState.Error(message)
-}
-
-sealed interface ScannerIntent : BaseIntent {
-    data class CapturePhoto(val imagePath: String) : ScannerIntent
-    data class ProcessImage(val imagePath: String) : ScannerIntent
-    // ...
-}
-```
-
-## Key Features (Skeleton)
-
-1. **Scanner Screen**: CameraX preview with capture, flash toggle, gallery picker
-2. **Search Screen**: Search wines with pagination, lazy loading
-3. **Detail Screen**: Wine details with image, rating, description, food pairing
-4. **Sommelier Screen**: AI chat interface for wine questions
-5. **History**: Room database for scan history
-6. **Age Gate**: First-launch age verification
-
-## TODOs for Implementation
-
-All UseCases have TODO comments for:
-- Image preprocessing and ML-based label recognition
-- Actual API integration (Vivino or similar)
-- AI Sommelier integration (OpenAI, etc.)
-- Image to base64 conversion
-- Proper JSON serialization for food pairing
-- Navigation integration between screens
-- Unit and UI tests
-
-## Building
+Это адрес компьютера из Android-эмулятора. Для телефона указать доступный URL сервера, полученный у команды. Файл игнорируется Git. Приоритет: `-PWINE_API_BASE_URL=...`, переменная окружения, `local.properties`, адрес эмулятора. HTTP разрешается только для настроенного хоста; XML-конфигурация сети генерируется при сборке.
 
 ```bash
-./gradlew assembleDebug
+./gradlew :app:assembleDebug :app:testDebugUnitTest
+./gradlew :app:installDebug
+./gradlew :app:connectedDebugAndroidTest
 ```
 
-Requires:
-- JDK 17+
-- Android SDK 35
-- Gradle 8.7+
+Debug: `com.wineapp.dev`, «Своё вино · Dev». Release: `com.wineapp`. Оба приложения могут стоять рядом. Серверные веса, каталог и фотографии для сборки клиента не нужны; GPU компьютера тоже не нужен.
+
+## Сканирование
+
+- Фото из камеры/галереи: EXIF → размер до 2560 по длинной стороне → JPEG 90 → Base64.
+- `POST /v1/wines/scan`, затем polling `GET /v1/wines/scan/{scanId}`.
+- `ScanSummaryScreen`: Top-5 с `matchScore`, рекомендации отдельно. «Это моё вино» сохраняет выбор через `/confirmation`; после этого рекомендации берутся по выбранной карточке.
+- Top-1 с `matchScore > 0.70` показывается как автоматически распознанный. Ручной выбор и отказ сервера имеют приоритет.
+- Результат камеры и галереи сохраняется автоматически с фото и статусом; подтверждение обновляет запись по `scanId`. Room 6 → 7 сохраняет прежнюю историю.
+- `not_in_catalog`: сообщение и рекомендации по OCR-характеристикам. `no_target`: просьба переснять, без выдуманной карточки.
+- `CameraHelper` + `CameraLabelAnalyzer`: автосъёмка устойчивой центральной этикетки включена сразу; рамки детектора и переключатель скрыты, ручная кнопка остаётся. Виброотклик: плавное нарастание при запуске распознавания, короткий пик со спадом при ответе.
+
+## Модель камеры
+
+`app/src/main/assets/models/wine_label_yolo26n_320.tflite` (9,3 МиБ) и соседний JSON-контракт включены в Git. LiteRT GPU с CPU fallback, NCHW float32 320×320, letterbox, NMS. `matchScore` сервера и score детектора — разные оценки для разных задач.
+
+`WineApplication` заранее загружает и прогревает модель в singleton `LabelDetectorRuntime`; повторное открытие камеры переиспользует её. Обработка идёт на одном потоке без программного ограничения FPS.
+
+Автосъёмка требует одну крупную центральную этикетку, устойчивую три последовательных кадра. Возможны срабатывания на масло/уксус: модель экспериментальная. Она не определяет slug и не заменяет серверный SAM/OCR.
+
+## Основные файлы
+
+- `data/file/CameraHelper.kt`, `data/detector/`: камера и локальная модель.
+- `data/remote/ApiService.kt`, `dto/ApiDtos.kt`, `mapper/ScanMapper.kt`: HTTP-контракт и преобразование результата.
+- `data/repository/WineRepositoryImpl.kt`: отправка, polling и подтверждение.
+- `presentation/scanner/`: preview, состояние скана и итоговая выдача.
+- `data/local/`, `presentation/savedscans/`: история всех результатов сканирования со статусами.
+- `src/test/`, `src/androidTest/`: проверки геометрии/контракта и запуска модели на устройстве.
+
+Сомелье и остальные экраны сохраняют свои текущие интеграции; эта работа меняет путь сканирования. Не переносить API-адрес и ключи из локальной конфигурации в исходники.

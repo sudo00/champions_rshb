@@ -6,5 +6,6 @@ data class SavedScan(
     val labelPhotoPath: String?,
     val confidence: Float,
     val conversation: List<SommelierMessage>,
-    val scannedAt: Long
+    val scannedAt: Long,
+    val recognitionStatus: String = "legacy"
 )

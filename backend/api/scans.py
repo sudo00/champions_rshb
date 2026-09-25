@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import psycopg
+from psycopg.types.json import Jsonb
 
 from api.catalog import get_wine, catalog_data, result_catalog_compatible
 from api.config import DATABASE_URL
@@ -82,6 +83,33 @@ def mark_failed(scan_id: str, error: str) -> None:
         conn.commit()
 
 
+def validated_confirmation(job: ScanJob, slug: str) -> dict:
+    """Only an actually returned candidate may be confirmed; keep ML evidence intact."""
+    result = job.result or {}
+    candidates = result.get("candidates", [])[:5 if job.include_alternatives else 1]
+    if (job.status != STATUS_DONE or result.get("recognitionStatus") in ("not_in_catalog", "no_target")
+            or slug not in {c.get("slug") for c in candidates}):
+        raise ValueError("Confirm one of the candidates returned by a completed scan")
+    return {"slug": slug, "source": "user"}
+
+
+def confirm_job(scan_id: str, slug: str) -> ScanJob | None:
+    with psycopg.connect(DATABASE_URL) as conn:
+        row = conn.execute(
+            "SELECT status, include_alternatives, image_key, result, error FROM scans WHERE id = %s FOR UPDATE",
+            (scan_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        job = ScanJob(scan_id, row[0], row[1], row[2], row[3], row[4])
+        confirmation = validated_confirmation(job, slug)
+        job.result = {**job.result, "userConfirmation": confirmation}
+        conn.execute("UPDATE scans SET result = %s, updated_at = NOW() WHERE id = %s",
+                     (Jsonb(job.result), scan_id))
+        conn.commit()
+        return job
+
+
 def to_status_response(job: ScanJob) -> ScanStatusResponse:
     wine: WineDto | None = None
     alternatives: list[WineDto] = []
@@ -100,8 +128,15 @@ def to_status_response(job: ScanJob) -> ScanStatusResponse:
             details["candidates"] = candidates
             wine = get_wine(candidates[0]["slug"]) if candidates else None
             alternatives = [get_wine(c["slug"]) for c in candidates[1:]]
-            if job.result.get("recognitionStatus") == "not_in_catalog":
-                recommended = recommendation_index().recommend(job.result, limit=5 if job.include_alternatives else 1)
+            if job.result.get("recognitionStatus") in ("not_in_catalog", "candidates_unverified", "confirmed"):
+                recommendation_source = job.result
+                confirmation = job.result.get("userConfirmation")
+                if confirmation:
+                    validated_confirmation(job, confirmation.get("slug"))
+                    selected = next(c for c in candidates if c["slug"] == confirmation["slug"])
+                    recommendation_source = {**job.result, "recognitionStatus": "confirmed",
+                                             "candidates": [selected], "observations": []}
+                recommended = recommendation_index().recommend(recommendation_source, limit=5 if job.include_alternatives else 1)
                 details["recommendationContext"] = {k: v for k, v in recommended.items() if k != "items"}
                 details["recommendations"] = []
                 for item in recommended["items"]:

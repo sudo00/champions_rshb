@@ -1,6 +1,5 @@
 package com.wineapp.presentation.common.ui
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,17 +26,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
-import com.wineapp.BuildConfig
-import com.wineapp.R
 import com.wineapp.data.mock.MockDataProvider
 import com.wineapp.domain.model.Wine
 import com.wineapp.ui.theme.BrandCream100
@@ -73,7 +69,7 @@ fun WineCard(
                     .padding(20.dp)
             ) {
                 // Рейтинг.
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                if (wine.rating != null) Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Default.Star,
                         contentDescription = null,
@@ -82,7 +78,7 @@ fun WineCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        String.format("%.2f", wine.rating ?: 0f),
+                        String.format("%.2f", wine.rating),
                         fontFamily = Inter,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 12.sp,
@@ -93,29 +89,22 @@ fun WineCard(
                 Spacer(modifier = Modifier.height(8.dp))
                 // Фото бутылки.
                 if (wine.imageUrl != null) {
-                    AsyncImage(
+                    SubcomposeAsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
-                            .data(BuildConfig.BASE_URL + wine.imageUrl)
+                            .data(com.wineapp.util.apiImageUrl(wine.imageUrl))
                             .crossfade(true)
                             .build(),
                         contentDescription = wine.name,
-                        contentScale = ContentScale.Crop,
+                        loading = { CataloguePhotoMessage("Загрузка фото…") },
+                        error = { CataloguePhotoMessage("Фото недоступно") },
+                        contentScale = ContentScale.Fit,
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f)
                             .clip(RoundedCornerShape(16.dp))
                     )
                 } else {
-                    // TODO: заменить на ассет бутылки из фигмы.
-                    Image(
-                        painter = painterResource(id = R.drawable.cool_wine),
-                        contentDescription = wine.name,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .clip(RoundedCornerShape(16.dp))
-                    )
+                    CataloguePhotoMessage("Фото недоступно", modifier = Modifier.fillMaxWidth().weight(1f))
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -160,6 +149,13 @@ fun WineCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CataloguePhotoMessage(message: String, modifier: Modifier = Modifier.fillMaxSize()) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Text(message, color = BrandTextSecondary, fontFamily = Inter, fontSize = 12.sp)
     }
 }
 

@@ -30,6 +30,7 @@ class GetWinePathUseCase @Inject constructor(
             val earnedCodes = badges.map { it.code }.toSet()
             // territoryId из колонки; для старых сканов — нормализация сырого region на лету.
             val entitiesByTerritory: Map<String, List<com.wineapp.data.local.ScanHistoryEntity>> = scans
+                .filter { it.recognitionStatus in setOf("legacy", "user_confirmed", "score_confirmed") }
                 .groupBy { entity ->
                     entity.territoryId ?: TerritoryRegistry.normalize(entity.region)
                 }

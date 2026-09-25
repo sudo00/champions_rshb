@@ -35,7 +35,7 @@ fun ErrorMessage(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(message)
+            Text(message, modifier = Modifier.weight(1f))
             onRetry?.let {
                 TextButton(onClick = it) {
                     Text(stringResource(com.wineapp.R.string.retry))

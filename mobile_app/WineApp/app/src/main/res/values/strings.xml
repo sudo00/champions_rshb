@@ -33,7 +33,7 @@
     <string name="search_hint">Поиск по названию, региону или сорту</string>
     <string name="home_title">Найти вино</string>
     <string name="home_subtitle">Сфотографируйте этикетку или загрузите фото</string>
-    <string name="home_scan">Сфотографировать</string>
+    <string name="home_scan">Сканировать</string>
     <string name="home_gallery">Загрузить фото</string>
     <string name="home_all">Все вина</string>
     <string name="home_filter">Фильтр</string>
@@ -101,14 +101,14 @@
     <string name="saved_scans_delete">Удалить</string>
     <string name="saved_scans_delete_title">Удалить сканирование?</string>
     <string name="saved_scans_delete_confirm">Вы уверены, что хотите удалить «%s»?</string>
-    <string name="saved_scans_confidence">Точность: %d%%</string>
+    <string name="saved_scans_confidence">Совпадение: %d/100</string>
 
     <string name="saved_scan_detail_title">Детали сканирования</string>
     <string name="saved_scan_detail_label_photo">Фото этикетки</string>
     <string name="saved_scan_detail_photo_unavailable">Фото недоступно</string>
     <string name="saved_scan_detail_no_photo">Фото не сохранено</string>
     <string name="saved_scan_detail_recognition_result">Результат распознавания</string>
-    <string name="saved_scan_detail_confidence">Точность распознавания</string>
+    <string name="saved_scan_detail_confidence">Совпадение с кандидатом</string>
     <string name="saved_scan_detail_scan_date">Дата сканирования</string>
     <string name="saved_scan_detail_conversation">Беседа с сомелье</string>
     <string name="saved_scan_detail_conversation_subtitle">%d сообщений</string>

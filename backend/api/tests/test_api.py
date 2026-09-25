@@ -38,6 +38,31 @@ def test_real_catalogue_and_nullable_unknown_metadata():
     assert client.get('/v1/wines/not-a-real-slug').json()['wine'] is None
 
 
+@pytest.mark.parametrize('image_format,media_type', [('PNG', 'image/png'), ('WEBP', 'image/webp')])
+def test_catalogue_image_preserves_bytes_and_reports_actual_format(tmp_path, image_format, media_type):
+    path = tmp_path / 'catalogue-photo.bin'
+    Image.new('RGB', (20, 30), 'white').save(path, format=image_format)
+    with patch('api.main.image_path', return_value=path):
+        response = client.get(f'/v1/wines/{SLUG}/image')
+    assert response.status_code == 200
+    assert response.headers['content-type'] == media_type
+    assert response.content == path.read_bytes()
+
+
+def test_scan_confirmation_route_keeps_model_result_and_returns_user_choice():
+    import uuid
+    scan_id = str(uuid.uuid4())
+    data = result()
+    data['userConfirmation'] = {'slug': data['candidates'][1]['slug'], 'source': 'user'}
+    with patch('api.main.confirm_job', return_value=ScanJob(scan_id, 'done', True, result=data)):
+        response = client.post(f'/v1/wines/scan/{scan_id}/confirmation', json={'slug': data['userConfirmation']['slug']})
+    assert response.status_code == 200
+    assert response.json()['userConfirmation'] == data['userConfirmation']
+    assert response.json()['slug'] == data['slug']
+    with patch('api.main.confirm_job', side_effect=ValueError('not a candidate')):
+        assert client.post(f'/v1/wines/scan/{scan_id}/confirmation', json={'slug': 'wrong'}).status_code == 409
+
+
 def test_health_and_readiness_are_distinct():
     assert client.get('/health').status_code==200
     with patch('api.main.recognition_ready',return_value=False):
