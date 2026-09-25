@@ -50,11 +50,6 @@ backend/.venv/
 
 /weights/
 /tests/
-/backend/api/tests/
-/backend/worker/tests/
-/mobile_app/WineApp/app/src/test/
-/mobile_app/WineApp/app/src/androidTest/
-/pytest.ini
 
 # Shared operational tools only; research stays local at its existing paths.
 /scripts/*

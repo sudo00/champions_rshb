@@ -19,7 +19,6 @@ others
 
 weights
 tests
-**/tests
 .env
 .env.*
 **/.env

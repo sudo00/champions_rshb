@@ -27,7 +27,7 @@
 
 ```bash
 cd mobile_app/WineApp
-./gradlew :app:assembleDebug
+./gradlew :app:assembleDebug :app:testDebugUnitTest
 ./gradlew :app:installDebug
 ```
 
@@ -130,7 +130,7 @@ Android: `data/detector/`, `CameraHelper`, `ApiDtos`, `ScanMapper`, `WineReposit
 |---|---|---|
 | ![Кандидаты](examples/scan-unverified.jpg) | ![Подтверждение](examples/scan-confirmed.jpg) | ![Отсутствующее вино](examples/scan-absent.jpg) |
 
-При наличии локальных тестовых файлов сетевой тест запускается отдельно при доступном сервере:
+Следующая команда доступна только при наличии локального `ApiConnectivityTest`:
 
 ```bash
 ./gradlew :app:connectedDebugAndroidTest \
@@ -140,6 +140,6 @@ Android: `data/detector/`, `CameraHelper`, `ApiDtos`, `ScanMapper`, `WineReposit
 
 В обычном наборе без `integrationApi=true` этот тест пропускается.
 
-Автоматические тесты API/worker/Android сохранены только локально и не входят в Git. Приведённые результаты тестов относятся к локальной проверке; в свежем клоне доступны сборка APK и ручная проверка через общий API.
+Тесты API, worker и модульные тесты Android входят в Git. Инструментальные тесты Android удалены из main мобильным разработчиком и здесь не восстанавливаются. Исследовательские ML-тесты в корневой `tests/` остаются локальными.
 
 При `recommendationContext.basis=retrieval_family` или `retrieval_producer` клиент показывает «Визуально похожие вина». Не обозначать непрочитанный цвет как известный и не превращать рекомендации в подтверждённые совпадения.
