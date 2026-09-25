@@ -183,7 +183,11 @@ def wine_image(wine_id: str):
     path = image_path(wine_id)
     if path is None:
         raise HTTPException(404, "Catalogue image unavailable")
-    return FileResponse(path)
+    # Minimal container images may lack MIME mappings for WebP. Use the file's
+    # actual format so catalogue photos are never served as text/plain.
+    with Image.open(path) as photo:
+        media_type = Image.MIME.get(photo.format, "application/octet-stream")
+    return FileResponse(path, media_type=media_type)
 
 
 @app.post(

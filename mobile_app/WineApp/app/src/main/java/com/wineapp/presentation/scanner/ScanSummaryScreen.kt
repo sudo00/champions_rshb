@@ -81,7 +81,8 @@ fun ScanSummaryScreen(
             }
             items(result.recommendations, key = { "recommendation:${it.wine.id}" }) { recommendation ->
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    WineCard(recommendation.wine) { onOpenWine(recommendation.wine.id, false) }
+                    WineCard(recommendation.wine, modifier = Modifier.fillMaxWidth(),
+                        onClick = { onOpenWine(recommendation.wine.id, false) })
                     recommendation.reasons.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
                 }
             }
@@ -107,7 +108,7 @@ private fun CandidateCard(candidate: ScoredWine, canConfirm: Boolean, busy: Bool
                 modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             candidate.matchScore?.let { Text("Совпадение ${(it * 100).roundToInt()}/100", style = MaterialTheme.typography.labelLarge) }
         }
-        WineCard(candidate.wine, onClick = onOpen)
+        WineCard(candidate.wine, modifier = Modifier.fillMaxWidth(), onClick = onOpen)
         if (canConfirm) OutlinedButton(onClick = onConfirm, enabled = !busy) { Text("Это моё вино") }
     }
 }

@@ -4,13 +4,12 @@ import android.util.Log
 import com.wineapp.data.file.ImageOrientationHelper
 import com.wineapp.data.local.WineDao
 import com.wineapp.data.local.WineHistoryEntity
+import com.wineapp.data.remote.dto.ScanRequest
+import com.wineapp.data.remote.dto.ScanStatusResponse
 import com.wineapp.data.remote.mapper.ScanMapper
 import com.wineapp.data.remote.mapper.SearchMapper
 import com.wineapp.data.remote.mapper.WineMapper
-import com.wineapp.data.remote.dto.ScanRequest
 import com.wineapp.data.remote.dto.ScanConfirmationRequest
-import com.wineapp.data.remote.dto.ScanStatusResponse
-import com.wineapp.data.remote.dto.ScanAcceptedResponse
 import com.wineapp.domain.model.ScanResult
 import com.wineapp.domain.model.SearchResult
 import com.wineapp.domain.model.Wine

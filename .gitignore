@@ -34,6 +34,9 @@ others/
 !/docs/examples/
 /docs/examples/*
 !/docs/examples/scan-response.json
+!/docs/examples/scan-unverified.jpg
+!/docs/examples/scan-confirmed.jpg
+!/docs/examples/scan-absent.jpg
 literature/
 notes.txt
 node_modules/

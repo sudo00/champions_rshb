@@ -56,6 +56,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -63,6 +64,8 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.wineapp.R
 import com.wineapp.data.local.FavoriteKind
+import com.wineapp.data.mock.MockDataProvider
+import com.wineapp.domain.model.FavoriteItem
 import com.wineapp.domain.model.Wine
 import com.wineapp.presentation.common.ui.EmptyState
 import com.wineapp.presentation.common.ui.WineAppTopAppBar
@@ -430,5 +433,24 @@ fun FavoriteWineCard(
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true, heightDp = 800)
+@Composable
+private fun FavoritesScreenPreview() {
+    com.wineapp.ui.theme.WineAppTheme {
+        val wines = MockDataProvider.wines
+        FavoritesScreenContent(
+            state = FavoritesState.Success(
+                items = listOf(
+                    FavoriteItem(wine = wines[0], kind = FavoriteKind.LIKED),
+                    FavoriteItem(
+                        wine = wines.getOrElse(1) { wines[0] }.copy(id = "preview-2"),
+                        kind = FavoriteKind.WISH
+                    )
+                )
+            )
+        )
     }
 }
