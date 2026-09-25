@@ -19,14 +19,17 @@ import java.io.File
 import java.io.FileOutputStream
 import javax.inject.Inject
 import androidx.core.net.toUri
+import com.wineapp.domain.repository.BadgeRepository
+import com.wineapp.domain.repository.WineRepository
+import com.wineapp.util.HapticHelper
 
 @HiltViewModel
 class ScannerViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val scanWineUseCase: ScanWineUseCase,
-    private val wineRepository: com.wineapp.domain.repository.WineRepository,
+    private val wineRepository: WineRepository,
     private val saveScanUseCase: SaveScanUseCase,
-    private val badgeRepository: com.wineapp.domain.repository.BadgeRepository,
+    private val badgeRepository: BadgeRepository,
     val cameraHelper: CameraHelper
 ) : BaseViewModel<ScannerState, ScannerIntent>() {
 
@@ -72,8 +75,8 @@ class ScannerViewModel @Inject constructor(
     private var lastFactIndex: Int = -1
     private var scanScreenActive = false
     private val scanHaptics = com.wineapp.util.ScanHapticSession(
-        start = { com.wineapp.util.HapticHelper.startScanWaiting(context) },
-        stop = { com.wineapp.util.HapticHelper.stopScanWaiting(context) }
+        start = { HapticHelper.startScanWaiting(context) },
+        stop = { HapticHelper.stopScanWaiting(context) }
     )
 
     fun setScanScreenActive(active: Boolean) {
@@ -110,7 +113,7 @@ class ScannerViewModel @Inject constructor(
                 val result = scanWineUseCase(imagePath)
                 result.onSuccess { scanResult ->
                     stopScanHaptic()
-                    if (scanScreenActive) com.wineapp.util.HapticHelper.vibrateScanResult(context)
+                    if (scanScreenActive) HapticHelper.vibrateScanResult(context)
                     val snapshot = scanResult.historySnapshot(imagePath, System.currentTimeMillis())
                     val saveError = snapshot?.let { saveScanUseCase(it).exceptionOrNull() }
                     if (saveError != null) Log.e("ScannerViewModel", "Automatic scan save failed", saveError)

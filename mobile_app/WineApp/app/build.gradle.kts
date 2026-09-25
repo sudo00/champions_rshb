@@ -1,5 +1,4 @@
 import java.util.Properties
-import java.net.URI
 
 plugins {
     id("com.android.application")
@@ -18,41 +17,6 @@ val localProperties = Properties().apply {
     }
 }
 
-val apiBaseUrl = (providers.gradleProperty("WINE_API_BASE_URL").orNull
-    ?: providers.environmentVariable("WINE_API_BASE_URL").orNull
-    ?: localProperties.getProperty("WINE_API_BASE_URL", "http://10.0.2.2:8000/"))
-    .trim().trimEnd('/') + "/"
-val apiUri = URI(apiBaseUrl)
-require(apiUri.scheme in listOf("http", "https") && apiUri.host != null &&
-        apiUri.rawUserInfo == null && apiUri.rawQuery == null && apiUri.rawFragment == null) {
-    "WINE_API_BASE_URL must be an http(s) URL without credentials, query or fragment"
-}
-fun buildConfigString(value: String): String =
-    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
-
-// Keep HTTP permission scoped to the configured API host, without committing its address.
-val apiNetworkResources = layout.buildDirectory.dir("generated/res/apiNetwork")
-val generateApiNetworkConfig = tasks.register("generateApiNetworkConfig") {
-    inputs.property("apiHost", apiUri.host)
-    inputs.property("allowHttp", apiUri.scheme == "http")
-    outputs.dir(apiNetworkResources)
-    doLast {
-        val output = apiNetworkResources.get().file("xml/network_security_config.xml").asFile
-        output.parentFile.mkdirs()
-        output.writeText("""
-            <?xml version="1.0" encoding="utf-8"?>
-            <network-security-config>
-                <base-config cleartextTrafficPermitted="false">
-                    <trust-anchors><certificates src="system" /></trust-anchors>
-                </base-config>
-                <domain-config cleartextTrafficPermitted="${apiUri.scheme == "http"}">
-                    <domain includeSubdomains="false">${apiUri.host}</domain>
-                </domain-config>
-            </network-security-config>
-        """.trimIndent() + "\n")
-    }
-}
-
 android {
     namespace = "com.wineapp"
     compileSdk = 35
@@ -68,15 +32,11 @@ android {
             useSupportLibrary = true
         }
 
-        buildConfigField("String", "BASE_URL", buildConfigString(apiBaseUrl))
+        buildConfigField("String", "BASE_URL", "\"http://109.248.37.178:8000\"")
         buildConfigField("String", "GIGACHAT_AUTH_KEY", "\"${localProperties.getProperty("GIGACHAT_AUTH_KEY", "")}\"")
     }
 
     buildTypes {
-        debug {
-            applicationIdSuffix = ".dev"
-            versionNameSuffix = "-dev"
-        }
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -90,7 +50,7 @@ android {
         compose = true
         buildConfig = true
     }
-    sourceSets.getByName("main").res.srcDir(apiNetworkResources)
+
     androidResources { noCompress += "tflite" }
     packagingOptions {
         resources {
@@ -102,8 +62,6 @@ android {
 kotlin {
     compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) }
 }
-
-tasks.named("preBuild").configure { dependsOn(generateApiNetworkConfig) }
 
 dependencies {
     implementation("com.google.ai.edge.litert:litert:2.2.0")

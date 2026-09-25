@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -25,7 +26,7 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 class CameraHelper @javax.inject.Inject constructor(
-    @dagger.hilt.android.qualifiers.ApplicationContext private val context: Context,
+    @ApplicationContext private val context: Context,
     private val detectorRuntime: LabelDetectorRuntime
 ) {
     private var cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
