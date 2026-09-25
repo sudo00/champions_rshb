@@ -10,7 +10,7 @@ fun ScanResult.confirmation(): ScanConfirmation? {
     }
     val first = scoredCandidates.firstOrNull() ?: return null
     val score = first.matchScore ?: return null
-    return if (first.rank == 1 && score.isFinite() && score > .70f && score <= 1f)
+    return if (first.rank == 1 && score.isFinite() && score > .50f && score <= 1f)
         ScanConfirmation(first, "score_confirmed") else null
 }
 

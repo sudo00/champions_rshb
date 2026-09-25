@@ -21,6 +21,45 @@ def test_full_attribute_match_beats_same_producer_with_different_grape():
     assert result["items"][1]["unmatchedGrapes"] == ["Рислинг"]
 
 
+def test_weak_aya_anchor_uses_visual_family_not_guessed_red_syrah():
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    cards = {c["slug"]: c for c in [
+        {**card("anchor", color="Красное", grapes="Сира", producer="AYA"), "title": "Purity in Syrah"},
+        {**card("rose", color="Розовое", producer="AYA"), "title": "Purity in Merlot"},
+        {**card("white", producer="AYA"), "title": "Purity in Chenin Blanc"},
+        {**card("other-line", producer="AYA"), "title": "Evolution Chardonnay"},
+        {**card("foreign", color="Красное", grapes="Сира"), "title": "Purity Syrah"},
+    ]}
+    semantic = SimpleNamespace(model="test", metadata={}, scores=Mock(return_value={"foreign": .99}))
+    ix = RecommendationIndex(cards, semantic)
+    data = dict(recognitionStatus="candidates_unverified", **observed("PURITY", "In Balance 2025"),
+                candidates=[dict(slug="anchor", matchScore=.076, visual_similarity=.9),
+                            dict(slug="rose", matchScore=.04, visual_similarity=.72),
+                            dict(slug="white", matchScore=.03, visual_similarity=.82)])
+    output = ix.recommend(data)
+    assert output["basis"] == "retrieval_family" and output["lineTerms"] == ["purity"]
+    assert output["criteria"] == dict(color=None, sweetness=None, grapes=[], producer="AYA")
+    assert output["profile"]["producer"]["status"] == "missing"
+    assert output["criteriaSources"]["producer"] == "retrieval_shortlist_consensus"
+    assert [i["slug"] for i in output["items"]] == ["white", "rose"]
+    assert output["items"][0]["visualSimilarity"] == .82
+    assert all("Совпадает цвет" not in reason for item in output["items"] for reason in item["reasons"])
+    semantic.scores.assert_not_called()
+    # Explicit colour is still strict; no inference from the rejected red anchor.
+    white = ix.recommend({**data, **observed("PURITY", "white")})
+    assert [i["slug"] for i in white["items"]] == ["white"]
+    absent = ix.recommend({**data, "recognitionStatus": "not_in_catalog"})
+    assert absent["items"] == [] and absent["anchor"] is None
+    assert absent["criteria"]["producer"] is None
+
+
+def test_weak_mixed_producers_do_not_invent_family_from_top1():
+    ix = RecommendationIndex({"a": card("a"), "b": card("b", producer="Other"), "c": card("c")})
+    output = ix.recommend({**observed("PURITY"), "candidates": [{"slug": s, "matchScore": .1} for s in ("a", "b", "c")]})
+    assert output["criteria"]["producer"] is None and output["items"] == []
+
+
 def test_known_color_and_sweetness_never_relaxed_for_producer():
     cards = [card("red", color="Красное"), card("sweet", sugar="Сладкое"), card("unknown", sugar=None),
              card("same", grapes="Шардоне")]
@@ -36,6 +75,9 @@ def test_read_producer_is_fallback_and_anchor_is_not_observed_evidence():
     result = ix.recommend({**observed("unreadable"), "candidates": [{"slug": "a", "matchScore": .01}]})
     assert result["anchor"]["slug"] == "a" and result["anchor"]["isRecognizedWine"] is False
     assert result["profile"]["color"]["value"] is None
+    assert result["criteriaSources"]["color"] == "missing"
+    assert result["items"] == []
+    result = ix.recommend({**observed("unreadable"), "candidates": [{"slug": "a", "matchScore": .8}]})
     assert result["criteriaSources"]["color"] == "retrieval_top1_reference"
     assert [r["slug"] for r in result["items"]] == ["b"]
 
@@ -141,7 +183,7 @@ def test_text_similarity_orders_compatible_wines_and_cannot_override_ocr():
     cards = {c["slug"]: c for c in [card("anchor", color="Красное"), card("wrong", color="Красное"),
                                     card("near", producer="Other"), card("far")]}
     ix = RecommendationIndex(cards, semantic=semantic)
-    result = ix.recommend({**observed("белое сухое рислинг"), "candidates": [{"slug": "anchor"}]})
+    result = ix.recommend({**observed("белое сухое рислинг"), "candidates": [{"slug": "anchor", "matchScore": .8}]})
     assert [i["slug"] for i in result["items"]] == ["near", "far"]
     assert result["criteria"]["color"] == "Белое" and result["criteriaSources"]["color"] == "photo_ocr"
     assert result["items"][0]["textSimilarity"] == .9
@@ -191,7 +233,7 @@ def test_absent_wine_never_uses_rejected_top1_metadata_or_embeddings():
 
 
 def test_unverified_scan_recommends_from_top1_without_confirming_it():
-    data = dict(slug="a", recognitionStatus="candidates_unverified", candidates=[{"slug": "a"}],
+    data = dict(slug="a", recognitionStatus="candidates_unverified", candidates=[{"slug": "a", "matchScore": .8}],
                 catalogSha256=catalog_data()[1], **observed("unreadable"))
     ix = RecommendationIndex({"a": card("a"), "b": card("b")})
     with patch("api.scans.get_wine", side_effect=lambda slug: wine_from_file(next(iter(catalog_data()[0])))), \

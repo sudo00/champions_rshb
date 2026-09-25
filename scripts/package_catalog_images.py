@@ -10,7 +10,7 @@ ROOT=Path(__file__).resolve().parents[1]
 
 def main():
     parser=argparse.ArgumentParser(__doc__)
-    parser.add_argument('--output',type=Path,default=ROOT/'data/deployment/catalog-images-v1.tar')
+    parser.add_argument('--output',type=Path,default=ROOT/'data/deployment/catalog-images-v2.tar')
     args=parser.parse_args()
     if args.output.exists(): raise FileExistsError(args.output)
     catalog=ROOT/'backend/catalog/catalog.jsonl'

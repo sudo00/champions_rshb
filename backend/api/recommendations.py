@@ -1,13 +1,13 @@
 """Explainable catalogue alternatives from image evidence; no recognition reranking."""
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from functools import lru_cache
 import math
 import re
 import unicodedata
 
-VERSION = "attribute-recommendations-v3"
+VERSION = "attribute-recommendations-v4"
 COLORS = {"Белое": ["белое", "белый", "white"], "Красное": ["красное", "красный", "red"],
           "Розовое": ["розовое", "розовый", "rose", "rosé"], "Оранжевое": ["оранжевое", "orange"]}
 SWEETNESS = {
@@ -90,6 +90,18 @@ def single(values: list[str]) -> str | None:
     return values[0] if len(values) == 1 else None
 
 
+def reliable_observations(observations: list[dict]) -> list[dict]:
+    result = []
+    for line in observations:
+        try:
+            confidence = float(line.get("confidence", 0))
+        except (ValueError, TypeError):
+            continue
+        if line.get("on_target_bottle") is not False and math.isfinite(confidence) and .8 <= confidence <= 1:
+            result.append(line)
+    return result
+
+
 class RecommendationIndex:
     def __init__(self, cards: dict[str, dict], semantic=None):
         self.semantic = semantic
@@ -101,6 +113,7 @@ class RecommendationIndex:
                 if name and normalize(name) not in aliases and "сорта винограда" not in name and not re.search(r"[()]| и ", name):
                     self.grapes.setdefault(name, [])
         self.cards = {slug: self.attributes(card) for slug, card in cards.items()}
+        self.titles = {slug: set(normalize(card.get("title") or "").split()) for slug, card in cards.items()}
         self.producers = {}
         owners = defaultdict(set)
         excluded = GENERIC_PRODUCER | {word for name in self.grapes for word in normalize(name).split()}
@@ -136,13 +149,7 @@ class RecommendationIndex:
 
     def observed(self, observations: list[dict]) -> dict:
         groups = {key: defaultdict(list) for key in ("color", "sweetness", "grapes", "producer")}
-        for line in observations:
-            try:
-                confidence = float(line.get("confidence", 0))
-            except (ValueError, TypeError):
-                continue
-            if line.get("on_target_bottle") is False or not math.isfinite(confidence) or not .8 <= confidence <= 1:
-                continue
+        for line in reliable_observations(observations):
             text = str(line.get("text") or "")
             evidence = {k: line.get(k) for k in ("text", "confidence", "source", "polygon_original")}
             # "Мускат Белый" is a grape name, not evidence that this wine is white.
@@ -161,6 +168,19 @@ class RecommendationIndex:
                           readings=[dict(value=value, evidence=evidence) for value, evidence in values.items()])
                 for key, values in groups.items()}
 
+    def observed_line_terms(self, producer: str, observations: list[dict]) -> list[str]:
+        """Repeated catalogue title words supported by OCR, within one producer."""
+        titles = [self.titles[s] for s, c in self.cards.items() if c["producer"] == producer]
+        counts = Counter(word for title in titles for word in title)
+        excluded = GENERIC_PRODUCER | set(normalize(producer).split())
+        for vocabulary in (self.grapes, COLORS, SWEETNESS):
+            excluded.update(word for value, aliases in vocabulary.items()
+                            for alias in [value, *aliases] for word in normalize(alias).split())
+        read = {word for line in reliable_observations(observations)
+                for word in normalize(line.get("text") or "").split()}
+        return sorted(word for word in read - excluded
+                      if len(word) >= 4 and not word.isdigit() and counts[word] >= 2)
+
     def recommend(self, result: dict, limit: int = 5) -> dict:
         profile = self.observed(result.get("observations", []))
         status = result.get("recognitionStatus")
@@ -170,9 +190,14 @@ class RecommendationIndex:
         shortlist = [] if observed_only else result.get("candidates") or []
         anchor_slug = shortlist[0].get("slug") if shortlist else None
         anchor = self.cards.get(anchor_slug)
-        semantic_scores = self.semantic.scores(anchor_slug) if self.semantic and anchor else {}
+        try:
+            score = float(shortlist[0].get("matchScore")) if shortlist else 0.
+        except (ValueError, TypeError):
+            score = 0.
+        strong_anchor = bool(anchor and (confirmed or math.isfinite(score) and .5 < score <= 1))
+        semantic_scores = self.semantic.scores(anchor_slug) if self.semantic and strong_anchor else {}
         output = dict(version=VERSION, status="insufficient_evidence", profile=profile, items=[],
-                      basis="photo_ocr" if observed_only else "confirmed_wine" if confirmed else "retrieval_top1",
+                      basis="photo_ocr" if observed_only or not strong_anchor else "confirmed_wine" if confirmed else "retrieval_top1",
                       anchor=dict(slug=anchor_slug, source="confirmed_wine" if confirmed else "retrieval_top1",
                                   isRecognizedWine=confirmed) if anchor else None,
                       semanticStatus="available" if semantic_scores else "unavailable",
@@ -183,11 +208,33 @@ class RecommendationIndex:
         query = {k: v["value"] for k, v in profile.items()}
         sources = {k: "photo_ocr" if v else "missing" for k, v in query.items()}
         # Only a working reference: never copy anchor metadata into observedFields.
-        if anchor:
+        if strong_anchor:
             for key in query:
                 if not query[key] and profile[key]["status"] == "missing" and anchor[key]:
                     query[key] = anchor[key]
                     sources[key] = "confirmed_wine" if confirmed else "retrieval_top1_reference"
+        elif anchor and profile["producer"]["status"] == "missing":
+            # Agreement about producer is a fallback hypothesis, not an OCR fact.
+            top = shortlist[:3]
+            producers = {self.cards.get(c.get("slug"), {}).get("producer") for c in top}
+            if len(top) == 3 and len({c.get("slug") for c in top}) == 3 and len(producers) == 1 and None not in producers:
+                query["producer"] = next(iter(producers))
+                sources["producer"] = "retrieval_shortlist_consensus"
+        family_fallback = bool(anchor and not strong_anchor and query["producer"]
+                               and (not query["color"] or not query["grapes"] and not query["sweetness"]))
+        line_terms = self.observed_line_terms(query["producer"], result.get("observations", [])) if family_fallback else []
+        visual_scores = {}
+        if family_fallback:
+            for candidate in shortlist:
+                try:
+                    value = float(candidate.get("visual_similarity"))
+                except (ValueError, TypeError):
+                    continue
+                if math.isfinite(value) and -1 <= value <= 1:
+                    visual_scores[candidate["slug"]] = value
+        if family_fallback:
+            output["basis"] = "retrieval_family" if line_terms else "retrieval_producer"
+            output["lineTerms"] = line_terms
         output["criteria"] = query
         output["criteriaSources"] = sources
         if not (query["grapes"] or query["producer"] or query["color"] and query["sweetness"]):
@@ -195,6 +242,9 @@ class RecommendationIndex:
         pool = []
         for slug, card in self.cards.items():
             if slug == anchor_slug:
+                continue
+            if family_fallback and (card["producer"] != query["producer"]
+                                    or line_terms and not set(line_terms).issubset(self.titles[slug])):
                 continue
             # Known colour/sugar never relaxed, including producer fallback.
             if any(query[k] and query[k] != card[k] for k in ("color", "sweetness")):
@@ -219,8 +269,14 @@ class RecommendationIndex:
             if "sweetness" in matched: reasons.append("Совпадает сладость: " + query["sweetness"])
             if common: reasons.append("Общие сорта: " + ", ".join(common))
             if same_producer: reasons.append("Тот же производитель: " + query["producer"])
-            reasons = [reason + (" (по надписи на фото)" if sources[key] == "photo_ocr" else " (по карточке-ориентиру)")
+            reasons = [reason + (" (по надписи на фото)" if sources[key] == "photo_ocr"
+                                else " (предположение по кандидатам поиска)" if sources[key] == "retrieval_shortlist_consensus"
+                                else " (по карточке-ориентиру)")
                        for key, reason in zip(matched, reasons)]
+            if line_terms:
+                reasons.append("Общая надпись линейки на фото: " + ", ".join(line_terms))
+            if slug in visual_scores:
+                reasons.append("Визуально похожая этикетка")
             missing = [k for k, v in profile.items() if v["status"] != "read"]
             unmatched_grapes = sorted(set(query["grapes"]) - set(common))
             item = dict(slug=slug, tier=tier, matchedFields=matched, reasons=reasons, attributes=card,
@@ -228,13 +284,18 @@ class RecommendationIndex:
             similarity = semantic_scores.get(slug)
             item.update(textSimilarity=similarity, similarityIsProbability=False,
                         criteriaSources={k: sources[k] for k in matched})
+            if family_fallback:
+                item["visualSimilarity"] = visual_scores.get(slug)
             if self.semantic:
                 extra = self.semantic.metadata.get(slug, {})
                 item["servingAdvice"] = dict(foodPairing=extra.get("food_pairing", []),
                                              temperature=extra.get("serving_temperature"), source=extra.get("source"))
             if similarity is not None:
                 reasons.append("Близкое текстовое описание к карточке-ориентиру Top-1")
-            pool.append(((tier_order, -coverage, -int(exact_grapes), -(similarity if similarity is not None else -1.), -int(same_producer), slug), item))
+            key = (tier_order, -coverage, -int(exact_grapes), -(similarity if similarity is not None else -1.), -int(same_producer), slug)
+            if family_fallback:
+                key = (-int(slug in visual_scores), -visual_scores.get(slug, -1.), *key)
+            pool.append((key, item))
         pool.sort(key=lambda pair: pair[0])
         output["items"] = [{"rank": i + 1, **item} for i, (_, item) in enumerate(pool[:limit])]
         output["status"] = "available" if pool else "no_suitable_analogs"

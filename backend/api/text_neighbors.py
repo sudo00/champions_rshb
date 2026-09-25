@@ -52,7 +52,7 @@ class TextIndex:
 
 
 def load_text_index(cards: dict, catalog_sha256: str) -> TextIndex | None:
-    directory = Path(os.environ.get("WINE_RECOMMENDATIONS_DIR", str(ROOT / "weights/recommendations-v1")))
+    directory = Path(os.environ.get("WINE_RECOMMENDATIONS_DIR", str(ROOT / "weights/recommendations-v2")))
     try:
         return TextIndex(directory, cards, catalog_sha256)
     except (OSError, ValueError, KeyError, TypeError):

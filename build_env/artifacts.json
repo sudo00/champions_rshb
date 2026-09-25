@@ -1,28 +1,29 @@
 {
   "schema_version": 1,
   "recognizer": {
-    "bundle_dir": "weights/wine-recognizer-v5-sugar-release",
-    "archive": "weights/artifacts/wine-recognizer-v5-sugar.tar",
+    "bundle_dir": "weights/wine-recognizer-v5-muscat-release",
+    "archive": "weights/artifacts/wine-recognizer-v5-muscat.tar",
     "url": null,
-    "bytes": 8085514240,
-    "sha256": "ecdd64c9e4fbfa626cad3d4c394c496f2d53e4152846f725ed0456ba9e045144",
-    "catalog_sha256": "81a98401208c2e03bc74aab42b0d84ca6dc3d0f605c1817d696401a33c6e364f"
+    "bytes": 8085698560,
+    "sha256": "b3ea51353fbb9b8219c62510a3a3f1acc21af7a2ca189f042bf2821a76c0155e",
+    "catalog_sha256": "40e6d559fefee605c579e5bc01fde1f943deab7da5f36c9d700c64b7a079a72d"
   },
   "catalog_images": {
-    "directory": "data/deployment/catalog-images",
-    "archive": "catalog-images-v1.tar",
+    "directory": "data/deployment/catalog-images-v2",
+    "archive": "catalog-images-v2.tar",
     "url": null,
-    "bytes": 151992320,
-    "sha256": "d064913a910a1db886dae75e0ac1930e80e53709f13150441aab74e436fe3ab8"
+    "bytes": 152422400,
+    "sha256": "8efc61eb06df04a17ce908c759772b97c003163056c223a97369e907fec20cbc",
+    "catalog_sha256": "40e6d559fefee605c579e5bc01fde1f943deab7da5f36c9d700c64b7a079a72d"
   },
   "note": "Resource inventory only; no downloader is implemented. URLs must be supplied by the deployment owner.",
   "recommendations": {
-    "directory": "weights/recommendations-v1",
-    "archive": "weights/artifacts/recommendations-v1.tar.gz",
+    "directory": "weights/recommendations-v2",
+    "archive": "weights/artifacts/recommendations-v2.tar.gz",
     "url": null,
-    "bytes": 3180248,
-    "sha256": "e6d965dad351a6d3aad7d8672d73e9ef9a7879d47275e2643f7d657406bc16c6",
-    "catalog_sha256": "81a98401208c2e03bc74aab42b0d84ca6dc3d0f605c1817d696401a33c6e364f",
+    "bytes": 3179268,
+    "sha256": "11fc5e4e23231923c6b602b72366dc22753a0d55318207d70a0830065d8afbf4",
+    "catalog_sha256": "40e6d559fefee605c579e5bc01fde1f943deab7da5f36c9d700c64b7a079a72d",
     "note": "Offline multilingual-e5-small text vectors. Runtime API uses CPU dot products; encoder weights not required."
   },
   "mobile_label_detector": {
@@ -31,7 +32,7 @@
     "distribution": "git",
     "bytes": 9757969,
     "sha256": "ecd817f904b8d159ee924c15b2ca06dce80bf28e4c6d7086a35601cca5a59abf",
-    "status": "integrated camera pilot; auto capture opt-in",
+    "status": "integrated on-device camera detector with automatic capture",
     "documentation": "docs/MOBILE_HANDOFF.md"
   }
 }

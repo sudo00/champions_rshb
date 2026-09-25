@@ -25,7 +25,7 @@ def initialize() -> WineRecognizer:
     with _initialization_lock:
         if _recognizer is None:
             recognizer = WineRecognizer(
-                os.environ.get("WINE_BUNDLE_DIR", str(ROOT/"weights/wine-recognizer-v5-sugar-release")),
+                os.environ.get("WINE_BUNDLE_DIR", str(ROOT/"weights/wine-recognizer-v5-muscat-release")),
                 ocr_python=os.environ.get("WINE_OCR_PYTHON", str(ROOT/".venv-ocr-gpu/bin/python")),
                 device=os.environ.get("WINE_DEVICE", "cuda:0"),
                 ocr_device=os.environ.get("WINE_OCR_DEVICE", "gpu:0"),

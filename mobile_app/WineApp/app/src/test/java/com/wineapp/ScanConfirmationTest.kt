@@ -11,11 +11,11 @@ class ScanConfirmationTest {
         scoredCandidates = listOf(ScoredWine(wine, "a", 1, score),
             ScoredWine(wine.copy(id = "b"), "b", 2, .99f)))
 
-    @Test fun onlyScoresStrictlyAboveSeventyConfirmFirstCandidate() {
-        listOf(.70f, .69f, null, Float.NaN, Float.POSITIVE_INFINITY, 1.1f, -.1f).forEach {
+    @Test fun onlyScoresStrictlyAboveFiftyConfirmFirstCandidate() {
+        listOf(.50f, .49f, null, Float.NaN, Float.POSITIVE_INFINITY, 1.1f, -.1f).forEach {
             assertNull("score=$it", result(it).confirmation())
         }
-        listOf(.7001f, .87f, 1f).forEach {
+        listOf(.5001f, .60f, .70f, .87f, 1f).forEach {
             assertEquals("a", result(it).confirmation()?.candidate?.slug)
             assertEquals("score_confirmed", result(it).confirmation()?.source)
         }

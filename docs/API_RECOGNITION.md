@@ -277,14 +277,14 @@ python3 scripts/scan_api.py photo.jpg --output data/original-result.json
 
 - `backend/catalog/catalog.jsonl`: 2 103 проверенные карточки, точная копия `data/catalog/curated/catalog.jsonl`.
 - `backend/catalog/manifest.json`: количество и SHA-256. Каталог API обязан совпадать с каталогом индекса.
-- `weights/wine-recognizer-v5-sugar-release/`: веса SAM 3, SigLIP2, OCR, индекс и манифест проверенного runtime. Передаётся отдельно от Git.
-- `data/deployment/catalog-images-v1.tar`: реальные файлы 2 103 изображений карточек; архив создаётся `python3 scripts/package_catalog_images.py`.
+- `weights/wine-recognizer-v5-muscat-release/`: веса SAM 3, SigLIP2, OCR, индекс и манифест проверенного runtime. Передаётся отдельно от Git.
+- `data/deployment/catalog-images-v2.tar`: реальные файлы 2 103 изображений карточек; архив создаётся `python3 scripts/package_catalog_images.py`.
 
 На машине коллег разместить bundle по указанному пути и распаковать изображения:
 
 ```bash
 mkdir -p data/deployment/catalog-images
-tar -xf data/deployment/catalog-images-v1.tar -C data/deployment/catalog-images
+tar -xf data/deployment/catalog-images-v2.tar -C data/deployment/catalog-images-v2
 ```
 
 Исходная папка `data/catalog/curated/images` содержит символические ссылки; переносить только её недостаточно. Архив содержит сами файлы. Изображения карточек нужны UI, для поиска достаточно bundle. Несуществующие цены, рейтинги и годы API возвращает как `null`.
@@ -398,3 +398,12 @@ bash scripts/install_api_network.sh
 109/110 при строгом совпадении slug. Остальные Top-1 и все решения об отказе сохранены;
 на 512 вариантах resize порядок Top-1 не изменился. Это проверенная ранее выборка
 разработки, не независимый тест. Отчёт: `data/audit/top5_verification/sweetness_ranking_v1/`.
+
+
+### Рекомендации при слабом совпадении
+
+При Top-1 `matchScore <= 0.50` или отсутствии score цвет, сахар и виноград из этой карточки не заполняют неизвестные характеристики фото. Надёжный OCR сохраняет приоритет. Если три различных первых кандидата согласны по производителю, API может использовать его как явно отмеченную гипотезу (`retrieval_shortlist_consensus`). При неизвестном цвете подбор ограничивается этим производителем, поддержанными OCR словами линейки и ранжируется по доступному `visual_similarity` кандидатов. Непрочитанный цвет остаётся `null`; визуальный порядок не доказывает цвет или идентичность вина.
+
+Контекст: `basis=retrieval_family` или `retrieval_producer`, `lineTerms` — общие слова линейки; `recommendations[].visualSimilarity` — визуальное сходство, не matchScore. При достаточном OCR без надёжной карточки используется `basis=photo_ocr`. Отказ `not_in_catalog` по-прежнему исключает любые характеристики отвергнутого Top-1. Сильный Top-1 (>0.50) и ручное подтверждение сохраняют подбор по карточке.
+
+Актуальный комплект ресурсов после исправления фотографии Муската: `v5-muscat`, `catalog-images-v2`, `recommendations-v2`. Их контрольные суммы перечислены в `build_env/artifacts.json`.
