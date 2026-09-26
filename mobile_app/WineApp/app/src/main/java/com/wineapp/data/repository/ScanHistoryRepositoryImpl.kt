@@ -6,6 +6,7 @@ import com.wineapp.data.local.ScanHistoryDao
 import com.wineapp.data.local.ScanHistoryEntity
 import com.wineapp.data.local.ScanConversationEntity
 import com.wineapp.data.local.TerritoryRegistry
+import com.wineapp.domain.model.ChatHistoryItem
 import com.wineapp.domain.model.SavedScan
 import com.wineapp.domain.model.SommelierMessage
 import com.wineapp.domain.model.Wine
@@ -92,6 +93,21 @@ class ScanHistoryRepositoryImpl @Inject constructor(
             } catch (e: Exception) {
                 Log.e("ScanHistoryRepo", "Save scan failed", e)
                 Result.failure(e)
+            }
+        }
+    }
+
+    override fun getChatsHistory(): Flow<List<ChatHistoryItem>> {
+        return scanHistoryDao.getChatsHistory().map { entries ->
+            entries.map { entry ->
+                ChatHistoryItem(
+                    scanId = entry.scan.id,
+                    wineId = entry.scan.wineId,
+                    wineName = entry.scan.wineName,
+                    lastMessage = entry.lastMessage,
+                    lastMessageAt = entry.lastMessageAt,
+                    messageCount = entry.messageCount
+                )
             }
         }
     }

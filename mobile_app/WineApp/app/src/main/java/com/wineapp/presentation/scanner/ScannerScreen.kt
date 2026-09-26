@@ -99,6 +99,7 @@ fun ScannerScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val state by viewModel.state.collectAsState()
     val badgeMessage by viewModel.badgeMessage.collectAsState()
+    val autoCaptureVm by viewModel.autoCapture.collectAsState()
 
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -195,7 +196,9 @@ fun ScannerScreen(
         onTakePicture = { path -> viewModel.sendIntent(ScannerIntent.CapturePhoto(path))},
         onRetry = { viewModel.sendIntent(ScannerIntent.RetryScan) },
         onCloseClick = onNavigateBack,
-        onGalleryClick = { openGallery() }
+        onGalleryClick = { openGallery() },
+        autoCapture = autoCaptureVm,
+        onAutoClick = viewModel::toggleAutoCapture
     )
 }
 
@@ -211,6 +214,8 @@ fun ScannerScreenContent(
     onCloseClick: () -> Unit = {},
     badgeMessage: String? = null,
     onBadgeMessageShown: () -> Unit = {},
+    autoCapture: Boolean = true,
+    onAutoClick: () -> Unit = {},
 ) {
     val detector by cameraHelper.detectorPreview.collectAsState()
     val context = LocalContext.current
@@ -247,6 +252,8 @@ fun ScannerScreenContent(
     }
 
     var showOnboarding by remember { mutableStateOf(false) }
+    // Режим автораспознавания — источник правды во VM; онбординг-шит только
+    // временно гасит его через эффект выше.
     // Этикетка в кадре: уголки желтеют + разовый тик строго на появление боксов.
     // detector.highlight — уже строгий сигнал (1 eligible-бокс, 3 стабильных кадра),
     // сырой boxes.isNotEmpty() давал ложные срабатывания на мусор детектора.
@@ -258,12 +265,16 @@ fun ScannerScreenContent(
         }
         wasDetected = labelDetected
     }
-    LaunchedEffect(showOnboarding) { cameraHelper.setAutoCapture(!showOnboarding) }
+    LaunchedEffect(showOnboarding, autoCapture) { cameraHelper.setAutoCapture(!showOnboarding && autoCapture) }
     LaunchedEffect(detector.error) {
         detector.error?.let { snackbarHostState.showSnackbar(it, duration = SnackbarDuration.Short) }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // Единое условие готовности: рамка и центр затвора желтеют синхронно.
+        val frameHighlighted = labelDetected ||
+            state is ScannerState.Capturing ||
+            state is ScannerState.Processing
         AndroidView(
             factory = { ctx ->
                 PreviewView(ctx).apply {
@@ -286,15 +297,15 @@ fun ScannerScreenContent(
             modifier = Modifier.fillMaxSize(),
             // Кадр уходит на бэк (съёмка/загрузка) — рамка уже жёлтая,
             // даже если детектор к этому моменту боксы снял.
-            highlighted = labelDetected ||
-                state is ScannerState.Capturing ||
-                state is ScannerState.Processing
+            highlighted = frameHighlighted
         )
 
         ScannerTopBar(
             flashMode = flashMode,
+            autoCapture = autoCapture,
             onCloseClick = onCloseClick,
             onFlashClick = onToggleFlash,
+            onAutoClick = onAutoClick,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
@@ -317,7 +328,8 @@ fun ScannerScreenContent(
                     )
                 },
                 onHelpClick = { showOnboarding = true },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                captureReady = frameHighlighted
             )
         }
 
@@ -453,8 +465,10 @@ fun ScanWindowOverlay(modifier: Modifier = Modifier, highlighted: Boolean = fals
 @Composable
 fun ScannerTopBar(
     flashMode: Int,
+    autoCapture: Boolean,
     onCloseClick: () -> Unit,
     onFlashClick: () -> Unit,
+    onAutoClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -477,16 +491,28 @@ fun ScannerTopBar(
                 )
             }
         }
-        Text(
-            text = when (flashMode) {
-                androidx.camera.core.ImageCapture.FLASH_MODE_AUTO -> stringResource(com.wineapp.R.string.scanner_flash_auto_short)
-                androidx.camera.core.ImageCapture.FLASH_MODE_ON -> stringResource(com.wineapp.R.string.scanner_flash_on_short)
-                else -> stringResource(com.wineapp.R.string.scanner_flash_off_short)
-            },
-            style = MaterialTheme.typography.labelMedium,
-            color = Color.White,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-        )
+        // Середина: переключатель автораспознавания. Вкл — фото улетает на бэк
+        // само при стабильной этикетке, выкл — только по кнопке затвора.
+        // Подсветка рамки и вибро от режима не зависят.
+        Surface(
+            onClick = onAutoClick,
+            shape = RoundedCornerShape(percent = 50),
+            color = if (autoCapture) Color.White else Color.Black.copy(alpha = 0.3f),
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp,
+                if (autoCapture) Color.Transparent else Color.White.copy(alpha = 0.6f)
+            ),
+            modifier = Modifier.height(40.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    text = stringResource(com.wineapp.R.string.scanner_auto_short),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (autoCapture) Color.Black else Color.White.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
+        }
         Surface(
             onClick = onFlashClick,
             shape = CircleShape,
@@ -536,7 +562,10 @@ fun ScannerShutterControls(
     onGalleryClick: () -> Unit,
     onCaptureClick: () -> Unit,
     onHelpClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Та же логика, что у подсветки рамки: стабильная этикетка в кадре
+    // или кадр уже уходит на бэк — центр затвора желтеет.
+    captureReady: Boolean = false,
 ) {
     Row(
         modifier = modifier.padding(horizontal = 16.dp),
@@ -560,7 +589,12 @@ fun ScannerShutterControls(
                 )
             }
         }
-        // Затвор: кольцо 80dp + белая середина 66dp.
+        // Затвор: кольцо 80dp + середина 66dp (белая, при готовности — золотая).
+        val shutterCenter by animateColorAsState(
+            targetValue = if (captureReady) Color(0xFFFFD700) else Color.White,
+            animationSpec = tween(durationMillis = 350),
+            label = "shutterReady"
+        )
         Surface(
             onClick = onCaptureClick,
             shape = CircleShape,
@@ -572,7 +606,7 @@ fun ScannerShutterControls(
                 Surface(
                     onClick = onCaptureClick,
                     shape = CircleShape,
-                    color = Color.White,
+                    color = shutterCenter,
                     modifier = Modifier.size(66.dp)
                 ) {}
             }
@@ -650,8 +684,10 @@ private fun ScannerShutterPreview() {
         ScanWindowOverlay(modifier = Modifier.fillMaxSize(), highlighted = true)
             ScannerTopBar(
                 flashMode = androidx.camera.core.ImageCapture.FLASH_MODE_OFF,
+                autoCapture = true,
                 onCloseClick = {},
                 onFlashClick = {},
+                onAutoClick = {},
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)

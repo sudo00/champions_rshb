@@ -51,6 +51,17 @@ class ScannerViewModel @Inject constructor(
     private val _alreadyTried = kotlinx.coroutines.flow.MutableStateFlow(false)
     val alreadyTried: kotlinx.coroutines.flow.StateFlow<Boolean> = _alreadyTried
 
+    /** Режим автораспознавания: вкл — фото улетает на бэк само, выкл — только по кнопке. */
+    private val _autoCapture =
+        kotlinx.coroutines.flow.MutableStateFlow(com.wineapp.data.local.ScannerPrefs.isAutoCapture(context))
+    val autoCapture: kotlinx.coroutines.flow.StateFlow<Boolean> = _autoCapture
+
+    fun toggleAutoCapture() {
+        val next = !_autoCapture.value
+        _autoCapture.value = next
+        com.wineapp.data.local.ScannerPrefs.setAutoCapture(context, next)
+    }
+
     init {
         viewModelScope.launch {
             try {

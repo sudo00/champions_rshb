@@ -17,6 +17,7 @@ val RatingGold = Color(0xFFFFD700)
 // в Material-схему не входит — применяется точечно.
 val BrandCream50 = Color(0xFFFEFDF9)
 val BrandCream100 = Color(0xFFFEFAEC)
+val BrandCream200 = Color(0xFFF8F0D6)
 val BrandCream300 = Color(0xFFF8EDC9)
 val BrandCream400 = Color(0xFFDFC795)
 val BrandCream500 = Color(0xFFD8B76A)
@@ -24,6 +25,9 @@ val BrandBurgundy600 = Color(0xFF8E3C42)
 val BrandBurgundy700 = Color(0xFF713035)
 val BrandTextPrimary = Color(0xFF292925)
 val BrandTextSecondary = Color(0xFF69645F)
+val BrandTextTertiary = Color(0xFFA7A29D)
+val BrandBorderLight = Color(0xFFF7F2E6)
+val BrandDivider = Color(0x66A7A29D)
 
 private val DarkColorScheme = androidx.compose.material3.darkColorScheme(
     primary = Purple700,

@@ -38,6 +38,18 @@ interface ScanHistoryDao {
     @Query("SELECT * FROM scan_conversations WHERE scanHistoryId = :scanId ORDER BY timestamp ASC")
     suspend fun getConversation(scanId: String): List<ScanConversationEntity>
 
+    @androidx.room.Transaction
+    @Query(
+        """SELECT sh.*,
+           (SELECT MAX(timestamp) FROM scan_conversations WHERE scanHistoryId = sh.id) AS lastMessageAt,
+           (SELECT content FROM scan_conversations WHERE scanHistoryId = sh.id ORDER BY timestamp DESC LIMIT 1) AS lastMessage,
+           (SELECT COUNT(id) FROM scan_conversations WHERE scanHistoryId = sh.id) AS messageCount
+           FROM scan_history sh
+           WHERE EXISTS (SELECT 1 FROM scan_conversations WHERE scanHistoryId = sh.id)
+           ORDER BY lastMessageAt DESC"""
+    )
+    fun getChatsHistory(): Flow<List<ChatHistoryEntry>>
+
     @Query("DELETE FROM scan_history WHERE id = :id")
     suspend fun deleteScanById(id: String)
 }

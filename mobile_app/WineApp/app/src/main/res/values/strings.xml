@@ -13,6 +13,7 @@
     <string name="scanner_flash_on">Вспышка вкл</string>
     <string name="scanner_flash_off">Вспышка выкл</string>
     <string name="scanner_flash_auto_short">АВТО</string>
+    <string name="scanner_auto_short">АВТО</string>
     <string name="scanner_flash_on_short">ВКЛ</string>
     <string name="scanner_flash_off_short">ВЫКЛ</string>
     <string name="scanner_hint">Наведите камеру на этикетку</string>
@@ -61,7 +62,7 @@
     <string name="detail_share">Поделиться</string>
     <string name="detail_ask_sommelier">Спросить сомелье</string>
 
-    <string name="sommelier_title">AI-сомелье</string>
+    <string name="sommelier_title">Сомелье</string>
     <string name="sommelier_hint">Спросите о сочетаниях, регионах и т.д.</string>
     <string name="sommelier_empty">Задайте мне любой вопрос о вине!</string>
     <string name="sommelier_send">Отправить</string>
@@ -73,6 +74,17 @@
     <string name="sommelier_q_region">Расскажите о регионе</string>
     <string name="sommelier_q_aging">Сколько стоит выдерживать?</string>
     <string name="sommelier_q_temp">При какой температуре подавать?</string>
+    <string name="sommelier_chip_pairing">С чем подавать?</string>
+    <string name="sommelier_chip_analogues">Аналоги дешевле</string>
+    <string name="sommelier_chip_region">О регионе</string>
+    <string name="sommelier_chip_aging">Выдержка</string>
+    <string name="sommelier_chip_temp">Температура</string>
+    <string name="sommelier_scan_card_cd">Фото вина</string>
+    <string name="sommelier_input_hint">Задайте вопрос сомелье</string>
+    <string name="sommelier_loading_notes">Проверяем дегустационные заметки…</string>
+    <string name="sommelier_history_title">История чатов</string>
+    <string name="sommelier_history_empty">Пока нет сохранённых диалогов</string>
+    <string name="sommelier_history_new_chat">Новый чат</string>
 
     <string name="notfound_title">Вино не найдено</string>
     <string name="notfound_message">Мы не смогли определить это вино. Попробуйте снова или выполните поиск вручную.</string>
@@ -148,6 +160,17 @@
     <string name="cellar_roulette_reroll">Крутить ещё</string>
     <string name="detail_cellar">В погреб</string>
     <string name="detail_cellar_added">В погребе: %d</string>
+    <string name="detail_category">Категория</string>
+    <string name="detail_color">Цвет</string>
+    <string name="detail_serving_temp">Температура подачи</string>
+    <string name="detail_rating_title">Оценка</string>
+    <string name="detail_more">Подробнее</string>
+    <string name="detail_less">Скрыть</string>
+    <string name="detail_rate_wine">Оцените вино</string>
+    <string name="detail_similar">Похожие вина</string>
+    <string name="detail_filter">Фильтр</string>
+    <string name="detail_info_badge">Инфо</string>
+    <string name="detail_success_badge">Успешно</string>
 
     <string name="widget_recent_title">Недавние вина</string>
     <string name="widget_recent_empty">Сканирований пока нет</string>

@@ -44,7 +44,9 @@ import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.wineapp.R
 import com.wineapp.data.mock.MockDataProvider
+import com.wineapp.presentation.common.ui.BadgeType
 import com.wineapp.presentation.common.ui.WineAppTopAppBar
+import com.wineapp.presentation.common.ui.WineBadge
 import com.wineapp.presentation.common.ui.WineCard
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -158,7 +160,9 @@ fun ScanResultContent(
                 }
                 if (current.alreadyTried) {
                     item {
-                        com.wineapp.presentation.common.ui.AlreadyTriedBanner(
+                        WineBadge(
+                            type = BadgeType.SUCCESS,
+                            text = stringResource(R.string.scan_result_already_tried),
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                         )
                     }

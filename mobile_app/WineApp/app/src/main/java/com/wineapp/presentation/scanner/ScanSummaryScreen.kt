@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextOverflow
 import com.wineapp.domain.model.ScoredWine
@@ -66,7 +67,12 @@ fun ScanSummaryScreen(
             if (confirmed != null && !choosingCandidate) {
                 item { CandidateCard(confirmed, false, false, {}, { onOpenWine(confirmed.wine.id, true) }) }
                 if (alreadyTried) {
-                    item { com.wineapp.presentation.common.ui.AlreadyTriedBanner() }
+                    item {
+                        com.wineapp.presentation.common.ui.WineBadge(
+                            type = com.wineapp.presentation.common.ui.BadgeType.SUCCESS,
+                            text = stringResource(com.wineapp.R.string.scan_result_already_tried)
+                        )
+                    }
                 }
             } else if (!absent && choosingCandidate) {
                 items(result.scoredCandidates, key = { "candidate:${it.slug}" }) { candidate ->

@@ -64,7 +64,9 @@ class CameraLabelAnalyzer(
                 gate.reset(); resetHighlight(); resetRequested = false
             }
             if (!autoCapture) {
-                gate.reset(); resetHighlight()
+                // Ручной режим: гейт триггера сбрасываем, а трекер подсветки — нет:
+                // рамка и тик должны работать и без автораспознавания.
+                gate.reset()
             }
             val model = runtime.detector()
             val sourceTransform = transforms.getOutputTransform(image)
