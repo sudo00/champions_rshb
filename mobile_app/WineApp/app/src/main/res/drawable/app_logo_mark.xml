@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Знак логотипа без текста (эмблема из svoe_vino_logo). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
-    android:width="108dp"
-    android:height="108dp"
+    android:width="41dp"
+    android:height="41dp"
     android:viewportWidth="41"
     android:viewportHeight="41">
     <path

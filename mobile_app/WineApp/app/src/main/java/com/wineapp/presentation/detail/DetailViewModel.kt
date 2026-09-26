@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.wineapp.domain.usecase.AddToCellarUseCase
 import com.wineapp.domain.usecase.GetCellarEntryUseCase
+import com.wineapp.domain.usecase.GetSimilarWinesUseCase
 import com.wineapp.domain.usecase.GetWineDetailsUseCase
 import com.wineapp.domain.usecase.IsFavoriteUseCase
 import com.wineapp.domain.usecase.RemoveFromCellarUseCase
@@ -21,29 +22,32 @@ class DetailViewModel @Inject constructor(
     private val isFavoriteUseCase: IsFavoriteUseCase,
     private val addToCellarUseCase: AddToCellarUseCase,
     private val removeFromCellarUseCase: RemoveFromCellarUseCase,
-    private val getCellarEntryUseCase: GetCellarEntryUseCase
+    private val getCellarEntryUseCase: GetCellarEntryUseCase,
+    private val getSimilarWinesUseCase: GetSimilarWinesUseCase
 ) : BaseViewModel<DetailState, DetailIntent>() {
 
     private var currentWineId = ""
     private var currentPhotoPath: String? = null
     private var currentConfidence: Float = 1.0f
+    private var currentRecognitionStatus: String? = null
 
     override fun getInitialState(): DetailState = DetailState.Loading("")
 
     override fun reduce(intent: DetailIntent) {
         when (intent) {
-            is DetailIntent.LoadDetail -> handleLoad(intent.wineId, intent.photoPath, intent.confidence)
-            is DetailIntent.Retry -> handleLoad(currentWineId, currentPhotoPath, currentConfidence)
+            is DetailIntent.LoadDetail -> handleLoad(intent.wineId, intent.photoPath, intent.confidence, intent.recognitionStatus)
+            is DetailIntent.Retry -> handleLoad(currentWineId, currentPhotoPath, currentConfidence, currentRecognitionStatus)
             is DetailIntent.ToggleFavorite -> handleToggleFavorite()
             is DetailIntent.ToggleWish -> handleToggleWish()
             is DetailIntent.ToggleCellar -> handleToggleCellar()
         }
     }
 
-    private fun handleLoad(wineId: String, photoPath: String?, confidence: Float) {
+    private fun handleLoad(wineId: String, photoPath: String?, confidence: Float, recognitionStatus: String?) {
         currentWineId = wineId
         currentPhotoPath = photoPath
         currentConfidence = confidence
+        currentRecognitionStatus = recognitionStatus
         updateState(DetailState.Loading(wineId))
         viewModelScope.launch {
             val result = getWineDetailsUseCase(wineId)
@@ -60,9 +64,18 @@ class DetailViewModel @Inject constructor(
                         isWished = isWished,
                         isInCellar = cellarEntry != null,
                         cellarQuantity = cellarEntry?.quantity ?: 0,
-                        cellarStatus = cellarEntry?.status
+                        cellarStatus = cellarEntry?.status,
+                        recognitionStatus = recognitionStatus
                     )
                 )
+                // Похожие — отдельно, не блокируем основной контент; секция скрыта пока пусто.
+                val similar = getSimilarWinesUseCase(wine).getOrNull().orEmpty()
+                if (similar.isNotEmpty()) {
+                    val s = _state.value
+                    if (s is DetailState.Success && s.wine.id == wineId) {
+                        updateState(s.copy(similar = similar))
+                    }
+                }
             }.onFailure { error ->
                 Log.e("DetailViewModel", "Load detail failed", error)
                 updateState(DetailState.Error(error.message ?: "Не удалось загрузить данные о вине"))
