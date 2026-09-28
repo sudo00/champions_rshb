@@ -32,19 +32,24 @@
     <string name="scan_result_already_tried">Вы уже пробовали это вино</string>
 
     <string name="search_title">Поиск вин</string>
-    <string name="search_hint">Поиск по названию, региону или сорту</string>
+    <string name="search_hint">Искать вина</string>
     <string name="home_title">Найти вино</string>
     <string name="home_subtitle">Сфотографируйте этикетку или загрузите фото</string>
     <string name="home_scan">Сканировать</string>
     <string name="home_gallery">Загрузить фото</string>
-    <string name="home_all">Все вина</string>
-    <string name="home_filter">Фильтр</string>
+    <string name="home_popular">Популярные вина</string>
+    <string name="home_filter">Фильтры</string>
     <string name="search_no_results">Вина не найдены</string>
     <string name="search_no_results_for">Вина не найдены по запросу «%s»</string>
     <string name="search_recent">Недавние запросы</string>
     <string name="search_empty">Найдите вино по названию, региону или сорту винограда</string>
     <string name="search_load_more">Загрузить ещё</string>
     <string name="search_clear">Очистить</string>
+    <string name="search_sort">Сортировка</string>
+    <string name="search_empty_title">Не нашли нужное вино?</string>
+    <string name="search_empty_subtitle">Добавьте винодельню вручную, чтобы сохранить вино в свою коллекцию</string>
+    <string name="search_add_winery">Добавить винодельню</string>
+    <string name="photo_viewer_close">Закрыть</string>
     <string name="search_all">Все</string>
     <string name="search_red">Красные</string>
     <string name="search_white">Белые</string>
@@ -104,6 +109,15 @@
     <string name="history_empty">Сканирований пока нет</string>
 
     <string name="nav_scanner">Сканер</string>
+    <string name="nav_home">Главная</string>
+    <string name="nav_mywines">Мои вина</string>
+    <string name="nav_map">Карта</string>
+    <string name="mywines_favorites">Избранное</string>
+    <string name="mywines_favorites_sub">Вина, которые вам понравились и вы бы хотели их попробовать</string>
+    <string name="mywines_collection">Коллекция</string>
+    <string name="mywines_collection_sub">Вина, которые вы попробовали</string>
+    <string name="mywines_scans">Сканы</string>
+    <string name="mywines_scans_sub">Ваши сканы вин</string>
     <string name="nav_search">Поиск</string>
     <string name="nav_sommelier">Сомелье</string>
     <string name="nav_saved_scans">Сохранённые</string>

@@ -1,0 +1,395 @@
+package com.wineapp.presentation.mywines
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.WineBar
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
+import com.wineapp.R
+import com.wineapp.data.mock.MockDataProvider
+import com.wineapp.domain.model.Wine
+import com.wineapp.presentation.common.ui.BrandSecondaryButton
+import com.wineapp.presentation.common.ui.TransparentSystemBars
+import com.wineapp.ui.theme.BrandBorderLight
+import com.wineapp.ui.theme.BrandBurgundy600
+import com.wineapp.ui.theme.BrandCream100
+import com.wineapp.ui.theme.BrandCream50
+import com.wineapp.ui.theme.BrandCream500
+import com.wineapp.ui.theme.BrandTextPrimary
+import com.wineapp.ui.theme.BrandTextSecondary
+import com.wineapp.ui.theme.Inter
+import com.wineapp.ui.theme.Playfair
+import com.wineapp.ui.theme.WineAppTheme
+
+/**
+ * «Мои вина» из фигмы: H1, три пилюли-перехода на разделы, секции
+ * «Избранное» / «Коллекция» / «Сканы» с последними винами. Поиска нет.
+ */
+@Composable
+fun MyWinesScreen(
+    onNavigateToCellar: () -> Unit = {},
+    onNavigateToFavorites: () -> Unit = {},
+    onNavigateToSavedScans: () -> Unit = {},
+    onNavigateToDetail: (String) -> Unit = {}
+) {
+    val viewModel: MyWinesViewModel = hiltViewModel()
+    val state by viewModel.state.collectAsState()
+
+    MyWinesContent(
+        state = state,
+        onNavigateToCellar = onNavigateToCellar,
+        onNavigateToFavorites = onNavigateToFavorites,
+        onNavigateToSavedScans = onNavigateToSavedScans,
+        onNavigateToDetail = onNavigateToDetail,
+        onToggleFavorite = { wineId -> viewModel.sendIntent(MyWinesIntent.ToggleFavorite(wineId)) }
+    )
+}
+
+@Composable
+fun MyWinesContent(
+    state: MyWinesState,
+    onNavigateToCellar: () -> Unit = {},
+    onNavigateToFavorites: () -> Unit = {},
+    onNavigateToSavedScans: () -> Unit = {},
+    onNavigateToDetail: (String) -> Unit = {},
+    onToggleFavorite: (String) -> Unit = {}
+) {
+    TransparentSystemBars()
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BrandCream50)
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(
+            text = stringResource(R.string.nav_mywines),
+            fontFamily = Playfair,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 36.sp,
+            lineHeight = 42.sp,
+            color = BrandTextPrimary,
+            modifier = Modifier.padding(top = 16.dp)
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        if (state.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = BrandBurgundy600)
+            }
+        } else {
+            // Кнопка-переход лежит под своей секцией; пустые секции скрыты целиком.
+            Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                if (state.favorites.isNotEmpty()) {
+                    MyWinesSection(
+                        title = stringResource(R.string.mywines_favorites),
+                        subtitle = stringResource(R.string.mywines_favorites_sub),
+                        wines = state.favorites,
+                        likedIds = state.likedIds,
+                        onWineClick = onNavigateToDetail,
+                        onToggleFavorite = onToggleFavorite
+                    )
+                    BrandSecondaryButton(
+                        text = stringResource(R.string.mywines_favorites),
+                        onClick = onNavigateToFavorites
+                    )
+                }
+                if (state.collection.isNotEmpty()) {
+                    MyWinesSection(
+                        title = stringResource(R.string.mywines_collection),
+                        subtitle = stringResource(R.string.mywines_collection_sub),
+                        wines = state.collection,
+                        likedIds = state.likedIds,
+                        onWineClick = onNavigateToDetail,
+                        onToggleFavorite = onToggleFavorite
+                    )
+                    BrandSecondaryButton(
+                        text = stringResource(R.string.mywines_collection),
+                        onClick = onNavigateToCellar
+                    )
+                }
+                if (state.scans.isNotEmpty()) {
+                    MyWinesSection(
+                        title = stringResource(R.string.mywines_scans),
+                        subtitle = stringResource(R.string.mywines_scans_sub),
+                        wines = state.scans,
+                        likedIds = state.likedIds,
+                        onWineClick = onNavigateToDetail,
+                        onToggleFavorite = onToggleFavorite
+                    )
+                    BrandSecondaryButton(
+                        text = stringResource(R.string.mywines_scans),
+                        onClick = onNavigateToSavedScans
+                    )
+                }
+            }
+        }
+        // Место под висящий поверх нижний бар.
+        Spacer(modifier = Modifier.height(120.dp))
+    }
+}
+
+@Composable
+private fun MyWinesSection(
+    title: String,
+    subtitle: String,
+    wines: List<Wine>,
+    likedIds: Set<String>,
+    onWineClick: (String) -> Unit,
+    onToggleFavorite: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = title,
+            fontFamily = Playfair,
+            fontWeight = FontWeight.Medium,
+            fontSize = 24.sp,
+            lineHeight = 30.sp,
+            color = BrandTextPrimary,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Text(
+            text = subtitle,
+            fontFamily = Inter,
+            fontWeight = FontWeight.Medium,
+            fontSize = 14.sp,
+            lineHeight = 18.sp,
+            color = BrandTextSecondary,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            wines.forEach { wine ->
+                MyWinesScanCard(
+                    wine = wine,
+                    isFavorite = wine.id in likedIds,
+                    onClick = { onWineClick(wine.id) },
+                    onFavoriteClick = { onToggleFavorite(wine.id) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Горизонтальная scan-карточка из макета: Cream100 r20, фото 80x120,
+ * винодельня, название, регион + рейтинг, сердечко справа сверху.
+ */
+@Composable
+private fun MyWinesScanCard(
+    wine: Wine,
+    isFavorite: Boolean,
+    onClick: () -> Unit,
+    onFavoriteClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        color = BrandCream100,
+        border = BorderStroke(1.dp, BrandBorderLight),
+        modifier = modifier.width(280.dp)
+    ) {
+        Box(modifier = Modifier.padding(8.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 36.dp)
+            ) {
+                if (wine.imageUrl != null) {
+                    SubcomposeAsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(com.wineapp.util.apiImageUrl(wine.imageUrl))
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = wine.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(width = 80.dp, height = 120.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                    )
+                } else {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(width = 80.dp, height = 120.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(BrandBorderLight)
+                    ) {
+                        Icon(
+                            Icons.Default.WineBar,
+                            contentDescription = null,
+                            tint = BrandTextSecondary.copy(alpha = 0.4f),
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                }
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(top = 8.dp)
+                ) {
+                    Text(
+                        text = wine.winery.orEmpty(),
+                        fontFamily = Inter,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        color = BrandTextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(
+                        text = wine.name,
+                        fontFamily = Inter,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp,
+                        lineHeight = 20.sp,
+                        color = BrandTextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val regionText = listOfNotNull(wine.region, wine.country)
+                            .joinToString(", ")
+                        if (regionText.isNotEmpty()) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                com.wineapp.presentation.common.ui.CountryFlag(
+                                    country = wine.country
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = regionText,
+                                    fontFamily = Inter,
+                                    fontWeight = FontWeight.Normal,
+                                    fontSize = 12.sp,
+                                    lineHeight = 16.sp,
+                                    color = BrandTextSecondary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                        if (wine.rating != null) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.Star,
+                                    contentDescription = null,
+                                    tint = BrandCream500,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = String.format("%.2f", wine.rating),
+                                    fontFamily = Inter,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 12.sp,
+                                    lineHeight = 16.sp,
+                                    color = BrandTextPrimary
+                                )
+                                wine.reviewsCount?.let {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "($it)",
+                                        fontFamily = Inter,
+                                        fontWeight = FontWeight.Normal,
+                                        fontSize = 12.sp,
+                                        lineHeight = 16.sp,
+                                        color = BrandTextSecondary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            Surface(
+                onClick = onFavoriteClick,
+                shape = CircleShape,
+                color = Color.Transparent,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(36.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = null,
+                        tint = if (isFavorite) BrandBurgundy600 else BrandTextPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, heightDp = 1000)
+@Composable
+private fun MyWinesPreview() {
+    WineAppTheme {
+        val wines = MockDataProvider.wines
+        MyWinesContent(
+            state = MyWinesState(
+                favorites = wines.take(3),
+                collection = wines.take(3),
+                scans = wines.take(3),
+                likedIds = setOf(wines.first().id),
+                isLoading = false
+            )
+        )
+    }
+}

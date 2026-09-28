@@ -3,6 +3,9 @@ package com.wineapp.presentation.detail
 import android.annotation.SuppressLint
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,6 +60,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -79,6 +83,7 @@ import com.wineapp.presentation.common.ui.BadgeType
 import com.wineapp.presentation.common.ui.ErrorMessage
 import com.wineapp.presentation.common.ui.LoadingOverlay
 import com.wineapp.presentation.common.ui.WineBadge
+import com.wineapp.presentation.common.ui.WinePhotoViewer
 import com.wineapp.ui.theme.BrandBorderLight
 import com.wineapp.ui.theme.BrandBurgundy600
 import com.wineapp.ui.theme.BrandBurgundy700
@@ -158,7 +163,14 @@ fun DetailScreenContent(
     }
 
     LaunchedEffect(wineId) {
-        viewModel.sendIntent(DetailIntent.LoadDetail(wineId, photoPath, confidence, recognitionStatus))
+        viewModel.sendIntent(
+            DetailIntent.LoadDetail(
+                wineId,
+                photoPath,
+                confidence,
+                recognitionStatus
+            )
+        )
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -168,6 +180,7 @@ fun DetailScreenContent(
                 message = current.message,
                 onRetry = { viewModel.sendIntent(DetailIntent.Retry) }
             )
+
             is DetailState.Success -> DetailContent(
                 state = current,
                 onNavigateBack = onNavigateBack,
@@ -215,35 +228,61 @@ fun DetailContent(
         peekPx
     }
     val collapse = (1f - sheetOffset / peekPx.coerceAtLeast(1f)).coerceIn(0f, 1f)
+    var photoViewer by remember { mutableStateOf(false) }
 
-    BottomSheetScaffold(
-        scaffoldState = scaffoldState,
-        sheetPeekHeight = peekHeight,
-        sheetShape = RoundedCornerShape(topStart = 44.dp, topEnd = 44.dp),
-        sheetContainerColor = Color.White,
-        sheetDragHandle = null,
-        sheetContent = {
-            DetailSheetContent(
-                state = state,
-                onToggleCellar = onToggleCellar,
-                onFilterClick = { },
-                onSimilarClick = onNavigateToWine
+    Box(modifier = Modifier.fillMaxSize()) {
+        BottomSheetScaffold(
+            scaffoldState = scaffoldState,
+            sheetPeekHeight = peekHeight,
+            sheetShape = RoundedCornerShape(topStart = 44.dp, topEnd = 44.dp),
+            sheetContainerColor = Color.White,
+            sheetDragHandle = null,
+            sheetContent = {
+                DetailSheetContent(
+                    state = state,
+                    onToggleCellar = onToggleCellar,
+                    onFilterClick = { },
+                    onSimilarClick = onNavigateToWine
+                )
+            },
+            containerColor = BrandCream300
+        ) {
+            DetailHero(
+                wine = wine,
+                collapse = collapse,
+                isFavorite = state.isFavorite,
+                isWished = state.isWished,
+                onBackClick = onNavigateBack,
+                onFavoriteClick = onToggleFavorite,
+                onSommelierClick = { onNavigateToSommelier(wine) },
+                onWishClick = onToggleWish,
+                onPhotoClick = { photoViewer = true }
             )
-        },
-        containerColor = BrandCream300
-    ) {
-        DetailHero(
-            wine = wine,
-            collapse = collapse,
-            isFavorite = state.isFavorite,
-            isWished = state.isWished,
-            onBackClick = onNavigateBack,
-            onFavoriteClick = onToggleFavorite,
-            onSommelierClick = { onNavigateToSommelier(wine) },
-            onWishClick = onToggleWish
-        )
+        }
+        // Оверлей просмотра фото по тапу на фото в hero.
+        if (photoViewer) {
+            WinePhotoViewer(
+                imageUrl = wine.imageUrl,
+                contentDescription = wine.name,
+                onClose = { photoViewer = false }
+            )
+        }
     }
 }
+
+/**
+ * Ручной детект тапа через pointerInput — без clickable-ноды.
+ * Голый Modifier.clickable в этом проекте падает (см. комментарий в WineCard):
+ * foundation в сборке новее material3 1.2.1 и требует IndicationNodeFactory.
+ */
+private fun Modifier.tapToOpen(onTap: () -> Unit): Modifier =
+    pointerInput(onTap) {
+        awaitEachGesture {
+            awaitFirstDown(requireUnconsumed = false)
+            val up = waitForUpOrCancellation()
+            if (up != null) onTap()
+        }
+    }
 
 /**
  * Цвет эллипса hero по категории вина (поле style: «Красное сухое» и т.п.).
@@ -255,9 +294,11 @@ private fun wineEllipseColor(wine: Wine): Color {
     return when {
         text.contains("розов") || text.contains("rose") || text.contains("rosé") ->
             Color(0xFFE3A68F)
+
         text.contains("бел") || text.contains("white") ||
-            text.contains("blanc") || text.contains("bianco") ->
+                text.contains("blanc") || text.contains("bianco") ->
             Color(0xFFEAD9AE)
+
         else -> BrandBurgundy700
     }
 }
@@ -271,7 +312,8 @@ private fun DetailHero(
     onBackClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     onSommelierClick: () -> Unit,
-    onWishClick: () -> Unit
+    onWishClick: () -> Unit,
+    onPhotoClick: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -362,7 +404,9 @@ private fun DetailHero(
                         .build(),
                     contentDescription = wine.name,
                     contentScale = ContentScale.Fit,
-                    modifier = Modifier.size(width = 316.dp, height = 380.dp)
+                    modifier = Modifier
+                        .size(width = 316.dp, height = 380.dp)
+                        .tapToOpen(onPhotoClick)
                 )
             } else {
                 Icon(
@@ -453,7 +497,12 @@ private fun DetailSheetContent(
         }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (state.recognitionStatus in setOf("user_confirmed", "score_confirmed", "legacy")) {
+                if (state.recognitionStatus in setOf(
+                        "user_confirmed",
+                        "score_confirmed",
+                        "legacy"
+                    )
+                ) {
                     WineBadge(
                         type = BadgeType.SUCCESS,
                         text = stringResource(R.string.detail_success_badge)
@@ -478,17 +527,28 @@ private fun DetailSheetContent(
             )
         }
         Column {
-            wine.variety?.let { DetailSpecRow(label = stringResource(R.string.detail_variety), value = it) }
-            wine.style?.let { DetailSpecRow(label = stringResource(R.string.detail_category), value = it) }
+            wine.variety?.let {
+                DetailSpecRow(
+                    label = stringResource(R.string.detail_variety),
+                    value = it
+                )
+            }
+            wine.style?.let {
+                DetailSpecRow(
+                    label = stringResource(R.string.detail_category),
+                    value = it
+                )
+            }
             wine.alcoholPercentage?.let {
                 DetailSpecRow(
                     label = stringResource(R.string.detail_alcohol),
                     value = "${String.format("%.0f", it)}%"
                 )
             }
-            listOfNotNull(wine.region, wine.country).joinToString(", ").takeIf { it.isNotEmpty() }?.let {
-                DetailSpecRow(label = stringResource(R.string.detail_region), value = it)
-            }
+            listOfNotNull(wine.region, wine.country).joinToString(", ").takeIf { it.isNotEmpty() }
+                ?.let {
+                    DetailSpecRow(label = stringResource(R.string.detail_region), value = it)
+                }
             wine.price?.let {
                 DetailSpecRow(
                     label = stringResource(R.string.detail_price),

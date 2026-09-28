@@ -2,29 +2,43 @@ package com.wineapp.presentation.navigation
 
 import android.app.Activity
 import android.net.Uri
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.wineapp.data.local.AgeGatePrefs
 import com.wineapp.presentation.agegate.AgeGateScreen
 import com.wineapp.presentation.cellar.CellarScreen
+import com.wineapp.presentation.common.ui.BottomTab
+import com.wineapp.presentation.common.ui.WineBottomBar
 import com.wineapp.presentation.detail.DetailScreen
 import com.wineapp.presentation.favorites.FavoritesScreen
+import com.wineapp.presentation.mywines.MyWinesScreen
 import com.wineapp.presentation.savedscans.SavedScanDetailScreen
 import com.wineapp.presentation.savedscans.SavedScansScreen
 import com.wineapp.presentation.scanner.ScannerScreen
 import com.wineapp.presentation.scanresult.ScanResultScreen
 import com.wineapp.presentation.search.SearchScreen
+import com.wineapp.presentation.search.SearchTabScreen
 import com.wineapp.presentation.sommelier.SommelierScreen
 import com.wineapp.presentation.winepath.WinePathScreen
+
+/** Маршруты с нижней навигацией. Сканер — полноэкранный, без бара. */
+private val TAB_ROUTES = setOf("search", "search_tab", "my_wines", "wine_path")
 
 @Composable
 fun AppNavHost(startRoute: String? = null) {
@@ -34,7 +48,16 @@ fun AppNavHost(startRoute: String? = null) {
     // Плашка возраста — только при первом открытии приложения.
     var ageVerified by remember { mutableStateOf(AgeGatePrefs.isVerified(context)) }
 
-    NavHost(navController, startDestination = startRoute ?: "search") {
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentBase = backStackEntry?.destination?.route
+        ?.substringBefore("?")
+        ?.substringBefore("/")
+    val currentTab = BottomTab.entries
+        .firstOrNull { it.route == currentBase && it.route in TAB_ROUTES }
+
+    // Бар висит поверх контента, а не отжимает его (как плавающая пилюля раньше).
+    Box(modifier = Modifier.fillMaxSize()) {
+        NavHost(navController, startDestination = startRoute ?: "search") {
         composable(
             route = "scanner?pickGallery={pickGallery}",
             arguments = listOf(
@@ -60,12 +83,20 @@ fun AppNavHost(startRoute: String? = null) {
             SearchScreen(
                 onNavigateToScanner = { navController.navigate("scanner") },
                 onNavigateToGallery = { navController.navigate("scanner?pickGallery=true") },
-                onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") },
-                onNavigateToSommelier = { navController.navigate("sommelier") },
-                onNavigateToSavedScans = { navController.navigate("saved_scans") },
-                onNavigateToFavorites = { navController.navigate("favorites") },
+                onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") }
+            )
+        }
+        composable("search_tab") {
+            SearchTabScreen(
+                onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") }
+            )
+        }
+        composable("my_wines") {
+            MyWinesScreen(
                 onNavigateToCellar = { navController.navigate("cellar") },
-                onNavigateToWinePath = { navController.navigate("wine_path") }
+                onNavigateToFavorites = { navController.navigate("favorites") },
+                onNavigateToSavedScans = { navController.navigate("saved_scans") },
+                onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") }
             )
         }
         composable(
@@ -220,6 +251,14 @@ fun AppNavHost(startRoute: String? = null) {
                 onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") }
             )
         }
+        }
+        if (currentTab != null) {
+            WineBottomBar(
+                selected = currentTab,
+                onSelect = { tab -> navController.navigateTab(tab.route) },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }
     }
 
     // Гейт — строго ПОСЛЕ NavHost: обычный Box-оверлей рисуется поверх только так
@@ -235,5 +274,14 @@ fun AppNavHost(startRoute: String? = null) {
                 System.exit(0)
             }
         )
+    }
+}
+
+/** Переключение табов: один экземпляр, состояние сохраняется. */
+private fun NavHostController.navigateTab(route: String) {
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
     }
 }

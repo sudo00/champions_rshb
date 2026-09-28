@@ -19,4 +19,5 @@ sealed interface SearchIntent : BaseIntent {
     data object ClearSearch : SearchIntent
     data class SelectWine(val wine: Wine) : SearchIntent
     data class RecentSearchSelected(val query: String) : SearchIntent
+    data class ToggleFavorite(val wineId: String) : SearchIntent
 }
