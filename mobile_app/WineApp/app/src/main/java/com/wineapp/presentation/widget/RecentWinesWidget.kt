@@ -42,10 +42,10 @@ import dagger.hilt.EntryPoints
 import java.util.Locale
 
 /**
- * Виджет рабочего стола по макету: тёмная карточка, заголовок с золотой точкой,
- * строки «название + год / регион, страна — оценка», бордовая кнопка сканирования.
+ * Виджет рабочего стола в фирменной светлой гамме: кремовая карточка,
+ * заголовок с бургунди-точкой, строки вин с разделителями, бургунди-кнопка.
  * Источник данных — scan_history (снимок вина хранится локально, сеть не нужна).
- * Оценка каталога (0–5) показывается в шкале /10, как в макете.
+ * Оценка каталога (0–5) показывается в шкале /10, как раньше.
  */
 class RecentWinesWidget : GlanceAppWidget() {
 
@@ -133,7 +133,7 @@ private fun WidgetContent(
         modifier = GlanceModifier
             .fillMaxSize()
             .background(ColorProvider(R.color.widget_bg))
-            .cornerRadius(20.dp)
+            .cornerRadius(28.dp)
             .padding(16.dp)
     ) {
         Row(
@@ -167,9 +167,21 @@ private fun WidgetContent(
             )
             Spacer(modifier = GlanceModifier.height(8.dp))
         } else {
-            scans.take(maxRows).forEach { scan ->
+            val rows = scans.take(maxRows)
+            rows.forEachIndexed { index, scan ->
                 WidgetWineRow(scan = scan)
-                Spacer(modifier = GlanceModifier.height(10.dp))
+                if (index < rows.lastIndex) {
+                    Spacer(modifier = GlanceModifier.height(10.dp))
+                    Box(
+                        modifier = GlanceModifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(ColorProvider(R.color.widget_divider))
+                    ) {}
+                    Spacer(modifier = GlanceModifier.height(10.dp))
+                } else {
+                    Spacer(modifier = GlanceModifier.height(10.dp))
+                }
             }
         }
         Spacer(modifier = GlanceModifier.defaultWeight())
