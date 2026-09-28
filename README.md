@@ -12,6 +12,7 @@ Android-приложение и GPU-сервис для поиска вина п
 | API, очередь и развёртывание | [Передача бэкендеру](docs/BACKEND_HANDOFF.md) |
 | Полный HTTP-контракт | [API_RECOGNITION.md](docs/API_RECOGNITION.md), `/docs` работающего сервера |
 | Зависимости и локальные проверки | [DEPENDENCIES.md](docs/DEPENDENCIES.md), [DEVELOPMENT.md](docs/DEVELOPMENT.md) |
+| Стек и архитектура для презентации | [PRESENTATION.md](docs/PRESENTATION.md) |
 | Служебные CLI | [scripts/README.md](scripts/README.md) |
 
 ## Что показывает приложение
