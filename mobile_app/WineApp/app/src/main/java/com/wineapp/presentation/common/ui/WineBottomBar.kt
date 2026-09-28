@@ -28,6 +28,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.wineapp.R
+import com.wineapp.ui.theme.BrandBurgundy600
+import com.wineapp.ui.theme.BrandCream50
 import com.wineapp.ui.theme.BrandTextPrimary
 import com.wineapp.ui.theme.WineAppTheme
 
@@ -72,6 +74,8 @@ fun WineBottomBar(
         ) {
             BottomTab.entries.forEach { tab ->
                 val isSelected = tab == selected
+                // Сканер — акцентная бургунди-кнопка всегда, остальные по состоянию.
+                val isScanner = tab == BottomTab.SCANNER
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
@@ -81,15 +85,19 @@ fun WineBottomBar(
                     Surface(
                         onClick = { if (!isSelected) onSelect(tab) },
                         shape = CircleShape,
-                        color = if (isSelected) Color.White else Color(0xFFFFFEFA),
+                        color = when {
+                            isScanner -> BrandBurgundy600
+                            isSelected -> Color.White
+                            else -> Color(0xFFFFFEFA)
+                        },
                         shadowElevation = 8.dp,
-                        modifier = Modifier.size(if (isSelected) 68.dp else 60.dp)
+                        modifier = Modifier.size(if (isSelected || isScanner) 68.dp else 60.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 tab.icon,
                                 contentDescription = stringResource(tab.labelRes),
-                                tint = BrandTextPrimary,
+                                tint = if (isScanner) BrandCream50 else BrandTextPrimary,
                                 modifier = Modifier.size(24.dp)
                             )
                         }

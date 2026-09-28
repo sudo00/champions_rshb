@@ -207,12 +207,14 @@ fun AppNavHost(startRoute: String? = null) {
                 wineStyle = backStackEntry.arguments?.getString("wineStyle")?.takeIf { it.isNotEmpty() },
                 photoPath = photoPath,
                 confidence = confidence,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") }
             )
         }
         composable("sommelier") {
             SommelierScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") }
             )
         }
         composable("saved_scans") {

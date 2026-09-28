@@ -130,7 +130,7 @@
     <string name="saved_scans_delete_confirm">Вы уверены, что хотите удалить «%s»?</string>
     <string name="saved_scans_confidence">Совпадение: %d/100</string>
 
-    <string name="saved_scan_detail_title">Детали сканирования</string>
+    <string name="saved_scan_detail_title">Скан</string>
     <string name="saved_scan_detail_label_photo">Фото этикетки</string>
     <string name="saved_scan_detail_photo_unavailable">Фото недоступно</string>
     <string name="saved_scan_detail_no_photo">Фото не сохранено</string>
@@ -155,9 +155,9 @@
     <string name="detail_liked">Понравилось</string>
     <string name="detail_wish">Хочу попробовать</string>
 
-    <string name="cellar_title">Мой погреб</string>
-    <string name="cellar_empty">Погреб пока пуст</string>
-    <string name="cellar_empty_hint">Откройте вино и нажмите «В погреб», чтобы вести инвентарь</string>
+    <string name="cellar_title">Моя коллекция</string>
+    <string name="cellar_empty">Коллекция пока пуста</string>
+    <string name="cellar_empty_hint">Откройте вино и нажмите «В коллекцию», чтобы вести инвентарь</string>
     <string name="cellar_total">Вин: %1$d · Бутылок: %2$d</string>
     <string name="cellar_filter_all">Все</string>
     <string name="cellar_status_home">В наличии</string>
@@ -166,14 +166,14 @@
     <string name="cellar_increase">Увеличить количество</string>
     <string name="cellar_decrease">Уменьшить количество</string>
     <string name="cellar_delete">Удалить</string>
-    <string name="cellar_delete_title">Убрать из погреба?</string>
-    <string name="cellar_delete_confirm">Убрать «%s» из погреба?</string>
+    <string name="cellar_delete_title">Убрать из коллекции?</string>
+    <string name="cellar_delete_confirm">Убрать «%s» из коллекции?</string>
     <string name="cellar_drink_today">Что выпить сегодня</string>
     <string name="cellar_roulette_your_pick">Ваш выбор</string>
     <string name="cellar_roulette_open">Открыть карточку</string>
     <string name="cellar_roulette_reroll">Крутить ещё</string>
-    <string name="detail_cellar">В погреб</string>
-    <string name="detail_cellar_added">В погребе: %d</string>
+    <string name="detail_cellar">В коллекцию</string>
+    <string name="detail_cellar_added">В коллекции: %d</string>
     <string name="detail_category">Категория</string>
     <string name="detail_color">Цвет</string>
     <string name="detail_serving_temp">Температура подачи</string>

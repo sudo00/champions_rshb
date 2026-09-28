@@ -37,7 +37,9 @@ fun WinePhotoViewer(
     imageUrl: String?,
     contentDescription: String?,
     onClose: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** true — грузить локальный файл (фото этикетки), иначе URL каталога. */
+    isLocalFile: Boolean = false
 ) {
     var scale by remember(imageUrl) { mutableStateOf(1f) }
     var offset by remember(imageUrl) { mutableStateOf(Offset.Zero) }
@@ -73,7 +75,10 @@ fun WinePhotoViewer(
             if (imageUrl != null) {
                 SubcomposeAsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
-                        .data(com.wineapp.util.apiImageUrl(imageUrl))
+                        .data(
+                            if (isLocalFile) java.io.File(imageUrl)
+                            else com.wineapp.util.apiImageUrl(imageUrl)
+                        )
                         .crossfade(true)
                         .build(),
                     contentDescription = contentDescription,

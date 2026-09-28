@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -56,6 +57,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
@@ -104,7 +106,8 @@ fun SommelierScreen(
     wineStyle: String? = null,
     photoPath: String? = null,
     confidence: Float = 1.0f,
-    onNavigateBack: () -> Unit = {}
+    onNavigateBack: () -> Unit = {},
+    onNavigateToDetail: (String) -> Unit = {}
 ) {
     val viewModel: SommelierViewModel = hiltViewModel()
 
@@ -157,7 +160,8 @@ fun SommelierScreen(
             onNavigateBack = {
                 viewModel.sendIntent(SommelierIntent.SaveAndExit(photoPath, confidence))
                 onNavigateBack()
-            }
+            },
+            onNavigateToDetail = onNavigateToDetail
         )
     }
 }
@@ -167,7 +171,8 @@ fun SommelierScreen(
 fun SommelierScreenContent(
     viewModel: SommelierViewModel,
     onBurgerClick: () -> Unit = {},
-    onNavigateBack: () -> Unit = {}
+    onNavigateBack: () -> Unit = {},
+    onNavigateToDetail: (String) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
     var inputText by remember { mutableStateOf("") }
@@ -226,11 +231,25 @@ fun SommelierScreenContent(
                     modifier = Modifier.weight(1f)
                 )
             } else {
-                SommelierChatContent(
-                    messages = messages,
-                    isResponseLoading = isLoading,
-                    modifier = Modifier.weight(1f)
-                )
+                // Плашка вина висит поверх сообщений; у списка отступ сверху,
+                // чтобы первые сообщения не уезжали под неё.
+                val chatWine = wine
+                Box(modifier = Modifier.weight(1f)) {
+                    SommelierChatContent(
+                        messages = messages,
+                        isResponseLoading = isLoading,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = if (chatWine != null) 92.dp else 0.dp)
+                    )
+                    if (chatWine != null) {
+                        SommelierWineBanner(
+                            wine = chatWine,
+                            onClick = { onNavigateToDetail(chatWine.id) },
+                            modifier = Modifier.align(Alignment.TopCenter)
+                        )
+                    }
+                }
             }
             // Запас под висящую поверх пилюлю ввода.
             Spacer(modifier = Modifier.height(84.dp))
@@ -667,6 +686,107 @@ private fun SommelierInputBar(
                         Icons.Filled.KeyboardArrowUp,
                         contentDescription = stringResource(R.string.sommelier_send),
                         tint = BrandCream50,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Плашка вина сверху чата из макета: Cream100 r20, фото 43x64, винодельня,
+ * название, шеврон. Тап ведёт на карточку вина.
+ */
+@Composable
+private fun SommelierWineBanner(
+    wine: Wine,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        color = BrandCream100,
+        border = BorderStroke(1.dp, BrandBorderLight),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Box(modifier = Modifier.padding(8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 36.dp)
+            ) {
+                if (wine.imageUrl != null) {
+                    SubcomposeAsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(com.wineapp.util.apiImageUrl(wine.imageUrl))
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = wine.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(width = 43.dp, height = 64.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                    )
+                } else {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(width = 43.dp, height = 64.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(BrandBorderLight)
+                    ) {
+                        Icon(
+                            Icons.Default.WineBar,
+                            contentDescription = null,
+                            tint = BrandTextSecondary.copy(alpha = 0.4f),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = wine.winery.orEmpty(),
+                        fontFamily = Inter,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        color = BrandTextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(
+                        text = wine.name,
+                        fontFamily = Inter,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp,
+                        lineHeight = 20.sp,
+                        color = BrandTextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+            Surface(
+                shape = CircleShape,
+                color = Color.Transparent,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .size(36.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Filled.ChevronRight,
+                        contentDescription = null,
+                        tint = BrandTextPrimary,
                         modifier = Modifier.size(24.dp)
                     )
                 }

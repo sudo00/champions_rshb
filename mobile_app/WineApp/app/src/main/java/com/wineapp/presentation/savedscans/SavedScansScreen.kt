@@ -1,6 +1,7 @@
 package com.wineapp.presentation.savedscans
 
 import android.app.Activity
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,22 +13,24 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Scanner
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -52,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -60,7 +64,15 @@ import com.wineapp.R
 import com.wineapp.domain.model.SavedScan
 import com.wineapp.domain.model.Wine
 import com.wineapp.presentation.common.ui.EmptyState
-import com.wineapp.presentation.common.ui.WineAppTopAppBar
+import com.wineapp.ui.theme.BrandBorderLight
+import com.wineapp.ui.theme.BrandBurgundy600
+import com.wineapp.ui.theme.BrandCream100
+import com.wineapp.ui.theme.BrandCream50
+import com.wineapp.ui.theme.BrandCream500
+import com.wineapp.ui.theme.BrandTextPrimary
+import com.wineapp.ui.theme.BrandTextSecondary
+import com.wineapp.ui.theme.Inter
+import com.wineapp.ui.theme.Playfair
 import com.wineapp.ui.theme.WineAppTheme
 import java.io.File
 import java.text.SimpleDateFormat
@@ -96,12 +108,11 @@ fun SavedScansScreenContent(
     onNavigateBack: () -> Unit = {},
 ) {
     val view = LocalView.current
-    val surfaceColor = MaterialTheme.colorScheme.surface
     SideEffect {
         (view.context as? Activity)?.let { activity ->
             val window = activity.window
-            window.statusBarColor = surfaceColor.toArgb()
-            window.navigationBarColor = surfaceColor.toArgb()
+            window.statusBarColor = BrandCream50.toArgb()
+            window.navigationBarColor = BrandCream50.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = true
             WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = true
         }
@@ -119,7 +130,10 @@ fun SavedScansScreenContent(
                     onDeleteScan(scan.id)
                     scanToDelete = null
                 }) {
-                    Text(stringResource(R.string.saved_scans_delete))
+                    Text(
+                        stringResource(R.string.saved_scans_delete),
+                        color = BrandBurgundy600
+                    )
                 }
             },
             dismissButton = {
@@ -130,27 +144,29 @@ fun SavedScansScreenContent(
         )
     }
 
-    Scaffold(
-        topBar = {
-            WineAppTopAppBar(
-                title = stringResource(R.string.saved_scans_title),
-                showBack = true,
-                onBack = onNavigateBack
-            )
-        }
-    ) { padding ->
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BrandCream50)
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp)
+    ) {
+        SavedScansHeader(
+            title = stringResource(R.string.saved_scans_title),
+            onBack = onNavigateBack
+        )
         when (state) {
             is SavedScansState.Loading -> {
                 Box(
-                    modifier = Modifier.fillMaxSize().padding(padding),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    androidx.compose.material3.CircularProgressIndicator()
+                    CircularProgressIndicator(color = BrandBurgundy600)
                 }
             }
             is SavedScansState.Error -> {
                 Box(
-                    modifier = Modifier.fillMaxSize().padding(padding),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -164,17 +180,13 @@ fun SavedScansScreenContent(
                     EmptyState(
                         icon = Icons.Default.Scanner,
                         title = stringResource(R.string.saved_scans_empty),
-                        message = stringResource(R.string.saved_scans_empty_hint),
-                        modifier = Modifier.padding(padding)
+                        message = stringResource(R.string.saved_scans_empty_hint)
                     )
                 } else {
                     LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(padding)
-                            .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp)
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)
                     ) {
                         items(
                             items = state.scans,
@@ -194,6 +206,44 @@ fun SavedScansScreenContent(
 }
 
 @Composable
+private fun SavedScansHeader(
+    title: String,
+    onBack: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp, bottom = 8.dp)
+    ) {
+        Surface(
+            onClick = onBack,
+            shape = CircleShape,
+            color = BrandBurgundy600,
+            modifier = Modifier.size(44.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = null,
+                    tint = BrandCream50,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = title,
+            fontFamily = Playfair,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 28.sp,
+            lineHeight = 34.sp,
+            color = BrandTextPrimary
+        )
+    }
+}
+
+@Composable
 fun SavedScanCard(
     scan: SavedScan,
     onClick: () -> Unit,
@@ -203,8 +253,9 @@ fun SavedScanCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = BrandCream100),
+        border = BorderStroke(1.dp, BrandBorderLight),
         onClick = onClick
     ) {
         Row(
@@ -214,8 +265,8 @@ fun SavedScanCard(
             Box(
                 modifier = Modifier
                     .size(100.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(BrandBorderLight)
             ) {
                 scan.labelPhotoPath?.let { path ->
                     if (File(path).exists()) {
@@ -235,10 +286,13 @@ fun SavedScanCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     scan.wine.name,
-                    style = MaterialTheme.typography.titleSmall,
+                    fontFamily = Playfair,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 18.sp,
+                    lineHeight = 22.sp,
+                    color = BrandTextPrimary,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    fontWeight = FontWeight.SemiBold
+                    overflow = TextOverflow.Ellipsis
                 )
                 scan.recognitionStatus.takeUnless { it == "legacy" }?.let { status ->
                     Text(
@@ -248,16 +302,20 @@ fun SavedScanCard(
                             "not_in_catalog" -> "Нет в каталоге"
                             else -> "Не подтверждено · первый кандидат"
                         },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontFamily = Inter,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        color = BrandTextSecondary
                     )
                 }
                 scan.wine.winery?.let {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontFamily = Inter,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        color = BrandTextSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -267,13 +325,17 @@ fun SavedScanCard(
                     scan.wine.vintage?.let {
                         Surface(
                             shape = RoundedCornerShape(4.dp),
-                            color = MaterialTheme.colorScheme.secondaryContainer
+                            color = BrandCream50,
+                            border = BorderStroke(1.dp, BrandBorderLight)
                         ) {
                             Text(
                                 "$it",
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                                fontFamily = Inter,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 12.sp,
+                                lineHeight = 16.sp,
+                                color = BrandTextPrimary
                             )
                         }
                         Spacer(modifier = Modifier.width(6.dp))
@@ -281,8 +343,10 @@ fun SavedScanCard(
                     scan.wine.region?.let {
                         Text(
                             it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontFamily = Inter,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            color = BrandTextSecondary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -291,50 +355,56 @@ fun SavedScanCard(
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (scan.wine.rating != null) {
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = Color(0xFFFFF8E1)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.Star,
-                                    contentDescription = null,
-                                    tint = Color(0xFFFFC107),
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(3.dp))
-                                Text(
-                                    String.format("%.1f", scan.wine.rating),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF795548)
-                                )
-                            }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Star,
+                                contentDescription = null,
+                                tint = BrandCream500,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                String.format("%.1f", scan.wine.rating),
+                                fontFamily = Inter,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp,
+                                lineHeight = 18.sp,
+                                color = BrandTextPrimary
+                            )
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                     }
                     Text(
                         stringResource(R.string.saved_scans_confidence, (scan.confidence * 100).toInt()),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        fontFamily = Inter,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        color = BrandTextSecondary
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     dateFormat.format(Date(scan.scannedAt)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    fontFamily = Inter,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    color = BrandTextSecondary
                 )
             }
-            IconButton(onClick = onLongClick) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = stringResource(R.string.saved_scans_delete),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            Surface(
+                onClick = onLongClick,
+                shape = CircleShape,
+                color = Color.Transparent,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = stringResource(R.string.saved_scans_delete),
+                        tint = BrandTextSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }

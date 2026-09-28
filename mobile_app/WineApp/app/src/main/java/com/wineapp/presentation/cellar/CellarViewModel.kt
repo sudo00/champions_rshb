@@ -49,7 +49,7 @@ class CellarViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 Log.e("CellarVM", "Load cellar failed", e)
-                updateState(CellarState.Error(e.message ?: "Не удалось загрузить погреб"))
+                updateState(CellarState.Error(e.message ?: "Не удалось загрузить коллекцию"))
             }
         }
     }

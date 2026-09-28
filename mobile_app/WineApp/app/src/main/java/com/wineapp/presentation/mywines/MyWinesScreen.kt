@@ -38,7 +38,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -96,14 +95,24 @@ fun MyWinesContent(
     onToggleFavorite: (String) -> Unit = {}
 ) {
     TransparentSystemBars()
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(BrandCream50)
-            .statusBarsPadding()
-            .padding(horizontal = 16.dp)
-            .verticalScroll(rememberScrollState())
     ) {
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(R.drawable.search_tab_ellipse),
+            contentDescription = null,
+            contentScale = ContentScale.FillWidth,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
         Text(
             text = stringResource(R.string.nav_mywines),
             fontFamily = Playfair,
@@ -172,6 +181,7 @@ fun MyWinesContent(
         }
         // Место под висящий поверх нижний бар.
         Spacer(modifier = Modifier.height(120.dp))
+        }
     }
 }
 
@@ -250,7 +260,36 @@ private fun MyWinesScanCard(
                             .crossfade(true)
                             .build(),
                         contentDescription = wine.name,
-                        contentScale = ContentScale.Crop,
+                        contentScale = ContentScale.Fit,
+                        loading = {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(BrandBorderLight)
+                            ) {
+                                androidx.compose.material3.CircularProgressIndicator(
+                                    color = BrandBurgundy600,
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        },
+                        error = {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(BrandBorderLight)
+                            ) {
+                                Icon(
+                                    Icons.Default.WineBar,
+                                    contentDescription = null,
+                                    tint = BrandTextSecondary.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        },
                         modifier = Modifier
                             .size(width = 80.dp, height = 120.dp)
                             .clip(RoundedCornerShape(12.dp))
