@@ -14,9 +14,6 @@ interface GameDao {
     @Query("SELECT * FROM user_badges ORDER BY earnedAt DESC")
     fun getBadges(): Flow<List<UserBadgeEntity>>
 
-    @Query("SELECT code FROM user_badges")
-    suspend fun getBadgeCodes(): List<String>
-
     @Insert
     suspend fun insertPoints(entry: PointsEntry)
 

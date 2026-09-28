@@ -10,6 +10,11 @@ package com.wineapp.data.local
 data class Territory(
     val id: String,
     val name: String,
+    /**
+     * Родительный падеж названия — для званий вида «Знаток Кубани».
+     * Хранится явно, потому что падежи не выводятся из имени строковой арифметикой.
+     */
+    val nameGenitive: String,
     val aliases: List<String>,
     val anchorX: Float,
     val anchorY: Float,
@@ -31,16 +36,16 @@ object TerritoryRegistry {
     const val BASHKIRIA = "bashkiria"
 
     val territories: List<Territory> = listOf(
-        Territory(KUBAN, "Кубань", listOf("кубань", "тамань", "краснодар"), 0.117f, 0.889f, 1067),
-        Territory(CRIMEA, "Крым", listOf("крым", "севастополь", "ялта"), 0.088f, 0.895f, 769),
-        Territory(DON, "Долина Дона", listOf("долина дона", "дона", "ростов"), 0.128f, 0.838f, 78),
-        Territory(STAVROPOL, "Ставрополье", listOf("ставрополье", "ставрополь", "кавминводы", "кмв"), 0.139f, 0.909f, 43),
-        Territory(OSSETIA, "Осетия", listOf("осетия", "алания"), 0.145f, 0.947f, 5),
-        Territory(DAGESTAN, "Дагестан", listOf("дагестан", "дербент"), 0.158f, 0.942f, 97),
-        Territory(VOLGA, "Нижняя Волга", listOf("нижняя волга", "волгоград", "астрахань"), 0.154f, 0.825f, 22),
-        Territory(SAMARA, "Самара", listOf("самара"), 0.181f, 0.698f, 21),
-        Territory(BASHKIRIA, "Башкирия", listOf("башкирия", "башкортостан", "уфа"), 0.220f, 0.681f, 0, locked = true),
-        Territory(MOSCOW, "Подмосковье", listOf("подмосковье", "московская", "москва"), 0.107f, 0.643f, 0, locked = true)
+        Territory(KUBAN, "Кубань", "Кубани", listOf("кубань", "тамань", "краснодар"), 0.117f, 0.889f, 1067),
+        Territory(CRIMEA, "Крым", "Крыма", listOf("крым", "севастополь", "ялта"), 0.088f, 0.895f, 769),
+        Territory(DON, "Долина Дона", "Долины Дона", listOf("долина дона", "дона", "ростов"), 0.128f, 0.838f, 78),
+        Territory(STAVROPOL, "Ставрополье", "Ставрополья", listOf("ставрополье", "ставрополь", "кавминводы", "кмв"), 0.139f, 0.909f, 43),
+        Territory(OSSETIA, "Осетия", "Осетии", listOf("осетия", "алания"), 0.145f, 0.947f, 5),
+        Territory(DAGESTAN, "Дагестан", "Дагестана", listOf("дагестан", "дербент"), 0.158f, 0.942f, 97),
+        Territory(VOLGA, "Нижняя Волга", "Нижней Волги", listOf("нижняя волга", "волгоград", "астрахань"), 0.154f, 0.825f, 22),
+        Territory(SAMARA, "Самара", "Самары", listOf("самара"), 0.181f, 0.698f, 21),
+        Territory(BASHKIRIA, "Башкирия", "Башкирии", listOf("башкирия", "башкортостан", "уфа"), 0.220f, 0.681f, 0, locked = true),
+        Territory(MOSCOW, "Подмосковье", "Подмосковья", listOf("подмосковье", "московская", "москва"), 0.107f, 0.643f, 0, locked = true)
     )
 
     val byId: Map<String, Territory> = territories.associateBy { it.id }

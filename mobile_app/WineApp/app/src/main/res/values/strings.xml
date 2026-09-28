@@ -193,22 +193,26 @@
 
     <string name="winepath_title">Винный путь</string>
     <string name="winepath_empty">Сканируйте этикетки — открывайте винодельческие регионы России</string>
-    <string name="winepath_level">Уровень %d</string>
     <string name="winepath_points">%d очков</string>
     <string name="winepath_stats">Территорий: %1$d из %2$d · Сканов: %3$d</string>
     <string name="winepath_territories">Территории</string>
-    <string name="winepath_badges">Бейджи</string>
-    <string name="winepath_soon">Скоро</string>
     <string name="winepath_progress">%1$d из %2$d вин</string>
     <string name="winepath_celebration_title">Новая награда!</string>
     <string name="winepath_celebration_points">+%d очков</string>
     <string name="winepath_new_badge">Новая награда: %s</string>
+    <string name="winepath_new_badges">Новых наград: %d — подробнее в «Винном пути»</string>
     <string name="winepath_your_wines">Ваши вина оттуда:</string>
     <string name="winepath_locked_hint">Территория скоро откроется — следите за обновлениями каталога</string>
     <string name="winepath_back">Назад</string>
+    <string name="winepath_close">Закрыть карточку региона</string>
     <string name="winepath_zoom">К винным регионам</string>
-    <string name="winepath_sheet_hint">Потяните вверх — бейджи и территории</string>
     <string name="winepath_scan">Сканировать вино</string>
+    <string name="winepath_level_word">Уровень</string>
+    <string name="winepath_level_progress">%1$d%% до уровня %2$d</string>
+    <string name="winepath_level_max">Максимальный уровень</string>
+    <string name="winepath_territories_desc">Открывайте новые винные регионы, сканируйте вина и прокладывайте свой путь по карте России</string>
+    <string name="winepath_rewards">Награды</string>
+    <string name="winepath_rewards_desc">Получайте награды за открытия новых регионов и достижения в своей винной истории</string>
 
     <string name="cancel">Отмена</string>
 

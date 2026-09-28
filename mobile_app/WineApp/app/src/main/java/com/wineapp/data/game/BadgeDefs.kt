@@ -1,5 +1,9 @@
 package com.wineapp.data.game
 
+import com.wineapp.data.local.Territory
+import com.wineapp.data.local.TerritoryRegistry
+import kotlin.math.ceil
+
 /**
  * Определения бейджей «Винного пути». Тексты захардкожены русскими строками осознанно:
  * это контент-пак геймификации (как уровни в игре), а не UI-строки.
@@ -11,6 +15,30 @@ data class BadgeDef(
     val points: Int
 )
 
+/**
+ * Ступени освоения одной территории. Название ступени идёт перед названием региона
+ * в родительном падеже: «Знаток Кубани», «Легенда Нижней Волги».
+ */
+enum class TerritoryTier(
+    val codePrefix: String,
+    val title: String,
+    val description: String,
+    val points: Int,
+    /** Доля каталога территории для ступени; 0 = достаточно первого вина. */
+    val share: Double
+) {
+    PIONEER("pioneer", "Первопроходец", "Отсканируйте первое вино региона", 50, 0.0),
+    EXPERT("expert", "Знаток", "Отсканируйте 50% вин региона", 100, 0.5),
+    LEGEND("legend", "Легенда", "Отсканируйте все вина региона", 200, 1.0);
+
+    /** Сколько вин территории нужно отсканировать, чтобы получить ступень. */
+    fun requiredWines(totalWines: Int): Int = when (this) {
+        PIONEER -> 1
+        EXPERT -> ceil(totalWines * share).toInt()
+        LEGEND -> totalWines
+    }
+}
+
 object BadgeDefs {
 
     const val FIRST_SCAN = "first_scan"
@@ -20,42 +48,65 @@ object BadgeDefs {
     const val TASTER_10 = "taster_10"
     const val TASTER_50 = "taster_50"
 
-    fun pioneerCode(territoryId: String) = "pioneer_$territoryId"
-
     const val POINTS_SCAN = 10
 
-    val all: List<BadgeDef> = buildList {
-        add(BadgeDef(FIRST_SCAN, "Первый глоток", "Отсканируйте первую этикетку", 10))
-        add(BadgeDef("pioneer_kuban", "Первопроходец Кубани", "Попробуйте вино Кубани", 50))
-        add(BadgeDef("pioneer_crimea", "Крымский эксперт", "Попробуйте вино Крыма", 50))
-        add(BadgeDef("pioneer_dagestan", "Первопроходец Дагестана", "Попробуйте вино Дагестана", 50))
-        add(BadgeDef("pioneer_don", "Первопроходец Дона", "Попробуйте вино Долины Дона", 50))
-        add(BadgeDef("pioneer_stavropol", "Первопроходец Ставрополья", "Попробуйте вино Ставрополья", 50))
-        add(BadgeDef("pioneer_volga", "Первопроходец Волги", "Попробуйте вино Нижней Волги", 50))
-        add(BadgeDef("pioneer_samara", "Первопроходец Самары", "Попробуйте вино Самары", 50))
-        add(BadgeDef("pioneer_ossetia", "Первопроходец Осетии", "Попробуйте вино Осетии", 50))
-        add(BadgeDef(EXPLORER_3, "Исследователь", "Откройте 3 территории", 30))
-        add(BadgeDef(EXPLORER_5, "Путешественник", "Откройте 5 территорий", 100))
-        add(BadgeDef(EXPLORER_8, "Легенда пути", "Откройте все 8 территорий", 200))
-        add(BadgeDef(TASTER_10, "Дегустатор", "Отсканируйте 10 вин", 20))
-        add(BadgeDef(TASTER_50, "Сомелье", "Отсканируйте 50 вин", 100))
+    fun codeFor(tier: TerritoryTier, territoryId: String) = "${tier.codePrefix}_$territoryId"
+
+    fun territoryBadge(tier: TerritoryTier, territory: Territory): BadgeDef = BadgeDef(
+        code = codeFor(tier, territory.id),
+        title = "${tier.title} ${territory.nameGenitive}",
+        description = tier.description,
+        points = tier.points
+    )
+
+    /**
+     * Порядок вывода в шторке: сначала ступень, внутри ступени — от крупной территории
+     * к мелкой, чтобы «Первопроходец Кубани» шёл первым.
+     */
+    val territoryBadges: List<BadgeDef> = TerritoryTier.entries.flatMap { tier ->
+        TerritoryRegistry.territories
+            .filterNot { it.locked }
+            .sortedByDescending { it.totalWines }
+            .map { territoryBadge(tier, it) }
     }
+
+    val generalBadges: List<BadgeDef> = listOf(
+        BadgeDef(FIRST_SCAN, "Первый глоток", "Отсканируйте первую этикетку", 10),
+        BadgeDef(EXPLORER_3, "Исследователь", "Откройте 3 территории", 30),
+        BadgeDef(EXPLORER_5, "Путешественник", "Откройте 5 территорий", 100),
+        BadgeDef(EXPLORER_8, "Легенда пути", "Откройте все 8 территорий", 200),
+        BadgeDef(TASTER_10, "Дегустатор", "Отсканируйте 10 вин", 20),
+        BadgeDef(TASTER_50, "Сомелье", "Отсканируйте 50 вин", 100)
+    )
+
+    val all: List<BadgeDef> = generalBadges + territoryBadges
 
     val byCode: Map<String, BadgeDef> = all.associateBy { it.code }
 
     /** Пороги уровней по суммарным очкам. */
     val levelThresholds: List<Int> = listOf(0, 100, 300, 600, 1000, 1600, 2400)
 
-    fun levelFor(points: Int): Pair<Int, Float> {
+    /**
+     * Полное описание уровня по суммарным очкам: номер, прогресс внутри уровня
+     * и границы по очкам — нужны шторке «Винного пути» для шкалы уровня.
+     */
+    data class LevelInfo(
+        val level: Int,
+        val progress: Float,
+        val pointsFrom: Int,
+        val pointsTo: Int
+    )
+
+    fun levelFor(points: Int): LevelInfo {
         var level = 1
         for (i in levelThresholds.indices) {
             if (points >= levelThresholds[i]) level = i + 1
         }
-        val current = levelThresholds.getOrElse(level - 1) { points }
-        val next = levelThresholds.getOrElse(level) { current + 1 }
-        val progress = if (next > current) {
-            ((points - current).toFloat() / (next - current)).coerceIn(0f, 1f)
+        val from = levelThresholds.getOrElse(level - 1) { 0 }
+        val to = levelThresholds.getOrElse(level) { from }
+        val progress = if (to > from) {
+            ((points - from).toFloat() / (to - from)).coerceIn(0f, 1f)
         } else 1f
-        return level to progress
+        return LevelInfo(level = level, progress = progress, pointsFrom = from, pointsTo = to)
     }
 }

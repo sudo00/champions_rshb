@@ -27,5 +27,11 @@ data class WinePathSummary(
     val levelProgress: Float,
     val territoriesOpened: Int,
     val territoriesTotal: Int,
-    val scansCount: Int
-)
+    val scansCount: Int,
+    /** Очки, с которых начинается текущий уровень. */
+    val levelPointsFrom: Int,
+    /** Очки, необходимые для следующего уровня; равен levelPointsFrom на максимуме. */
+    val levelPointsTo: Int
+) {
+    val isMaxLevel: Boolean get() = levelPointsTo <= levelPointsFrom
+}

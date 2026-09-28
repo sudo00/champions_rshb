@@ -59,7 +59,7 @@ class GetWinePathUseCase @Inject constructor(
                 )
             }
             val openCount = territories.count { it.unlocked }
-            val (level, levelProgress) = BadgeDefs.levelFor(points)
+            val levelInfo = BadgeDefs.levelFor(points)
             val badgeUi = BadgeDefs.all.map { def ->
                 BadgeUi(
                     code = def.code,
@@ -72,11 +72,13 @@ class GetWinePathUseCase @Inject constructor(
             WinePathData(
                 summary = WinePathSummary(
                     totalPoints = points,
-                    level = level,
-                    levelProgress = levelProgress,
+                    level = levelInfo.level,
+                    levelProgress = levelInfo.progress,
                     territoriesOpened = openCount,
                     territoriesTotal = TerritoryRegistry.territories.count { !it.locked },
-                    scansCount = scans.size
+                    scansCount = scans.size,
+                    levelPointsFrom = levelInfo.pointsFrom,
+                    levelPointsTo = levelInfo.pointsTo
                 ),
                 territories = territories,
                 badges = badgeUi

@@ -11,8 +11,12 @@ data class EarnedBadge(
 )
 
 interface BadgeRepository {
-    /** Наградить за сохранённый скан. Возвращает только что полученные бейджи (для селебрешна). */
-    suspend fun awardForScan(scanId: String, territoryId: String?): List<EarnedBadge>
+    /**
+     * Наградить за сохранённый скан. Возвращает только что полученные бейджи (для селебрешна).
+     * Территория не передаётся: awardForScan сам считает освоенные вины по истории сканов,
+     * поэтому ступени «Знаток» и «Легенда» тоже срабатывают без лишних аргументов.
+     */
+    suspend fun awardForScan(scanId: String): List<EarnedBadge>
 
     fun getBadges(): Flow<List<UserBadgeEntity>>
     fun getTotalPoints(): Flow<Int>

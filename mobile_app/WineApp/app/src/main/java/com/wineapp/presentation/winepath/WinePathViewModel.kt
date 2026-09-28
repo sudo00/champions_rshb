@@ -3,6 +3,7 @@ package com.wineapp.presentation.winepath
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.wineapp.domain.repository.BadgeRepository
+import com.wineapp.domain.repository.EarnedBadge
 import com.wineapp.domain.usecase.GetWinePathUseCase
 import com.wineapp.presentation.common.BaseViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,6 +18,13 @@ class WinePathViewModel @Inject constructor(
 ) : BaseViewModel<WinePathState, WinePathIntent>() {
 
     private var celebrationJob: Job? = null
+
+    /**
+     * Один скан может закрыть сразу несколько ступеней (например, «Первопроходец»
+     * и «Знаток» по пересечении 50%), поэтому награды показываем по очереди,
+     * а не только первую.
+     */
+    private val pendingCelebrations = ArrayDeque<EarnedBadge>()
 
     override fun getInitialState(): WinePathState = WinePathState.Loading
 
@@ -54,11 +62,8 @@ class WinePathViewModel @Inject constructor(
         celebrationJob = viewModelScope.launch {
             try {
                 badgeRepository.freshBadges.collect { fresh ->
-                    val first = fresh.firstOrNull() ?: return@collect
-                    val state = _state.value
-                    if (state is WinePathState.Success) {
-                        updateState(state.copy(celebration = first))
-                    }
+                    pendingCelebrations.addAll(fresh)
+                    showNextCelebration()
                 }
             } catch (e: Exception) {
                 Log.e("WinePathVM", "Fresh badges failed", e)
@@ -66,10 +71,19 @@ class WinePathViewModel @Inject constructor(
         }
     }
 
+    /** Показывает очередную награду, если диалог сейчас не открыт. */
+    private fun showNextCelebration() {
+        val state = _state.value
+        if (state !is WinePathState.Success || state.celebration != null) return
+        val next = pendingCelebrations.removeFirstOrNull() ?: return
+        updateState(state.copy(celebration = next))
+    }
+
     private fun consumeCelebration() {
         val state = _state.value
         if (state is WinePathState.Success) {
             updateState(state.copy(celebration = null))
+            showNextCelebration()
         }
     }
 }

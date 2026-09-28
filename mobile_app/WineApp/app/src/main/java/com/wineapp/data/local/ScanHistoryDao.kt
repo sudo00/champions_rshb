@@ -26,11 +26,17 @@ interface ScanHistoryDao {
     @Query("SELECT COUNT(*) FROM scan_history WHERE recognitionStatus IN ('legacy', 'user_confirmed', 'score_confirmed')")
     suspend fun getScansCount(): Int
 
-    @Query("SELECT DISTINCT territoryId FROM scan_history WHERE territoryId IS NOT NULL")
-    suspend fun getDistinctTerritoryIds(): List<String>
-
-    @Query("SELECT DISTINCT wineId FROM scan_history WHERE territoryId = :territoryId")
-    suspend fun getWineIdsByTerritory(territoryId: String): List<String>
+    /**
+     * Подтверждённые сканы в проекции для подсчёта вин по территориям.
+     * Нужен region, потому что у сканов, сделанных до появления territoryId,
+     * территория восстанавливается только из сырого региона.
+     */
+    @Query(
+        """SELECT territoryId AS territoryId, region AS region, wineId AS wineId
+           FROM scan_history
+           WHERE recognitionStatus IN ('legacy', 'user_confirmed', 'score_confirmed')"""
+    )
+    suspend fun getTerritoryWineRows(): List<TerritoryWineRow>
 
     @Query("SELECT * FROM scan_conversations WHERE scanHistoryId = :scanId ORDER BY timestamp ASC")
     fun getConversationFlow(scanId: String): Flow<List<ScanConversationEntity>>

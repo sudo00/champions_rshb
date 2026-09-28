@@ -64,7 +64,7 @@ class ScanHistoryRepositoryImpl @Inject constructor(
                 // «Винный путь»: очки и бейджи за скан (идемпотентно, ошибки не роняют сохранение).
                 try {
                     if (confirmed && previous?.recognitionStatus !in setOf("legacy", "user_confirmed", "score_confirmed"))
-                        badgeRepository.awardForScan(scan.id, territoryId)
+                        badgeRepository.awardForScan(scan.id)
                 } catch (e: Exception) {
                     Log.e("ScanHistoryRepo", "Badge award failed", e)
                 }

@@ -66,11 +66,17 @@ class ScannerViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 badgeRepository.freshBadges.collect { fresh ->
-                    val first = fresh.firstOrNull() ?: return@collect
-                    _badgeMessage.value = context.getString(
-                        com.wineapp.R.string.winepath_new_badge,
-                        first.def.title
-                    )
+                    if (fresh.isEmpty()) return@collect
+                    // Один скан может закрыть несколько ступеней территории — тогда
+                    // тост показывает счётчик, детали живут в «Винном пути».
+                    _badgeMessage.value = if (fresh.size == 1) {
+                        context.getString(
+                            com.wineapp.R.string.winepath_new_badge,
+                            fresh.first().def.title
+                        )
+                    } else {
+                        context.getString(com.wineapp.R.string.winepath_new_badges, fresh.size)
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e

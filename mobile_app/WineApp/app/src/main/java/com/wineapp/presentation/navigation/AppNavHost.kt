@@ -37,8 +37,11 @@ import com.wineapp.presentation.search.SearchTabScreen
 import com.wineapp.presentation.sommelier.SommelierScreen
 import com.wineapp.presentation.winepath.WinePathScreen
 
-/** Маршруты с нижней навигацией. Сканер — полноэкранный, без бара. */
-private val TAB_ROUTES = setOf("search", "search_tab", "my_wines", "wine_path")
+/**
+ * Маршруты с нижней навигацией. Сканер и винная карта — полноэкранные, без бара:
+ * на них выход через стрелку назад на самом экране.
+ */
+private val TAB_ROUTES = setOf("search", "search_tab", "my_wines")
 
 @Composable
 fun AppNavHost(startRoute: String? = null) {

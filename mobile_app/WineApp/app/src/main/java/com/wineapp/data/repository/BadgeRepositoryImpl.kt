@@ -2,6 +2,7 @@ package com.wineapp.data.repository
 
 import android.util.Log
 import com.wineapp.data.game.BadgeDefs
+import com.wineapp.data.game.TerritoryTier
 import com.wineapp.data.local.GameDao
 import com.wineapp.data.local.PointsEntry
 import com.wineapp.data.local.ScanHistoryDao
@@ -25,7 +26,7 @@ class BadgeRepositoryImpl @Inject constructor(
     private val _freshBadges = MutableSharedFlow<List<EarnedBadge>>(extraBufferCapacity = 1)
     override val freshBadges: SharedFlow<List<EarnedBadge>> = _freshBadges.asSharedFlow()
 
-    override suspend fun awardForScan(scanId: String, territoryId: String?): List<EarnedBadge> {
+    override suspend fun awardForScan(scanId: String): List<EarnedBadge> {
         return withContext(Dispatchers.IO) {
             try {
                 val fresh = mutableListOf<EarnedBadge>()
@@ -36,22 +37,35 @@ class BadgeRepositoryImpl @Inject constructor(
                 // Первый скан.
                 awardBadge(BadgeDefs.FIRST_SCAN)?.let { fresh.add(it) }
 
-                // Новая территория: бейдж первопроходца (очки уже в номинале бейджа).
-                if (territoryId != null && TerritoryRegistry.byId[territoryId]?.locked != true) {
-                    val known = gameDao.getBadgeCodes().toSet()
-                    val pioneerCode = BadgeDefs.pioneerCode(territoryId)
-                    if (!known.contains(pioneerCode) && BadgeDefs.byCode.containsKey(pioneerCode)) {
-                        awardBadge(pioneerCode)?.let { fresh.add(it) }
+                // Сколько разных вин освоено в каждой открытой территории.
+                // Считаем из БД, а не из аргумента: так же, как считает шторка,
+                // включая нормализацию region у сканов, сделанных до territoryId.
+                val scannedByTerritory: Map<String, Int> = scanHistoryDao.getTerritoryWineRows()
+                    .groupBy { row -> row.territoryId ?: TerritoryRegistry.normalize(row.region) }
+                    .mapNotNull { (id, rows) ->
+                        val territory = id?.let { TerritoryRegistry.byId[it] } ?: return@mapNotNull null
+                        if (territory.locked || territory.totalWines <= 0) return@mapNotNull null
+                        territory.id to rows.map { row -> row.wineId }.toSet().size
+                    }
+                    .toMap()
+
+                // Ступени территории: первое вино → половина каталога → весь каталог.
+                // awardBadge идемпотентен, поэтому проверять «уже есть» заранее не нужно.
+                scannedByTerritory.forEach { (id, scanned) ->
+                    val totalWines = TerritoryRegistry.byId[id]?.totalWines ?: return@forEach
+                    TerritoryTier.entries.forEach { tier ->
+                        if (scanned >= tier.requiredWines(totalWines)) {
+                            awardBadge(BadgeDefs.codeFor(tier, id))?.let { fresh.add(it) }
+                        }
                     }
                 }
 
                 // Пороги по территориям и сканам.
-                val territories = scanHistoryDao.getDistinctTerritoryIds()
-                    .filter { TerritoryRegistry.byId[it]?.locked != true }
+                val openedCount = scannedByTerritory.size
                 val scans = scanHistoryDao.getScansCount()
-                if (territories.size >= 3) awardBadge(BadgeDefs.EXPLORER_3)?.let { fresh.add(it) }
-                if (territories.size >= 5) awardBadge(BadgeDefs.EXPLORER_5)?.let { fresh.add(it) }
-                if (territories.size >= 8) awardBadge(BadgeDefs.EXPLORER_8)?.let { fresh.add(it) }
+                if (openedCount >= 3) awardBadge(BadgeDefs.EXPLORER_3)?.let { fresh.add(it) }
+                if (openedCount >= 5) awardBadge(BadgeDefs.EXPLORER_5)?.let { fresh.add(it) }
+                if (openedCount >= 8) awardBadge(BadgeDefs.EXPLORER_8)?.let { fresh.add(it) }
                 if (scans >= 10) awardBadge(BadgeDefs.TASTER_10)?.let { fresh.add(it) }
                 if (scans >= 50) awardBadge(BadgeDefs.TASTER_50)?.let { fresh.add(it) }
 
