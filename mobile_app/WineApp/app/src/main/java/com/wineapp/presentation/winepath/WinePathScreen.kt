@@ -677,6 +677,19 @@ private fun WinePathMap(
             }
         }
 
+        val bgSeamPaths = remember(sizeKey) {
+            TerritoryShapes.backgroundSeams.flatten().map { line -> linePath(line, mapUi) }
+        }
+        val wineSeamPaths = remember(sizeKey) {
+            TerritoryShapes.outlineSeams.mapValues { (_, lines) -> lines.map { line -> linePath(line, mapUi) } }
+        }
+        // Ширина шва = максимальная закрываемая щель; в px канвы, зум масштабирует её вместе с картой.
+        val seamStroke = Stroke(
+            width = TerritoryShapes.SEAM_EPS * mapUi.drawW,
+            cap = StrokeCap.Butt,
+            join = StrokeJoin.Round
+        )
+
         // Подписи рисуем только для выбранного региона (см. ниже) — карта остаётся чистой.
 
         Canvas(
@@ -687,13 +700,10 @@ private fun WinePathMap(
                         mapUi.onTransformAround(centroid, pan, zoom)
                     }
                 }
-                .graphicsLayer(
-                    scaleX = mapUi.scale,
-                    scaleY = mapUi.scale,
-                    translationX = mapUi.offset.x,
-                    translationY = mapUi.offset.y,
-                    transformOrigin = TransformOrigin(0f, 0f)
-                )
+                // Тап — обязательно ДО graphicsLayer: здесь координаты экранные, и
+                // toFraction снимает зум/сдвиг сам. После graphicsLayer Compose отдаёт
+                // уже локальные координаты слоя, обратное преобразование применялось
+                // дважды — точка улетала мимо региона, и тап не срабатывал.
                 .pointerInput(mapUi) {
                     detectTapGestures { tap ->
                         val point = mapUi.toFraction(tap)
@@ -704,12 +714,32 @@ private fun WinePathMap(
                         }
                     }
                 }
+                .graphicsLayer(
+                    scaleX = mapUi.scale,
+                    scaleY = mapUi.scale,
+                    translationX = mapUi.offset.x,
+                    translationY = mapUi.offset.y,
+                    transformOrigin = TransformOrigin(0f, 0f)
+                )
         ) {
             // Рисуем в два прохода: сначала ВСЕ заливки, потом ВСЕ обводки поверх них.
             // Обводка отдельным проходом обязательна: контуры соседей совпадают,
             // и если рисовать границу до заливки соседа, она съедает её половину —
             // на стыках регионов появляются дырки, а винные регионы теряют границу целиком.
             val dash = PathEffect.dashPathEffect(floatArrayOf(8f, 6f), 0f)
+
+            // Проход 0: швы под заливками — закрывают щели между соседними регионами.
+            // Сначала серые, затем швы винных регионов в цвете их заливки.
+            bgSeamPaths.forEach { path -> drawPath(path, MapRegionFill, style = seamStroke) }
+            territories.forEach { territory ->
+                val seams = wineSeamPaths[territory.territoryId] ?: return@forEach
+                val fill = when {
+                    territory.territoryId == selectedId -> MapSelectedFill
+                    !territory.locked && territory.totalWines > 0 -> MapWineFill
+                    else -> return@forEach
+                }
+                seams.forEach { path -> drawPath(path, fill, style = seamStroke) }
+            }
 
             // Проход 1: заливки.
             bgPaths.forEach { path -> drawPath(path, MapRegionFill) }
@@ -772,6 +802,16 @@ private fun WinePathMap(
                 val above = labelsAbove.contains(territory.territoryId)
                 drawLabel(textMeasurer, territory.name, center, selectedLabelStyle, above, labelGap)
             }
+        }
+    }
+}
+
+/** Открытая ломаная (шов) в пикселях канвы. */
+private fun linePath(line: List<Offset>, mapUi: WinePathMapState): Path {
+    return Path().apply {
+        line.forEachIndexed { i, p ->
+            val pt = mapUi.toPx(p)
+            if (i == 0) moveTo(pt.x, pt.y) else lineTo(pt.x, pt.y)
         }
     }
 }
