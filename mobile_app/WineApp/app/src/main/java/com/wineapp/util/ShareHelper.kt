@@ -46,7 +46,7 @@ object ShareHelper {
         return buildString {
             appendLine("Вино: ${wine.name} (${wine.vintage ?: "н.v."})")
             wine.winery?.let { appendLine("Винодельня: $it") }
-            appendLine("Рейтинг: ${"%.1f".format(wine.rating)} (${wine.reviewsCount} отзывов)")
+            appendLine("Рейтинг: ${wine.rating?.let { formatRating(it, decimals = 1) } ?: "—"} (${wine.reviewsCount} отзывов)")
             wine.region?.let { appendLine("Регион: $it") }
             wine.country?.let { appendLine("Страна: $it") }
             wine.variety?.let { appendLine("Сорт: $it") }
@@ -68,7 +68,7 @@ object ShareHelper {
             appendLine("Вино: ${wine.name} (${wine.vintage ?: "н.v."})")
             wine.region?.let { appendLine("Регион: $it") }
             appendLine()
-            appendLine("--- Беседа с AI-сомелье ---")
+            appendLine("--- Беседа с ИИ-сомелье ---")
             appendLine()
             for (msg in messages) {
                 val role = if (msg.role == "user") "Вы" else "Сомелье"
@@ -86,7 +86,7 @@ object ShareHelper {
         return buildString {
             appendLine("Вино: $wineName")
             appendLine()
-            appendLine("--- Беседа с AI-сомелье ---")
+            appendLine("--- Беседа с ИИ-сомелье ---")
             appendLine()
             for (msg in messages) {
                 val role = if (msg.isUser) "Вы" else "Сомелье"

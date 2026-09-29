@@ -1,7 +1,5 @@
 package com.wineapp.presentation.mywines
 
-import com.wineapp.presentation.common.ui.BrandLoader
-import com.wineapp.presentation.common.ui.AppIcons
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -20,14 +18,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,13 +38,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -56,7 +55,10 @@ import com.wineapp.R
 import com.wineapp.data.mock.MockDataProvider
 import com.wineapp.domain.model.SavedScan
 import com.wineapp.domain.model.Wine
+import com.wineapp.presentation.common.ui.AppIcons
+import com.wineapp.presentation.common.ui.BottomBarSpacer
 import com.wineapp.presentation.common.ui.BrandButton
+import com.wineapp.presentation.common.ui.BrandLoader
 import com.wineapp.presentation.common.ui.BrandSecondaryButton
 import com.wineapp.presentation.common.ui.TransparentSystemBars
 import com.wineapp.ui.theme.BrandBorderDefault
@@ -81,7 +83,8 @@ fun MyWinesScreen(
     onNavigateToFavorites: () -> Unit = {},
     onNavigateToSavedScans: () -> Unit = {},
     onNavigateToRoulette: () -> Unit = {},
-    onNavigateToDetail: (String) -> Unit = {}
+    onNavigateToDetail: (String) -> Unit = {},
+    onNavigateToScan: (String) -> Unit = {}
 ) {
     val viewModel: MyWinesViewModel = hiltViewModel()
     val state by viewModel.state.collectAsState()
@@ -93,7 +96,9 @@ fun MyWinesScreen(
         onNavigateToSavedScans = onNavigateToSavedScans,
         onNavigateToRoulette = onNavigateToRoulette,
         onNavigateToDetail = onNavigateToDetail,
-        onToggleFavorite = { wineId -> viewModel.sendIntent(MyWinesIntent.ToggleFavorite(wineId)) }
+        onNavigateToScan = onNavigateToScan,
+        onToggleFavorite = { wineId -> viewModel.sendIntent(MyWinesIntent.ToggleFavorite(wineId)) },
+        onDeleteScan = { scanId -> viewModel.sendIntent(MyWinesIntent.DeleteScan(scanId)) }
     )
 }
 
@@ -105,7 +110,9 @@ fun MyWinesContent(
     onNavigateToSavedScans: () -> Unit = {},
     onNavigateToRoulette: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
-    onToggleFavorite: (String) -> Unit = {}
+    onNavigateToScan: (String) -> Unit = {},
+    onToggleFavorite: (String) -> Unit = {},
+    onDeleteScan: (String) -> Unit = {}
 ) {
     TransparentSystemBars()
     Box(
@@ -162,13 +169,10 @@ fun MyWinesContent(
                     emptyIcon = AppIcons.Heart,
                     emptyHint = stringResource(R.string.favorites_empty_hint),
                     likedIds = state.likedIds,
-                    onWineClick = onNavigateToDetail,
+                    onWineClick = { index -> onNavigateToDetail(state.favorites[index].id) },
                     onToggleFavorite = onToggleFavorite
                 )
-                BrandSecondaryButton(
-                    text = stringResource(R.string.mywines_favorites),
-                    onClick = onNavigateToFavorites
-                )
+                SeeAllButton(onClick = onNavigateToFavorites)
                 MyWinesSection(
                     title = stringResource(R.string.mywines_collection),
                     subtitle = stringResource(R.string.mywines_collection_sub),
@@ -176,32 +180,23 @@ fun MyWinesContent(
                     emptyIcon = AppIcons.WineBottle,
                     emptyHint = stringResource(R.string.cellar_empty_hint),
                     likedIds = state.likedIds,
-                    onWineClick = onNavigateToDetail,
+                    onWineClick = { index -> onNavigateToDetail(state.collection[index].id) },
                     onToggleFavorite = onToggleFavorite
                 )
-                BrandSecondaryButton(
-                    text = stringResource(R.string.mywines_collection),
-                    onClick = onNavigateToCellar
-                )
-                MyWinesSection(
-                    title = stringResource(R.string.mywines_scans),
-                    subtitle = stringResource(R.string.mywines_scans_sub),
-                    wines = state.scans.map { it.wine },
-                    userPhotos = state.scans.map { it.labelPhotoPath },
-                    emptyIcon = AppIcons.Camera,
-                    emptyHint = stringResource(R.string.mywines_scans_empty_hint),
+                SeeAllButton(onClick = onNavigateToCellar)
+                // Скан открывает сам скан (фото, результат, беседа с сомелье), а не карточку вина.
+                MyWinesScansSection(
+                    scans = state.scans,
                     likedIds = state.likedIds,
-                    onWineClick = onNavigateToDetail,
-                    onToggleFavorite = onToggleFavorite
+                    onScanClick = onNavigateToScan,
+                    onToggleFavorite = onToggleFavorite,
+                    onDeleteScan = onDeleteScan
                 )
-                BrandSecondaryButton(
-                    text = stringResource(R.string.mywines_scans),
-                    onClick = onNavigateToSavedScans
-                )
+                SeeAllButton(onClick = onNavigateToSavedScans)
             }
         }
         // Место под висящий поверх нижний бар.
-        Spacer(modifier = Modifier.height(120.dp))
+        BottomBarSpacer()
         }
     }
 }
@@ -214,30 +209,14 @@ private fun MyWinesSection(
     emptyIcon: ImageVector,
     emptyHint: String,
     likedIds: Set<String>,
-    onWineClick: (String) -> Unit,
+    /** Тап по карточке: позиция в [wines] — секция сама решает, куда вести. */
+    onWineClick: (index: Int) -> Unit,
     onToggleFavorite: (String) -> Unit,
     /** Для секции сканов: фото пользователя по индексу вина вместо фото из каталога. */
     userPhotos: List<String?>? = null
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = title,
-            fontFamily = Playfair,
-            fontWeight = FontWeight.Medium,
-            fontSize = 24.sp,
-            lineHeight = 30.sp,
-            color = BrandTextPrimary,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Text(
-            text = subtitle,
-            fontFamily = Inter,
-            fontWeight = FontWeight.Medium,
-            fontSize = 14.sp,
-            lineHeight = 18.sp,
-            color = BrandTextSecondary,
-            modifier = Modifier.fillMaxWidth()
-        )
+        MyWinesSectionHeader(title = title, subtitle = subtitle)
         if (wines.isEmpty()) {
             MyWinesEmptySection(icon = emptyIcon, hint = emptyHint)
         } else Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -247,12 +226,92 @@ private fun MyWinesSection(
                     showUserPhoto = userPhotos != null,
                     userPhotoPath = userPhotos?.getOrNull(index),
                     isFavorite = wine.id in likedIds,
-                    onClick = { onWineClick(wine.id) },
+                    onClick = { onWineClick(index) },
                     onFavoriteClick = { onToggleFavorite(wine.id) },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
         }
+    }
+}
+
+/**
+ * Кнопка под секцией — переход к полному списку раздела. Текст единый
+ * («Смотреть все»): название раздела и так в заголовке секции над кнопкой.
+ */
+@Composable
+private fun SeeAllButton(onClick: () -> Unit) {
+    BrandSecondaryButton(
+        text = stringResource(R.string.mywines_see_all),
+        onClick = onClick,
+        trailingIcon = AppIcons.ChevronRight
+    )
+}
+
+@Composable
+private fun MyWinesSectionHeader(title: String, subtitle: String) {
+    Text(
+        text = title,
+        fontFamily = Playfair,
+        fontWeight = FontWeight.Medium,
+        fontSize = 24.sp,
+        lineHeight = 30.sp,
+        color = BrandTextPrimary,
+        modifier = Modifier.fillMaxWidth()
+    )
+    Text(
+        text = subtitle,
+        fontFamily = Inter,
+        fontWeight = FontWeight.Medium,
+        fontSize = 14.sp,
+        lineHeight = 18.sp,
+        color = BrandTextSecondary,
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+/**
+ * Секция «Сканы»: те же карточки, что в полном списке сканов — фото этикетки,
+ * дата сканирования, сердечко и корзина (удаление с подтверждением).
+ */
+@Composable
+private fun MyWinesScansSection(
+    scans: List<SavedScan>,
+    likedIds: Set<String>,
+    onScanClick: (String) -> Unit,
+    onToggleFavorite: (String) -> Unit,
+    onDeleteScan: (String) -> Unit
+) {
+    var scanToDelete by remember { mutableStateOf<SavedScan?>(null) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        MyWinesSectionHeader(
+            title = stringResource(R.string.mywines_scans),
+            subtitle = stringResource(R.string.mywines_scans_sub)
+        )
+        if (scans.isEmpty()) {
+            MyWinesEmptySection(icon = AppIcons.Camera, hint = stringResource(R.string.mywines_scans_empty_hint))
+        } else Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            scans.forEach { scan ->
+                com.wineapp.presentation.savedscans.SavedScanCard(
+                    scan = scan,
+                    isFavorite = scan.wine.id in likedIds,
+                    onClick = { onScanClick(scan.id) },
+                    onToggleFavorite = { onToggleFavorite(scan.wine.id) },
+                    onDelete = { scanToDelete = scan },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+    scanToDelete?.let { scan ->
+        com.wineapp.presentation.savedscans.DeleteScanDialog(
+            scan = scan,
+            onConfirm = {
+                onDeleteScan(scan.id)
+                scanToDelete = null
+            },
+            onDismiss = { scanToDelete = null }
+        )
     }
 }
 
@@ -487,7 +546,7 @@ private fun MyWinesScanCard(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = String.format("%.2f", wine.rating),
+                                    text = com.wineapp.util.formatRating(wine.rating),
                                     fontFamily = Inter,
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 12.sp,

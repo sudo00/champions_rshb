@@ -12,6 +12,7 @@
     <string name="scanner_gallery">Галерея</string>
     <string name="scanner_flash_on">Вспышка вкл</string>
     <string name="scanner_flash_off">Вспышка выкл</string>
+    <string name="scanner_flash_auto">Вспышка авто</string>
     <string name="scanner_flash_auto_short">АВТО</string>
     <string name="scanner_auto_short">АВТО</string>
     <string name="scanner_flash_on_short">ВКЛ</string>
@@ -20,7 +21,7 @@
     <string name="scanner_hint_detected">Этикетка найдена</string>
     <string name="scanner_onboarding_title">Как сканировать</string>
     <string name="scanner_help_step_frame">Наведите камеру на этикетку так, чтобы она целиком помещалась в рамку.</string>
-    <string name="scanner_help_step_hold">Держите телефон неподвижно. Когда уголки рамки станут жёлтыми, в режиме «АВТО» фото сделается само — или нажмите на кнопку затвора.</string>
+    <string name="scanner_help_step_hold">Держите телефон неподвижно. Когда уголки рамки станут кремовыми, в режиме «АВТО» фото сделается само — или нажмите на кнопку затвора.</string>
     <string name="scanner_help_step_light">Снимайте при хорошем освещении и без бликов, при необходимости включите вспышку.</string>
     <string name="scanner_help_step_gallery">Готовое фото этикетки можно загрузить из галереи.</string>
     <string name="scanner_help_results_title">Что может получиться</string>
@@ -43,7 +44,6 @@
     <string name="scan_result_best_match">Лучшее совпадение</string>
     <string name="scan_result_alternatives">Возможные варианты</string>
     <string name="scan_result_already_tried">Вы уже пробовали это вино</string>
-    <string name="scan_result_new_photo">Новое фото</string>
     <string name="scan_result_your_photo">Ваше фото</string>
     <string name="scan_result_title_absent">Мы не нашли ваше вино</string>
     <string name="scan_result_title_choosing">Выберите своё вино</string>
@@ -69,7 +69,7 @@
     <string name="search_title">Поиск вин</string>
     <string name="search_hint">Искать вина</string>
     <string name="home_title">Найти вино</string>
-    <string name="home_subtitle">Сфотографируйте этикетку или загрузите фото</string>
+    <string name="home_subtitle">Сфотографируйте этикетку или загрузите фото</string>
     <string name="home_scan">Сканировать</string>
     <string name="home_gallery">Загрузить фото</string>
     <string name="home_popular">Популярные вина</string>
@@ -106,7 +106,7 @@
     <string name="sommelier_hint">Спросите о сочетаниях, регионах и т.д.</string>
     <string name="sommelier_empty">Задайте мне любой вопрос о вине!</string>
     <string name="sommelier_send">Отправить</string>
-    <string name="sommelier_greeting">Я — AI-сомелье. Могу помочь с рекомендациями вин, гастрономическими сочетаниями, информацией о регионах и многим другим. Что хотите узнать?</string>
+    <string name="sommelier_greeting">Я — ИИ-сомелье. Могу помочь с рекомендациями вин, гастрономическими сочетаниями, информацией о регионах и многим другим. Что хотите узнать?</string>
     <string name="sommelier_wine_context">Вы спрашиваете о вине:</string>
     <string name="sommelier_suggested_title">Возможные вопросы:</string>
     <string name="sommelier_q_pairing">С чем подавать это вино?</string>
@@ -155,6 +155,7 @@
     <string name="mywines_scans_sub">Ваши сканы вин</string>
     <string name="mywines_roulette">Винная рулетка</string>
     <string name="mywines_section_empty">Пока здесь пусто</string>
+    <string name="mywines_see_all">Смотреть все</string>
     <string name="mywines_scans_empty_hint">Отсканируйте этикетку — сканы появятся здесь</string>
     <string name="empty_action_find_wine">Найти вино</string>
     <string name="nav_search">Поиск</string>
@@ -196,6 +197,9 @@
     <string name="favorites_liked">Понравилось</string>
     <string name="detail_liked">Понравилось</string>
     <string name="detail_wish">Хочу попробовать</string>
+    <string name="detail_wish_short">Хочу</string>
+    <string name="detail_unwish_short">Не хочу</string>
+    <string name="detail_ai_sommelier">ИИ-сомелье</string>
 
     <string name="roulette_title">Винная рулетка</string>
     <string name="roulette_subtitle">Выберите из каких вин крутить рулетку</string>
@@ -218,7 +222,7 @@
     <string name="list_sort_default">По умолчанию</string>
     <string name="list_filters">Фильтры</string>
     <string name="list_filter_all_styles">Все категории</string>
-    <string name="cellar_stat_bottles">Бутылок в коллекции</string>
+    <string name="cellar_stat_bottles">Бутылок в коллекции</string>
     <string name="cellar_stat_rating">Средняя оценка</string>
     <string name="cellar_stat_category">Любимая категория</string>
     <string name="cellar_ask_sommelier">Спросите сомелье</string>
@@ -240,8 +244,8 @@
     <string name="cellar_roulette_your_pick">Ваш выбор</string>
     <string name="cellar_roulette_open">Открыть карточку</string>
     <string name="cellar_roulette_reroll">Крутить ещё</string>
-    <string name="detail_cellar">В коллекцию</string>
-    <string name="detail_cellar_added">В коллекции: %d</string>
+    <string name="detail_cellar">Добавить в коллекцию</string>
+    <string name="detail_cellar_added">В коллекции</string>
     <string name="detail_category">Категория</string>
     <string name="detail_color">Цвет</string>
     <string name="detail_serving_temp">Температура подачи</string>

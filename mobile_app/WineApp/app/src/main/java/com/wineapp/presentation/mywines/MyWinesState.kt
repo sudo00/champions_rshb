@@ -17,4 +17,5 @@ data class MyWinesState(
 sealed interface MyWinesIntent : BaseIntent {
     data object Load : MyWinesIntent
     data class ToggleFavorite(val wineId: String) : MyWinesIntent
+    data class DeleteScan(val scanId: String) : MyWinesIntent
 }

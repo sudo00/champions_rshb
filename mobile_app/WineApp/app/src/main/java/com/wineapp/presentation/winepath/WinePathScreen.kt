@@ -71,7 +71,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -784,8 +783,6 @@ private fun WinePathMap(
             // Обводка отдельным проходом обязательна: контуры соседей совпадают,
             // и если рисовать границу до заливки соседа, она съедает её половину —
             // на стыках регионов появляются дырки, а винные регионы теряют границу целиком.
-            val dash = PathEffect.dashPathEffect(floatArrayOf(8f, 6f), 0f)
-
             // Проход 1: заливки — по кольцам фона в их порядке (большие первыми), цвет по
             // территории кольца. Так анклавы (Адыгея внутри Кубани) остаются поверх
             // и не перекрашиваются заливкой объемлющего винного региона.
@@ -816,20 +813,8 @@ private fun WinePathMap(
                             color = MapSelectedBorder,
                             style = Stroke(width = MapStrokeSelected)
                         )
-                        // Locked: сплошная линия базового слоя лежит ровно под пунктиром,
-                        // поэтому сначала закрашиваем её цветом региона.
-                        territory.locked -> {
-                            drawPath(
-                                path = path,
-                                color = MapRegionFill,
-                                style = Stroke(width = MapStrokeLocked)
-                            )
-                            drawPath(
-                                path = path,
-                                color = MapRegionBorder,
-                                style = Stroke(width = MapStrokeLocked, pathEffect = dash)
-                            )
-                        }
+                        // Закрытые (Подмосковье, Башкирия) — без штриховки: обычная
+                        // граница базового слоя, как у невинных регионов (дизайн-ревью).
                         // Винный невыбранный: границы базового слоя недостаточно —
                         // заливка проходит по той же геометрии, поэтому рисуем свою.
                         isWine -> drawPath(
@@ -1088,7 +1073,6 @@ private val MapTopBarHeight = 76.dp
 // подчёркивают её поверх, поэтому базовая заметно тоньше выбранной.
 private const val MapStrokeBase = 1f
 private const val MapStrokeSelected = 2.5f
-private const val MapStrokeLocked = 1.5f
 
 /** Размер медали совпадает с intrinsic-размером импортированных векторов (50×50). */
 private val MedalIconSize = 50.dp

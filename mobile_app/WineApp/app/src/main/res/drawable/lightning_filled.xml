@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <!-- Залитая молния (вспышка включена) — контур как у lightning.xml. -->
+  <path
+      android:pathData="M6.588,14.823L12.811,2.379C12.858,2.284 13,2.318 13,2.423V9.261C13,9.615 13.357,9.857 13.686,9.726L16.779,8.488C17.206,8.317 17.618,8.765 17.412,9.176L11.189,21.621C11.142,21.715 11,21.682 11,21.576V14.738C11,14.385 10.643,14.143 10.314,14.274L7.221,15.511C6.794,15.682 6.383,15.235 6.588,14.823Z"
+      android:strokeWidth="2"
+      android:fillColor="#000000"
+      android:strokeColor="#000000"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round"/>
+</vector>

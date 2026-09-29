@@ -167,7 +167,6 @@ fun ScanResultContent(
                     item {
                         ScanMatchCard(
                             wine = state.mainWine,
-                            highlighted = true,
                             onClick = { onNavigateToDetail(state.mainWine.id) }
                         )
                     }

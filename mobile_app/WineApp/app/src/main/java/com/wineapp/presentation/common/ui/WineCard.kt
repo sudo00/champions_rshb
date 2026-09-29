@@ -84,7 +84,7 @@ fun WineCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        String.format("%.2f", wine.rating),
+                        com.wineapp.util.formatRating(wine.rating),
                         fontFamily = Inter,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 12.sp,

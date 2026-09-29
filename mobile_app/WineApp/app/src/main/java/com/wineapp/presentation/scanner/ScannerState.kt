@@ -6,7 +6,11 @@ import com.wineapp.presentation.common.BaseState
 import com.wineapp.presentation.common.BaseIntent
 
 sealed interface ScannerState : BaseState {
-    data class Ready(val flashMode: Int = 0) : ScannerState
+    /**
+     * Камера готова. Режим вспышки — не здесь, а в ScannerViewModel.flashMode: состояние
+     * пересоздаётся после каждого скана и сбрасывало режим (иконка расходилась с камерой).
+     */
+    data object Ready : ScannerState
     data class Capturing(val imagePath: String) : ScannerState
     data class Processing(
         val imagePath: String,

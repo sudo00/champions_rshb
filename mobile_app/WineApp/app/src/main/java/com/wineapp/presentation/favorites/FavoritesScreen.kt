@@ -57,7 +57,6 @@ import com.wineapp.presentation.common.ui.WineListHeadline
 import com.wineapp.presentation.common.ui.WineListIconButton
 import com.wineapp.presentation.common.ui.WineListMonthHeader
 import com.wineapp.presentation.common.ui.WineListNothingFound
-import com.wineapp.presentation.common.ui.WineListSearchField
 import com.wineapp.presentation.common.ui.WineListSort
 import com.wineapp.presentation.common.ui.WineListSortFilterRow
 import com.wineapp.presentation.common.ui.WineListTabs
@@ -139,15 +138,11 @@ fun FavoritesScreenContent(
                         onSearchClick = {
                             if (searchOpen) onQuery("")
                             searchOpen = !searchOpen
-                        }
+                        },
+                        query = success?.query.orEmpty(),
+                        searchHint = stringResource(R.string.list_search_hint),
+                        onQuery = onQuery
                     )
-                    if (searchOpen) {
-                        WineListSearchField(
-                            query = success?.query.orEmpty(),
-                            hint = stringResource(R.string.list_search_hint),
-                            onQuery = onQuery
-                        )
-                    }
                     if (success != null && !success.isFavoritesEmpty) {
                         WineListSortFilterRow(
                             sort = success.sort,

@@ -62,7 +62,7 @@ fun ScanSummaryScreen(
     alreadyTried: Boolean = false,
     onConfirm: (String) -> Unit,
     onOpenWine: (String, Boolean) -> Unit,
-    onNewPhoto: () -> Unit,
+    /** «Назад» — к камере сканера (новый снимок), а не выход из сканера. */
     onBack: () -> Unit
 ) {
     val result = state.result
@@ -96,11 +96,7 @@ fun ScanSummaryScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                ScanResultTopBar(
-                    onBack = onBack,
-                    onNewPhoto = onNewPhoto,
-                    newPhotoEnabled = !state.confirming
-                )
+                ScanResultTopBar(onBack = onBack)
             }
             item {
                 ScanResultIntro(
@@ -143,7 +139,6 @@ fun ScanSummaryScreen(
                     ScanMatchCard(
                         wine = confirmed.wine,
                         matchScore = confirmed.matchScore,
-                        highlighted = true,
                         onClick = { onOpenWine(confirmed.wine.id, true) }
                     )
                 }
@@ -271,7 +266,6 @@ private fun ScanSummaryScreenPreview() {
             alreadyTried = true,
             onConfirm = {},
             onOpenWine = { _, _ -> },
-            onNewPhoto = {},
             onBack = {}
         )
     }

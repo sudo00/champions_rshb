@@ -1,6 +1,5 @@
 package com.wineapp.presentation.search
 
-import com.wineapp.presentation.common.ui.AppIcons
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -14,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,8 +36,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -52,12 +50,12 @@ import com.wineapp.R
 import com.wineapp.data.mock.MockDataProvider
 import com.wineapp.domain.model.SearchResult
 import com.wineapp.domain.model.Wine
+import com.wineapp.presentation.common.ui.AppIcons
+import com.wineapp.presentation.common.ui.BottomBarSpacer
 import com.wineapp.presentation.common.ui.BrandButton
-import com.wineapp.presentation.common.ui.BrandSecondaryButton
 import com.wineapp.presentation.common.ui.SortFilterRow
-import com.wineapp.presentation.common.ui.WineListSort
 import com.wineapp.presentation.common.ui.TransparentSystemBars
-import com.wineapp.presentation.common.ui.WinePhotoViewer
+import com.wineapp.presentation.common.ui.WineListSort
 import com.wineapp.ui.theme.BrandBurgundy600
 import com.wineapp.ui.theme.BrandCream50
 import com.wineapp.ui.theme.BrandTextPrimary
@@ -322,7 +320,7 @@ fun SearchTabContent(
                     onAddWinery = { openWineryForm(context) }
                 )
                 // Место под висящий поверх нижний бар.
-                Spacer(modifier = Modifier.height(120.dp))
+                BottomBarSpacer()
             }
         }
     }

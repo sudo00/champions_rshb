@@ -3,6 +3,7 @@ package com.wineapp.presentation.mywines
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.wineapp.data.local.FavoriteKind
+import com.wineapp.domain.usecase.DeleteSavedScanUseCase
 import com.wineapp.domain.usecase.GetCellarUseCase
 import com.wineapp.domain.usecase.GetFavoritesUseCase
 import com.wineapp.domain.usecase.GetSavedScansUseCase
@@ -25,7 +26,8 @@ class MyWinesViewModel @Inject constructor(
     private val getCellarUseCase: GetCellarUseCase,
     private val getSavedScansUseCase: GetSavedScansUseCase,
     private val getWineDetailsUseCase: GetWineDetailsUseCase,
-    private val toggleFavoriteUseCase: ToggleFavoriteUseCase
+    private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
+    private val deleteSavedScanUseCase: DeleteSavedScanUseCase
 ) : BaseViewModel<MyWinesState, MyWinesIntent>() {
 
     override fun getInitialState(): MyWinesState = MyWinesState()
@@ -38,6 +40,15 @@ class MyWinesViewModel @Inject constructor(
         when (intent) {
             is MyWinesIntent.Load -> handleLoad()
             is MyWinesIntent.ToggleFavorite -> handleToggleFavorite(intent.wineId)
+            is MyWinesIntent.DeleteScan -> handleDeleteScan(intent.scanId)
+        }
+    }
+
+    /** Удаление скана; секция обновится сама — список сканов приходит потоком из БД. */
+    private fun handleDeleteScan(scanId: String) {
+        viewModelScope.launch {
+            deleteSavedScanUseCase(scanId)
+                .onFailure { error -> Log.e("MyWinesViewModel", "Delete scan failed", error) }
         }
     }
 

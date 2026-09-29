@@ -39,7 +39,15 @@ class ScannerViewModel @Inject constructor(
     val cameraHelper: CameraHelper
 ) : BaseViewModel<ScannerState, ScannerIntent>() {
 
-    override fun getInitialState(): ScannerState = ScannerState.Ready()
+    override fun getInitialState(): ScannerState = ScannerState.Ready
+
+    /**
+     * Режим вспышки (ImageCapture.FLASH_MODE_*): единственный источник правды для иконки.
+     * Стартует с режима камеры — раньше состояние по умолчанию давало 0 (= AUTO),
+     * хотя камера стартует с OFF, и иконка с первого кадра расходилась с камерой.
+     */
+    private val _flashMode = kotlinx.coroutines.flow.MutableStateFlow(cameraHelper.getFlashMode())
+    val flashMode: kotlinx.coroutines.flow.StateFlow<Int> = _flashMode
 
     /** Найденное вино уже пробовали: есть в погребе или в «Понравилось». Для баннера итога. */
     private val _alreadyTried = kotlinx.coroutines.flow.MutableStateFlow(false)
@@ -201,22 +209,18 @@ class ScannerViewModel @Inject constructor(
     }
 
     private fun handleToggleFlash() {
-        val newMode = cameraHelper.toggleFlash()
-        val currentState = _state.value
-        if (currentState is ScannerState.Ready) {
-            updateState(ScannerState.Ready(newMode))
-        }
+        _flashMode.value = cameraHelper.toggleFlash()
     }
 
     private fun handleRetry() {
         _alreadyTried.value = false
-        updateState(ScannerState.Ready())
+        updateState(ScannerState.Ready)
     }
 
     fun resetToReady() {
         _alreadyTried.value = false
         _autoOpenWine.value = null
-        updateState(ScannerState.Ready())
+        updateState(ScannerState.Ready)
     }
 
     /**

@@ -1,6 +1,5 @@
 package com.wineapp.presentation.detail
 
-import com.wineapp.presentation.common.ui.AppIcons
 import android.annotation.SuppressLint
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -9,6 +8,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,7 +23,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -69,6 +68,7 @@ import coil.request.ImageRequest
 import com.wineapp.R
 import com.wineapp.data.mock.MockDataProvider
 import com.wineapp.domain.model.Wine
+import com.wineapp.presentation.common.ui.AppIcons
 import com.wineapp.presentation.common.ui.BadgeType
 import com.wineapp.presentation.common.ui.ErrorMessage
 import com.wineapp.presentation.common.ui.LoadingOverlay
@@ -205,22 +205,24 @@ fun DetailContent(
 ) {
     val wine = state.wine
     val scaffoldState = rememberBottomSheetScaffoldState()
-    // Шит в покое встаёт ровно под hero (519dp): угловые кнопки всегда видны.
-    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val peekHeight = (screenHeight - 519.dp).coerceAtLeast(200.dp)
-    // Непрерывный коллапс из смещения шита: фото и кнопки гаснут по мере
-    // скролла, а не по порогу. offset: peek (покой) -> ~0 (раскрыт).
-    val density = androidx.compose.ui.platform.LocalDensity.current
-    val peekPx = with(density) { peekHeight.toPx() }
-    val sheetOffset = try {
-        scaffoldState.bottomSheetState.requireOffset()
-    } catch (e: Exception) {
-        peekPx
-    }
-    val collapse = (1f - sheetOffset / peekPx.coerceAtLeast(1f)).coerceIn(0f, 1f)
     var photoViewer by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        // Шит в покое встаёт ровно под hero (519dp): угловые кнопки всегда видны.
+        // Высоту берём из реального контейнера, а не из screenHeightDp: при edge-to-edge
+        // окно выше на статус-бар и навигацию, и шит проваливался ниже hero.
+        val peekHeight = (maxHeight - DetailHeroHeight).coerceAtLeast(200.dp)
+        // Непрерывный коллапс из смещения шита: фото и кнопки гаснут по мере
+        // скролла, а не по порогу. offset: peek (покой) -> ~0 (раскрыт).
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val peekPx = with(density) { peekHeight.toPx() }
+        val sheetOffset = try {
+            scaffoldState.bottomSheetState.requireOffset()
+        } catch (e: Exception) {
+            peekPx
+        }
+        val collapse = (1f - sheetOffset / peekPx.coerceAtLeast(1f)).coerceIn(0f, 1f)
+
         BottomSheetScaffold(
             scaffoldState = scaffoldState,
             sheetPeekHeight = peekHeight,
@@ -237,17 +239,26 @@ fun DetailContent(
             },
             containerColor = BrandCream300
         ) {
-            DetailHero(
-                wine = wine,
-                collapse = collapse,
-                isFavorite = state.isFavorite,
-                isWished = state.isWished,
-                onBackClick = onNavigateBack,
-                onFavoriteClick = onToggleFavorite,
-                onSommelierClick = { onNavigateToSommelier(wine) },
-                onWishClick = onToggleWish,
-                onPhotoClick = { photoViewer = true }
-            )
+            // Кремовая подложка на весь экран, а не только под hero фиксированной высоты:
+            // иначе под скруглёнными углами белого шита виден почти белый фон окна
+            // и закругление пропадает.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(BrandCream300)
+            ) {
+                DetailHero(
+                    wine = wine,
+                    collapse = collapse,
+                    isFavorite = state.isFavorite,
+                    isWished = state.isWished,
+                    onBackClick = onNavigateBack,
+                    onFavoriteClick = onToggleFavorite,
+                    onSommelierClick = { onNavigateToSommelier(wine) },
+                    onWishClick = onToggleWish,
+                    onPhotoClick = { photoViewer = true }
+                )
+            }
         }
         // Оверлей просмотра фото по тапу на фото в hero.
         if (photoViewer) {
@@ -293,6 +304,9 @@ private fun wineEllipseColor(wine: Wine): Color {
     }
 }
 
+/** Высота hero карточки вина; шит в покое встаёт ровно под него. */
+private val DetailHeroHeight = 519.dp
+
 @Composable
 private fun DetailHero(
     wine: Wine,
@@ -308,7 +322,7 @@ private fun DetailHero(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(519.dp)
+            .height(DetailHeroHeight)
             .clip(RoundedCornerShape(bottomEnd = 44.dp))
             .background(BrandCream300)
     ) {
@@ -330,21 +344,7 @@ private fun DetailHero(
                 .padding(horizontal = 16.dp)
                 .padding(top = 56.dp)
         ) {
-            Surface(
-                onClick = onBackClick,
-                shape = CircleShape,
-                color = Color.Black.copy(alpha = 0.3f),
-                modifier = Modifier.size(44.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        AppIcons.ChevronLeft,
-                        contentDescription = null,
-                        tint = BrandCream50,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
+            com.wineapp.presentation.common.ui.BackCircleButton(onClick = onBackClick)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = wine.winery.orEmpty(),
@@ -415,39 +415,66 @@ private fun DetailHero(
                 .alpha(1f - collapse)
                 .padding(horizontal = 16.dp, vertical = 16.dp)
         ) {
-            // Звезда — вход в сомелье.
-            Surface(
-                onClick = onSommelierClick,
-                shape = CircleShape,
-                color = BrandBurgundy600,
-                modifier = Modifier.size(44.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        AppIcons.AiStarFilled,
-                        contentDescription = stringResource(R.string.detail_ask_sommelier),
-                        tint = BrandCream50,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+            // Пилюли по нижним углам: иконка у края, подпись — к центру.
+            HeroPill(
+                text = stringResource(R.string.detail_ai_sommelier),
+                icon = AppIcons.AiStarFilled,
+                iconAtEnd = false,
+                onClick = onSommelierClick
+            )
+            // «Хочу попробовать»: пилюля не меняется — в списке заливается только
+            // закладка, а подпись становится «Не хочу» (повторный тап — убрать).
+            HeroPill(
+                text = stringResource(if (isWished) R.string.detail_unwish_short else R.string.detail_wish_short),
+                icon = if (isWished) AppIcons.BookmarkFilled else AppIcons.Bookmark,
+                iconAtEnd = true,
+                onClick = onWishClick
+            )
+        }
+    }
+}
+
+/**
+ * Пилюля 44dp в нижнем углу hero: бордовая, кремовые иконка и подпись. Состояние
+ * передаётся иконкой и текстом, а не цветом пилюли. [iconAtEnd] — иконка справа
+ * (правая пилюля), чтобы подписи обеих пилюль смотрели к центру.
+ */
+@Composable
+private fun HeroPill(
+    text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconAtEnd: Boolean,
+    onClick: () -> Unit
+) {
+    val content = BrandCream50
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(percent = 50),
+        color = BrandBurgundy600,
+        modifier = Modifier.height(44.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(
+                start = if (iconAtEnd) 16.dp else 12.dp,
+                end = if (iconAtEnd) 12.dp else 16.dp
+            )
+        ) {
+            val iconView: @Composable () -> Unit = {
+                Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(20.dp))
             }
-            // Галочка — «Хочу попробовать».
-            Surface(
-                onClick = onWishClick,
-                shape = CircleShape,
-                color = if (isWished) BrandCream50 else BrandBurgundy600,
-                border = if (isWished) BorderStroke(2.dp, BrandBurgundy600) else null,
-                modifier = Modifier.size(44.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        if (isWished) AppIcons.BookmarkFilled else AppIcons.Bookmark,
-                        contentDescription = stringResource(R.string.detail_wish),
-                        tint = if (isWished) BrandBurgundy600 else BrandCream50,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
+            if (!iconAtEnd) iconView()
+            Text(
+                text = text,
+                fontFamily = Inter,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp,
+                lineHeight = 18.sp,
+                color = content,
+                maxLines = 1
+            )
+            if (iconAtEnd) iconView()
         }
     }
 }
@@ -549,7 +576,9 @@ private fun DetailSheetContent(
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = DetailSpecRowPadding)
                 ) {
                     Text(
                         text = stringResource(R.string.detail_rating_title),
@@ -561,7 +590,7 @@ private fun DetailSheetContent(
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = String.format("%.2f", wine.rating),
+                            text = com.wineapp.util.formatRating(wine.rating),
                             fontFamily = Playfair,
                             fontWeight = FontWeight.Medium,
                             fontSize = 24.sp,
@@ -614,28 +643,35 @@ private fun DetailSheetContent(
             }
         }
         // Погреб: CTA-кнопка (места в hero не хватило — живёт в шите).
+        // Не в коллекции — залитая бордовая «+ В коллекцию» (призыв к действию);
+        // в коллекции — аутлайн «✓ В коллекции» (состояние, а не действие).
+        val inCellar = state.isInCellar
+        val cellarContent = if (inCellar) BrandBurgundy600 else BrandCream50
         Surface(
             onClick = onToggleCellar,
             shape = RoundedCornerShape(percent = 50),
-            color = if (state.isInCellar) BrandBurgundy600 else Color.Transparent,
-            border = if (state.isInCellar) null else BorderStroke(1.dp, BrandBurgundy600),
+            color = if (inCellar) Color.Transparent else BrandBurgundy600,
+            border = if (inCellar) BorderStroke(1.dp, BrandBurgundy600) else null,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Box(
-                contentAlignment = Alignment.Center,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                 modifier = Modifier.padding(vertical = 14.dp)
             ) {
+                Icon(
+                    if (inCellar) AppIcons.Check else AppIcons.Plus,
+                    contentDescription = null,
+                    tint = cellarContent,
+                    modifier = Modifier.size(20.dp)
+                )
                 Text(
-                    text = if (state.isInCellar) {
-                        stringResource(R.string.detail_cellar_added, state.cellarQuantity)
-                    } else {
-                        stringResource(R.string.detail_cellar)
-                    },
+                    text = stringResource(if (inCellar) R.string.detail_cellar_added else R.string.detail_cellar),
                     fontFamily = Inter,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp,
                     lineHeight = 20.sp,
-                    color = if (state.isInCellar) BrandCream50 else BrandBurgundy600
+                    color = cellarContent
                 )
             }
         }
@@ -697,13 +733,19 @@ private fun DetailSheetContent(
     }
 }
 
+/** Вертикальный отступ строки таблицы характеристик (сверху и снизу). */
+private val DetailSpecRowPadding = 12.dp
+
 @Composable
 private fun DetailSpecRow(label: String, value: String) {
     Column {
         Row(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                // Воздух между строкой и разделителями — иначе таблица выглядит сплющенной.
+                .padding(vertical = DetailSpecRowPadding)
         ) {
             Text(
                 text = label,
@@ -835,7 +877,7 @@ private fun DetailSimilarCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = String.format("%.2f", wine.rating),
+                            text = com.wineapp.util.formatRating(wine.rating),
                             fontFamily = Inter,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 12.sp,

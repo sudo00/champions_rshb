@@ -1,27 +1,24 @@
 package com.wineapp.presentation.roulette
 
-import com.wineapp.presentation.common.ui.BrandLoader
-import com.wineapp.presentation.common.ui.AppIcons
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -48,6 +45,8 @@ import com.wineapp.R
 import com.wineapp.data.mock.MockDataProvider
 import com.wineapp.domain.model.RouletteSource
 import com.wineapp.domain.model.Wine
+import com.wineapp.presentation.common.ui.AppIcons
+import com.wineapp.presentation.common.ui.BrandLoader
 import com.wineapp.presentation.common.ui.CountryFlag
 import com.wineapp.presentation.common.ui.ErrorMessage
 import com.wineapp.presentation.common.ui.TransparentSystemBars
@@ -55,8 +54,8 @@ import com.wineapp.ui.theme.BrandBorderDefault
 import com.wineapp.ui.theme.BrandBorderLight
 import com.wineapp.ui.theme.BrandBurgundy600
 import com.wineapp.ui.theme.BrandBurgundy700
-import com.wineapp.ui.theme.BrandCream50
 import com.wineapp.ui.theme.BrandCream100
+import com.wineapp.ui.theme.BrandCream50
 import com.wineapp.ui.theme.BrandCream500
 import com.wineapp.ui.theme.BrandOutline
 import com.wineapp.ui.theme.BrandTextPrimary
@@ -303,21 +302,12 @@ private fun RouletteCloseButton(
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
+    com.wineapp.presentation.common.ui.CircleIconButton(
+        icon = AppIcons.Close,
         onClick = onClose,
-        shape = CircleShape,
-        color = Color(0x4D000000),
-        modifier = modifier.size(44.dp)
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = AppIcons.Close,
-                contentDescription = stringResource(R.string.roulette_close),
-                tint = BrandCream50,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-    }
+        modifier = modifier,
+        contentDescription = stringResource(R.string.roulette_close)
+    )
 }
 
 @Composable
@@ -504,7 +494,7 @@ private fun RouletteResultCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = current.rating?.let { "%.2f".format(it) } ?: "—",
+                            text = current.rating?.let { com.wineapp.util.formatRating(it) } ?: "—",
                             fontFamily = Inter,
                             fontWeight = FontWeight.Medium,
                             fontSize = 14.sp,

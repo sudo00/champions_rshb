@@ -106,6 +106,7 @@ fun ScannerScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val state by viewModel.state.collectAsState()
     val autoCaptureVm by viewModel.autoCapture.collectAsState()
+    val flashMode by viewModel.flashMode.collectAsState()
 
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -129,7 +130,10 @@ fun ScannerScreen(
         }
     }
 
-    BackHandler { onNavigateBack() }
+    // Системное «назад» как кнопка в шапке: с итога скана — к камере, с камеры — выход.
+    BackHandler {
+        if (state is ScannerState.Success) viewModel.resetToReady() else onNavigateBack()
+    }
 
     val openGallery = {
         val storagePermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -200,8 +204,8 @@ fun ScannerScreen(
                 onNavigateToDetail(id, if (isRecognition) success.imagePath else null,
                     if (isRecognition) success.result.detailRecognitionStatus(id) else null)
             },
-            onNewPhoto = viewModel::resetToReady,
-            onBack = onNavigateBack
+            // «Назад» с итога — к камере за новым снимком (кнопки «Новое фото» больше нет).
+            onBack = viewModel::resetToReady
         )
         return
     }
@@ -210,6 +214,7 @@ fun ScannerScreen(
         state = state,
         cameraHelper = viewModel.cameraHelper,
         lifecycleOwner = lifecycleOwner,
+        flashMode = flashMode,
         onToggleFlash = { viewModel.sendIntent(ScannerIntent.ToggleFlash) },
         onTakePicture = { path -> viewModel.sendIntent(ScannerIntent.CapturePhoto(path))},
         onRetry = { viewModel.sendIntent(ScannerIntent.RetryScan) },
@@ -232,13 +237,11 @@ fun ScannerScreenContent(
     onCloseClick: () -> Unit = {},
     autoCapture: Boolean = true,
     onAutoClick: () -> Unit = {},
+    /** ImageCapture.FLASH_MODE_* — из ViewModel, а не из состояния экрана. */
+    flashMode: Int = androidx.camera.core.ImageCapture.FLASH_MODE_OFF,
 ) {
     val detector by cameraHelper.detectorPreview.collectAsState()
     val context = LocalContext.current
-    val flashMode = when (val s = state) {
-        is ScannerState.Ready -> s.flashMode
-        else -> androidx.camera.core.ImageCapture.FLASH_MODE_OFF
-    }
     val snackbarHostState = remember { SnackbarHostState() }
     val noTargetStr = stringResource(com.wineapp.R.string.scan_status_no_target)
     val candidatesUnverifiedStr = stringResource(com.wineapp.R.string.scan_status_candidates_unverified)
@@ -389,9 +392,9 @@ fun ScanWindowOverlay(modifier: Modifier = Modifier, highlighted: Boolean = fals
         label = "scanLine"
     )
     // Подсветка уголков (этикетка в кадре / фото уходит на бэк) — плавный
-    // переход белый -> золотой. Вызов здесь: внутри Canvas @Composable запрещены.
+    // переход белый -> кремовый (Brand/Cream 300). Вызов здесь: внутри Canvas @Composable запрещены.
     val arcColor by animateColorAsState(
-        targetValue = if (highlighted) Color(0xFFFFD700) else Color.White,
+        targetValue = if (highlighted) com.wineapp.ui.theme.BrandCream300 else Color.White,
         animationSpec = tween(durationMillis = 350),
         label = "scanCornerHighlight"
     )
@@ -485,21 +488,11 @@ fun ScannerTopBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Surface(
-            onClick = onCloseClick,
-            shape = CircleShape,
-            color = Color.Black.copy(alpha = 0.3f),
-            modifier = Modifier.size(40.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    AppIcons.Close,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
+        // Общая круглая кнопка шапки (44dp, Overlay 30, кремовая иконка) — как везде.
+        com.wineapp.presentation.common.ui.CircleIconButton(
+            icon = AppIcons.Close,
+            onClick = onCloseClick
+        )
         // Середина: переключатель автораспознавания. Вкл — фото улетает на бэк
         // само при стабильной этикетке, выкл — только по кнопке затвора.
         // Подсветка рамки и вибро от режима не зависят.
@@ -528,20 +521,35 @@ fun ScannerTopBar(
             color = Color.Black.copy(alpha = 0.3f),
             modifier = Modifier.size(40.dp)
         ) {
+            // Три режима — три разных значка (раньше «вкл» и «авто» выглядели одинаково):
+            // выкл — перечёркнутая молния, вкл — залитая, авто — контурная с буквой «A».
             Box(contentAlignment = Alignment.Center) {
-                // В ресурсах одна молния: выключенная вспышка — приглушённая.
-                val flashOff = flashMode == androidx.camera.core.ImageCapture.FLASH_MODE_OFF
+                val (flashIcon, flashLabel) = when (flashMode) {
+                    androidx.camera.core.ImageCapture.FLASH_MODE_ON ->
+                        AppIcons.LightningFilled to com.wineapp.R.string.scanner_flash_on
+                    androidx.camera.core.ImageCapture.FLASH_MODE_AUTO ->
+                        AppIcons.Lightning to com.wineapp.R.string.scanner_flash_auto
+                    else ->
+                        AppIcons.LightningOff to com.wineapp.R.string.scanner_flash_off
+                }
                 Icon(
-                    AppIcons.Lightning,
-                    contentDescription = stringResource(
-                        if (flashOff)
-                            com.wineapp.R.string.scanner_flash_off
-                        else
-                            com.wineapp.R.string.scanner_flash_on
-                    ),
-                    tint = if (flashOff) Color.White.copy(alpha = 0.4f) else Color.White,
+                    flashIcon,
+                    contentDescription = stringResource(flashLabel),
+                    tint = Color.White,
                     modifier = Modifier.size(24.dp)
                 )
+                if (flashMode == androidx.camera.core.ImageCapture.FLASH_MODE_AUTO) {
+                    Text(
+                        text = "A",
+                        color = Color.White,
+                        fontSize = 9.sp,
+                        lineHeight = 9.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 7.dp, bottom = 6.dp)
+                    )
+                }
             }
         }
     }
@@ -549,10 +557,10 @@ fun ScannerTopBar(
 
 @Composable
 fun ScanHintPill(modifier: Modifier = Modifier, highlighted: Boolean = false) {
-    // Синхронно с уголками рамки и затвором: этикетка в кадре — фон желтеет
-    // (тот же тон, что у подсветки, но светлее, чтобы текст читался).
+    // Синхронно с уголками рамки и затвором: этикетка в кадре — фон становится
+    // кремовым (Brand/Cream 300, тот же тон, что у подсветки).
     val background by animateColorAsState(
-        targetValue = if (highlighted) Color(0xFFFFF2A8).copy(alpha = 0.9f) else Color.White.copy(alpha = 0.8f),
+        targetValue = if (highlighted) com.wineapp.ui.theme.BrandCream300.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.8f),
         animationSpec = tween(durationMillis = 350),
         label = "hintPillHighlight"
     )
@@ -606,9 +614,9 @@ fun ScannerShutterControls(
                 )
             }
         }
-        // Затвор: кольцо 80dp + середина 66dp (белая, при готовности — золотая).
+        // Затвор: кольцо 80dp + середина 66dp (белая, при готовности — кремовая, как рамка).
         val shutterCenter by animateColorAsState(
-            targetValue = if (captureReady) Color(0xFFFFD700) else Color.White,
+            targetValue = if (captureReady) com.wineapp.ui.theme.BrandCream300 else Color.White,
             animationSpec = tween(durationMillis = 350),
             label = "shutterReady"
         )
@@ -799,7 +807,7 @@ private fun ScannerShutterPreview() {
 private fun ScannerScreenPreview() {
     WineAppTheme {
         ScannerScreenContent(
-            state = ScannerState.Ready(),
+            state = ScannerState.Ready,
             cameraHelper = CameraHelper(LocalContext.current,
                 com.wineapp.data.detector.LabelDetectorRuntime(LocalContext.current)),
             lifecycleOwner = LocalLifecycleOwner.current,

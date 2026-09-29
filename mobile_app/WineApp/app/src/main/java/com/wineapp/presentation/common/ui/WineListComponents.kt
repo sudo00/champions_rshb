@@ -28,7 +28,13 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +42,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -68,6 +76,7 @@ import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.delay
 
 /*
  * Общие блоки экранов-списков вин из макетов «Коллекция» и «Сканы»:
@@ -100,42 +109,87 @@ private val MonthFormatter = DateTimeFormatter.ofPattern("LLLL yyyy", Locale("ru
 fun monthLabel(month: YearMonth): String =
     month.format(MonthFormatter).replaceFirstChar { it.titlecase(Locale("ru")) }
 
-/** Шапка: «назад» (Overlay 30), заголовок H3 по центру, бордовая кнопка поиска. */
+/**
+ * Шапка: «назад» (Overlay 30), заголовок H3 по центру, бордовая кнопка поиска.
+ * Поиск встроен в шапку: по кнопке поле выезжает влево из-под неё и занимает
+ * всю шапку (заголовок растворяется, «назад» уезжает влево), кнопка становится
+ * крестиком — по нему поле въезжает обратно, заголовок и «назад» возвращаются.
+ */
 @Composable
 fun WineListHeader(
     title: String,
     searchOpen: Boolean,
     onBack: () -> Unit,
-    onSearchClick: () -> Unit
+    onSearchClick: () -> Unit,
+    query: String = "",
+    searchHint: String = "",
+    onQuery: (String) -> Unit = {}
 ) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(searchOpen) {
+        // Сразу фокус и клавиатура — ради этого поле и открывали.
+        if (searchOpen) {
+            delay(SEARCH_ANIM_MS.toLong())
+            runCatching { focusRequester.requestFocus() }
+        }
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Surface(
-            onClick = onBack,
-            shape = CircleShape,
-            color = Color.Black.copy(alpha = 0.3f),
-            modifier = Modifier.size(44.dp)
+        // «Назад» уезжает влево на время поиска — поле получает всю ширину шапки.
+        androidx.compose.animation.AnimatedVisibility(
+            visible = !searchOpen,
+            enter = expandHorizontally(tween(SEARCH_ANIM_MS), expandFrom = Alignment.Start) +
+                fadeIn(tween(SEARCH_ANIM_MS)),
+            exit = shrinkHorizontally(tween(SEARCH_ANIM_MS), shrinkTowards = Alignment.Start) +
+                fadeOut(tween(SEARCH_ANIM_MS / 2))
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    AppIcons.ChevronLeft,
-                    contentDescription = null,
-                    tint = BrandCream50,
-                    modifier = Modifier.size(24.dp)
+            BackCircleButton(onClick = onBack)
+        }
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .weight(1f)
+                .height(44.dp)
+        ) {
+            // Полное имя: внутри Row неявный RowScope подсовывает перегрузку
+            // RowScope.AnimatedVisibility, которую из Box вызвать нельзя.
+            androidx.compose.animation.AnimatedVisibility(
+                visible = !searchOpen,
+                enter = fadeIn(tween(SEARCH_ANIM_MS)),
+                exit = fadeOut(tween(SEARCH_ANIM_MS / 2))
+            ) {
+                Text(
+                    text = title,
+                    fontFamily = Playfair,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 24.sp,
+                    lineHeight = 30.sp,
+                    color = BrandTextPrimary,
+                    maxLines = 1
+                )
+            }
+            // Поле растёт от правого края (от кнопки поиска) влево и так же схлопывается.
+            androidx.compose.animation.AnimatedVisibility(
+                visible = searchOpen,
+                enter = expandHorizontally(tween(SEARCH_ANIM_MS), expandFrom = Alignment.End) +
+                    fadeIn(tween(SEARCH_ANIM_MS)),
+                exit = shrinkHorizontally(tween(SEARCH_ANIM_MS), shrinkTowards = Alignment.End) +
+                    fadeOut(tween(SEARCH_ANIM_MS)),
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    // Слева — край шапки («назад» спрятан), справа — зазор до крестика.
+                    .padding(end = 8.dp)
+            ) {
+                WineListSearchField(
+                    query = query,
+                    hint = searchHint,
+                    onQuery = onQuery,
+                    modifier = Modifier.focusRequester(focusRequester)
                 )
             }
         }
-        Text(
-            text = title,
-            fontFamily = Playfair,
-            fontWeight = FontWeight.Medium,
-            fontSize = 24.sp,
-            lineHeight = 30.sp,
-            color = BrandTextPrimary
-        )
         Surface(
             onClick = onSearchClick,
             shape = CircleShape,
@@ -154,11 +208,16 @@ fun WineListHeader(
     }
 }
 
+/** Длительность выезда/въезда поля поиска в шапке, мс. */
+private const val SEARCH_ANIM_MS = 280
+
+/** Поле поиска в шапке — пилюля высотой с кнопки шапки (44dp). */
 @Composable
 fun WineListSearchField(
     query: String,
     hint: String,
-    onQuery: (String) -> Unit
+    onQuery: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Surface(
         shape = RoundedCornerShape(percent = 50),
@@ -166,7 +225,7 @@ fun WineListSearchField(
         border = BorderStroke(1.dp, BrandBorderDefault),
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp)
+            .height(44.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -181,7 +240,12 @@ fun WineListSearchField(
             Spacer(Modifier.width(12.dp))
             Box(modifier = Modifier.weight(1f)) {
                 if (query.isEmpty()) {
-                    Text(hint, style = WineListBodyM.copy(color = BrandTextSecondary))
+                    Text(
+                        hint,
+                        style = WineListBodyM.copy(color = BrandTextSecondary),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
                 BasicTextField(
                     value = query,
@@ -189,7 +253,8 @@ fun WineListSearchField(
                     singleLine = true,
                     textStyle = WineListBodyM,
                     cursorBrush = SolidColor(BrandBurgundy600),
-                    modifier = Modifier.fillMaxWidth()
+                    // Внешний modifier — на само поле: на нём висит FocusRequester из шапки.
+                    modifier = modifier.fillMaxWidth()
                 )
             }
         }
@@ -576,7 +641,7 @@ fun WineListHeadline(wine: Wine) {
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        String.format(Locale.US, "%.2f", rating),
+                        com.wineapp.util.formatRating(rating),
                         fontFamily = Inter,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 12.sp,

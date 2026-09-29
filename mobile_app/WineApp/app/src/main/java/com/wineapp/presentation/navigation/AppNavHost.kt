@@ -110,7 +110,8 @@ fun AppNavHost(
                 onNavigateToFavorites = { navController.navigate("favorites") },
                 onNavigateToSavedScans = { navController.navigate("saved_scans") },
                 onNavigateToRoulette = { navController.navigate("roulette") },
-                onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") }
+                onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") },
+                onNavigateToScan = { scanId -> navController.navigate("saved_scan_detail/$scanId") }
             )
         }
         composable(

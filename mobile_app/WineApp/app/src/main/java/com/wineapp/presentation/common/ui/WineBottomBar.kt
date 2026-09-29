@@ -1,9 +1,10 @@
 package com.wineapp.presentation.common.ui
 
-import androidx.compose.foundation.background
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -15,12 +16,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.vectorResource
-import androidx.annotation.DrawableRes
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.wineapp.R
@@ -43,8 +46,28 @@ enum class BottomTab(
     HOME("search", R.string.nav_home, R.drawable.home, R.drawable.home_filled),
     SEARCH("search_tab", R.string.nav_search, R.drawable.search, R.drawable.search_filled),
     SCANNER("scanner", R.string.nav_scanner, R.drawable.camera_filled),
-    MY_WINES("my_wines", R.string.nav_mywines, R.drawable.grape),
+    MY_WINES("my_wines", R.string.nav_mywines, R.drawable.wine_bottle_and_glass, R.drawable.wine_bottle_and_glass_filled),
     MAP("wine_path", R.string.nav_map, R.drawable.map_marker, R.drawable.map_marker_filled)
+}
+
+/** Высота нижнего бара без системной навигации: отступы 12 + кнопка 68 + 12. */
+private val BottomBarHeight = 92.dp
+
+/** На сколько выше бара начинается растворение контента в фоне. */
+private val BottomBarFadeAbove = 24.dp
+
+/**
+ * Место под висящий поверх контента нижний бар — в конец прокручиваемого экрана-таба.
+ * Учитывает системную навигацию (жесты/кнопки), под которой бар стоит, плюс
+ * небольшой зазор, чтобы последняя кнопка не прилипала к бару.
+ */
+@Composable
+fun BottomBarSpacer(modifier: Modifier = Modifier) {
+    Spacer(
+        modifier = modifier
+            .navigationBarsPadding()
+            .height(BottomBarHeight + 16.dp)
+    )
 }
 
 @Composable
@@ -56,12 +79,24 @@ fun WineBottomBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    0f to Color.Transparent,
-                    1f to Color.White.copy(alpha = 0.2f)
+            // Имитация градиентного размытия: контент под баром плавно «растворяется»
+            // в кремовом фоне экранов-табов. Настоящий backdrop blur требует Compose 1.7 + Haze.
+            // Градиент начинается выше бара (рисуем за его границей — клипа нет),
+            // к уровню кнопок почти непрозрачен, внизу (под системной навигацией) — сплошной.
+            .drawBehind {
+                val fadeAbove = BottomBarFadeAbove.toPx()
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        0f to BrandCream50.copy(alpha = 0f),
+                        0.45f to BrandCream50.copy(alpha = 0.85f),
+                        1f to BrandCream50,
+                        startY = -fadeAbove,
+                        endY = size.height
+                    ),
+                    topLeft = Offset(0f, -fadeAbove),
+                    size = Size(size.width, size.height + fadeAbove)
                 )
-            )
+            }
             .navigationBarsPadding()
             .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp)
     ) {

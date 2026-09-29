@@ -10,10 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -26,7 +23,10 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -41,6 +41,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.wineapp.R
 import com.wineapp.data.mock.MockDataProvider
 import com.wineapp.domain.model.SearchResult
+import com.wineapp.presentation.common.ui.BottomBarSpacer
 import com.wineapp.presentation.common.ui.BrandButton
 import com.wineapp.presentation.common.ui.BrandSecondaryButton
 import com.wineapp.presentation.common.ui.TransparentSystemBars
@@ -125,7 +126,7 @@ fun SearchScreenContent(
                 onNavigateToDetail = onNavigateToDetail
             )
             // Место под висящий поверх нижний бар.
-            Spacer(modifier = Modifier.height(120.dp))
+            BottomBarSpacer()
         }
     }
 }
@@ -135,25 +136,31 @@ private fun HeroBlock(
     onNavigateToScanner: () -> Unit,
     onNavigateToGallery: () -> Unit
 ) {
+    // Высота секции — по содержимому: кнопки идут сразу под фото, а не прижаты
+    // к низу фиксированных 770dp (на обычных экранах под фото оставалось 70–120dp пустоты).
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(770.dp)
             .clip(RoundedCornerShape(bottomStart = 44.dp, bottomEnd = 44.dp))
             .background(BrandCream300)
-            .clipToBounds()
+            // Декоративный эллипс Cream 100 (741dp в высоту, сдвинут вверх на 162dp,
+            // по ширине — во весь экран). Рисуем фоном, а не отдельным блоком:
+            // блок фиксированной высоты растягивал бы секцию.
+            .drawBehind {
+                // Капсула (скругление 50% по меньшей стороне), как было у блока с
+                // RoundedCornerShape(percent = 50) во всю ширину.
+                val height = 741.dp.toPx()
+                drawRoundRect(
+                    color = BrandCream100,
+                    topLeft = Offset(0f, (-162).dp.toPx()),
+                    size = Size(size.width, height),
+                    cornerRadius = CornerRadius(minOf(size.width, height) / 2f)
+                )
+            }
     ) {
-        // Декоративный эллипс Cream 100 (686x741, обрезан краями).
-        Box(
-            modifier = Modifier
-                .size(width = 686.dp, height = 741.dp)
-                .offset(y = (-162).dp)
-                .clip(RoundedCornerShape(percent = 50))
-                .background(BrandCream100)
-        )
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .padding(top = 56.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -187,11 +194,9 @@ private fun HeroBlock(
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .width(200.dp)
-                    .height(350.dp)
-                    .clip(RoundedCornerShape(24.dp))
+                    .fillMaxWidth()
             )
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(24.dp))
             // Кнопки.
             BrandButton(
                 text = stringResource(R.string.home_scan),
@@ -261,7 +266,9 @@ private fun PopularBlock(
         onSearch = onSearch,
         onNavigateToDetail = onNavigateToDetail,
         likedIds = likedIds,
-        onToggleFavorite = onToggleFavorite
+        onToggleFavorite = onToggleFavorite,
+        // Лента — с теми же 16dp по краям, что заголовок «Популярные вина».
+        modifier = Modifier.padding(horizontal = 16.dp)
     )
 }
 

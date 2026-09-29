@@ -1,6 +1,5 @@
 package com.wineapp.presentation.cellar
 
-import com.wineapp.presentation.common.ui.BrandLoader
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -30,11 +29,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -47,7 +43,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
@@ -66,27 +61,23 @@ import com.wineapp.data.local.CellarStatus
 import com.wineapp.data.mock.MockDataProvider
 import com.wineapp.domain.model.CellarItem
 import com.wineapp.presentation.common.ui.AppIcons
-import com.wineapp.presentation.common.ui.WineListTabs
-import com.wineapp.presentation.common.ui.yearMonthOf
-import com.wineapp.presentation.common.ui.WineListBodyM
-import com.wineapp.presentation.common.ui.WineListNothingFound
-import com.wineapp.presentation.common.ui.WineListMonthHeader
-import com.wineapp.presentation.common.ui.WineListSort
-import com.wineapp.presentation.common.ui.WineListSortFilterRow
-import com.wineapp.presentation.common.ui.WineListSearchField
-import com.wineapp.presentation.common.ui.WineListHeader
-import com.wineapp.presentation.common.ui.WineListHeadline
-import com.wineapp.presentation.common.ui.WineListCard
+import com.wineapp.presentation.common.ui.BrandLoader
 import com.wineapp.presentation.common.ui.EmptyState
 import com.wineapp.presentation.common.ui.ErrorMessage
 import com.wineapp.presentation.common.ui.TransparentSystemBars
+import com.wineapp.presentation.common.ui.WineListBodyM
+import com.wineapp.presentation.common.ui.WineListCard
+import com.wineapp.presentation.common.ui.WineListHeader
+import com.wineapp.presentation.common.ui.WineListHeadline
+import com.wineapp.presentation.common.ui.WineListMonthHeader
+import com.wineapp.presentation.common.ui.WineListNothingFound
+import com.wineapp.presentation.common.ui.WineListSort
+import com.wineapp.presentation.common.ui.WineListSortFilterRow
+import com.wineapp.presentation.common.ui.WineListTabs
+import com.wineapp.presentation.common.ui.yearMonthOf
 import com.wineapp.ui.theme.BrandBorderDefault
-import com.wineapp.ui.theme.BrandBorderLight
 import com.wineapp.ui.theme.BrandBurgundy600
-import com.wineapp.ui.theme.BrandCream100
-import com.wineapp.ui.theme.BrandCream200
 import com.wineapp.ui.theme.BrandCream50
-import com.wineapp.ui.theme.BrandCream500
 import com.wineapp.ui.theme.BrandDivider
 import com.wineapp.ui.theme.BrandTextPrimary
 import com.wineapp.ui.theme.BrandTextSecondary
@@ -173,15 +164,11 @@ fun CellarScreenContent(
                         onSearchClick = {
                             if (searchOpen) onQuery("")
                             searchOpen = !searchOpen
-                        }
+                        },
+                        query = success?.query.orEmpty(),
+                        searchHint = stringResource(R.string.list_search_hint),
+                        onQuery = onQuery
                     )
-                    if (searchOpen) {
-                        WineListSearchField(
-                            query = success?.query.orEmpty(),
-                            hint = stringResource(R.string.list_search_hint),
-                            onQuery = onQuery
-                        )
-                    }
                     if (success != null && !success.isCollectionEmpty) {
                         WineListSortFilterRow(
                             sort = success.sort,
@@ -458,7 +445,8 @@ private fun CellarSommelierBlock(
                     if (question.isEmpty()) {
                         Text(
                             stringResource(R.string.sommelier_input_hint),
-                            style = WineListBodyM,
+                            // Подсказка — серая, как во всех полях ввода (поиск, чат сомелье).
+                            style = WineListBodyM.copy(color = BrandTextSecondary),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -482,7 +470,7 @@ private fun CellarSommelierBlock(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            AppIcons.ChevronUp,
+                            AppIcons.ArrowUp,
                             contentDescription = stringResource(R.string.sommelier_send),
                             tint = BrandCream50,
                             modifier = Modifier.size(24.dp)

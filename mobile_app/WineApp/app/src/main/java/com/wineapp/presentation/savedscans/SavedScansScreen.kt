@@ -1,6 +1,5 @@
 package com.wineapp.presentation.savedscans
 
-import com.wineapp.presentation.common.ui.BrandLoader
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -21,8 +20,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Scanner
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +49,7 @@ import com.wineapp.R
 import com.wineapp.data.mock.MockDataProvider
 import com.wineapp.domain.model.SavedScan
 import com.wineapp.presentation.common.ui.AppIcons
+import com.wineapp.presentation.common.ui.BrandLoader
 import com.wineapp.presentation.common.ui.EmptyState
 import com.wineapp.presentation.common.ui.TransparentSystemBars
 import com.wineapp.presentation.common.ui.WineListCaption
@@ -61,7 +59,6 @@ import com.wineapp.presentation.common.ui.WineListHeadline
 import com.wineapp.presentation.common.ui.WineListIconButton
 import com.wineapp.presentation.common.ui.WineListMonthHeader
 import com.wineapp.presentation.common.ui.WineListNothingFound
-import com.wineapp.presentation.common.ui.WineListSearchField
 import com.wineapp.presentation.common.ui.WineListSort
 import com.wineapp.presentation.common.ui.WineListSortFilterRow
 import com.wineapp.presentation.common.ui.yearMonthOf
@@ -153,15 +150,11 @@ fun SavedScansScreenContent(
                         onSearchClick = {
                             if (searchOpen) onQuery("")
                             searchOpen = !searchOpen
-                        }
+                        },
+                        query = success?.query.orEmpty(),
+                        searchHint = stringResource(R.string.list_search_hint),
+                        onQuery = onQuery
                     )
-                    if (searchOpen) {
-                        WineListSearchField(
-                            query = success?.query.orEmpty(),
-                            hint = stringResource(R.string.list_search_hint),
-                            onQuery = onQuery
-                        )
-                    }
                     if (success != null && !success.isHistoryEmpty) {
                         WineListSortFilterRow(
                             sort = success.sort,
@@ -241,34 +234,45 @@ fun SavedScansScreenContent(
     }
 
     scanToDelete?.let { scan ->
-        AlertDialog(
-            onDismissRequest = { scanToDelete = null },
-            title = { Text(stringResource(R.string.saved_scans_delete_title)) },
-            text = { Text(stringResource(R.string.saved_scans_delete_confirm, scan.wine.name)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    onDeleteScan(scan.id)
-                    scanToDelete = null
-                }) {
-                    Text(stringResource(R.string.saved_scans_delete), color = BrandBurgundy600)
-                }
+        DeleteScanDialog(
+            scan = scan,
+            onConfirm = {
+                onDeleteScan(scan.id)
+                scanToDelete = null
             },
-            dismissButton = {
-                TextButton(onClick = { scanToDelete = null }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
+            onDismiss = { scanToDelete = null }
         )
     }
+}
+
+/** Подтверждение удаления скана — общее для списка сканов и секции на «Моих винах». */
+@Composable
+internal fun DeleteScanDialog(scan: SavedScan, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.saved_scans_delete_title)) },
+        text = { Text(stringResource(R.string.saved_scans_delete_confirm, scan.wine.name)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.saved_scans_delete), color = BrandBurgundy600)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
 }
 
 /**
  * Карточка скана (Scan card из макета). Фото — снимок пользователя. Распознанное вино —
  * сердечко «в избранное» сверху и корзина снизу. Нераспознанный скан — красная
  * карточка с фото этикетки, значком ошибки и подсказкой, только корзина.
+ * Общая с секцией «Сканы» на экране «Мои вина» — там карточки те же, что в полном списке.
  */
 @Composable
-private fun SavedScanCard(
+internal fun SavedScanCard(
     scan: SavedScan,
     isFavorite: Boolean,
     onClick: () -> Unit,

@@ -64,7 +64,9 @@ enum class BadgeType(
 fun WineBadge(
     type: BadgeType,
     text: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Иконка вместо иконки типа — цвет по-прежнему из [type]. */
+    icon: ImageVector? = null
 ) {
     Surface(
         shape = CircleShape,
@@ -75,10 +77,10 @@ fun WineBadge(
             modifier = Modifier.padding(start = 4.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val badgeIcon = type.iconRes?.let { ImageVector.vectorResource(it) } ?: type.icon
-            badgeIcon?.let { icon ->
+            val badgeIcon = icon ?: type.iconRes?.let { ImageVector.vectorResource(it) } ?: type.icon
+            badgeIcon?.let { vector ->
                 Icon(
-                    icon,
+                    vector,
                     contentDescription = null,
                     tint = type.main,
                     modifier = Modifier.size(20.dp)

@@ -1,25 +1,18 @@
 package com.wineapp.presentation.scanresult
 
-import com.wineapp.presentation.common.ui.AppIcons
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,12 +24,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.wineapp.R
 import com.wineapp.data.mock.MockDataProvider
@@ -46,12 +37,8 @@ import com.wineapp.presentation.common.ui.BrandButton
 import com.wineapp.presentation.common.ui.WineBadge
 import com.wineapp.presentation.common.ui.WineCard
 import com.wineapp.ui.theme.BrandBorderLight
-import com.wineapp.ui.theme.BrandBurgundy600
 import com.wineapp.ui.theme.BrandCream100
 import com.wineapp.ui.theme.BrandCream200
-import com.wineapp.ui.theme.BrandCream400
-import com.wineapp.ui.theme.BrandCream50
-import com.wineapp.ui.theme.BrandCream500
 import com.wineapp.ui.theme.BrandTextPrimary
 import com.wineapp.ui.theme.BrandTextSecondary
 import com.wineapp.ui.theme.Inter
@@ -64,66 +51,22 @@ import kotlin.math.roundToInt
  * в фирменном стиле: Cream-фон, Playfair-заголовки, бордовые CTA.
  */
 
-/** Шапка: бордовая круглая «назад» слева, пилюля «Новое фото» справа. */
+/**
+ * Шапка: круглая «назад» слева. Отдельной кнопки «Новое фото» нет —
+ * на экране итога скана «назад» и так возвращает к камере.
+ */
 @Composable
 fun ScanResultTopBar(
     onBack: () -> Unit,
-    modifier: Modifier = Modifier,
-    onNewPhoto: (() -> Unit)? = null,
-    newPhotoEnabled: Boolean = true
+    modifier: Modifier = Modifier
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
         modifier = modifier
             .fillMaxWidth()
             .padding(top = 16.dp, bottom = 8.dp)
     ) {
-        Surface(
-            onClick = onBack,
-            shape = CircleShape,
-            color = BrandBurgundy600,
-            modifier = Modifier.size(44.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    AppIcons.ChevronLeft,
-                    contentDescription = null,
-                    tint = BrandCream50,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-        if (onNewPhoto != null) {
-            Surface(
-                onClick = { if (newPhotoEnabled) onNewPhoto() },
-                shape = RoundedCornerShape(percent = 50),
-                color = BrandCream100,
-                border = BorderStroke(1.dp, BrandCream400),
-                modifier = Modifier.height(44.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                ) {
-                    Icon(
-                        AppIcons.Camera,
-                        contentDescription = null,
-                        tint = if (newPhotoEnabled) BrandTextPrimary else BrandTextSecondary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        stringResource(R.string.scan_result_new_photo),
-                        fontFamily = Inter,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp,
-                        lineHeight = 18.sp,
-                        color = if (newPhotoEnabled) BrandTextPrimary else BrandTextSecondary
-                    )
-                }
-            }
-        }
+        com.wineapp.presentation.common.ui.BackCircleButton(onClick = onBack)
     }
 }
 
@@ -188,16 +131,19 @@ fun matchBadgeType(score: Float): BadgeType = when {
 
 @Composable
 fun MatchBadge(score: Float, modifier: Modifier = Modifier) {
+    // Процент совпадения — не предупреждение: и в жёлтом, и в зелёном варианте
+    // контурная галочка, цвет — по типу плашки.
     WineBadge(
         type = matchBadgeType(score),
         text = stringResource(R.string.scan_result_match, (score * 100).roundToInt()),
-        modifier = modifier
+        modifier = modifier,
+        icon = androidx.compose.material.icons.Icons.Outlined.CheckCircle
     )
 }
 
 /**
- * Горизонтальная карточка найденного вина: фото, скор, название, винодельня,
- * год/регион, рейтинг и цена. Опционально — CTA «Это моё вино» снизу.
+ * Карточка найденного вина — в стиле карточек «Избранного». Опционально —
+ * бейдж совпадения [matchScore] и CTA «Это моё вино» под карточкой.
  */
 @Composable
 fun ScanMatchCard(
@@ -205,154 +151,29 @@ fun ScanMatchCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     matchScore: Float? = null,
-    highlighted: Boolean = false,
     onConfirm: (() -> Unit)? = null,
     confirmEnabled: Boolean = true
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = BrandCream100),
-        border = BorderStroke(
-            if (highlighted) 1.5.dp else 1.dp,
-            if (highlighted) BrandCream400 else BrandBorderLight
-        ),
-        onClick = onClick
+    // Тот же каркас, что у карточек «Избранного» (WineListCard + WineListHeadline):
+    // фото 80×120, винодельня, название, регион с флагом, рейтинг. Вместо чипа
+    // «Хочу/Понравилось» внизу — бейдж совпадения. CTA кандидата — под карточкой.
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(width = 88.dp, height = 112.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(BrandCream200),
-                    contentAlignment = Alignment.Center
-                ) {
-                    wine.imageUrl?.let { url ->
-                        SubcomposeAsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(com.wineapp.util.apiImageUrl(url))
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = wine.name,
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(6.dp)
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    matchScore?.let {
-                        MatchBadge(score = it)
-                        Spacer(modifier = Modifier.height(6.dp))
-                    }
-                    Text(
-                        wine.name,
-                        fontFamily = Playfair,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 18.sp,
-                        lineHeight = 22.sp,
-                        color = BrandTextPrimary,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    wine.winery?.let {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            it,
-                            fontFamily = Inter,
-                            fontSize = 12.sp,
-                            lineHeight = 16.sp,
-                            color = BrandTextSecondary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    if (wine.vintage != null || wine.region != null) {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            wine.vintage?.let {
-                                Surface(
-                                    shape = RoundedCornerShape(4.dp),
-                                    color = BrandCream50,
-                                    border = BorderStroke(1.dp, BrandBorderLight)
-                                ) {
-                                    Text(
-                                        "$it",
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                        fontFamily = Inter,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 12.sp,
-                                        lineHeight = 16.sp,
-                                        color = BrandTextPrimary
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(6.dp))
-                            }
-                            wine.region?.let {
-                                Text(
-                                    it,
-                                    fontFamily = Inter,
-                                    fontSize = 12.sp,
-                                    lineHeight = 16.sp,
-                                    color = BrandTextSecondary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                    }
-                    if (wine.rating != null || wine.price != null) {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            wine.rating?.let {
-                                Icon(
-                                    AppIcons.Star,
-                                    contentDescription = null,
-                                    tint = BrandCream500,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    String.format("%.1f", it),
-                                    fontFamily = Inter,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 14.sp,
-                                    lineHeight = 18.sp,
-                                    color = BrandTextPrimary
-                                )
-                            }
-                            Spacer(modifier = Modifier.weight(1f))
-                            wine.price?.let {
-                                Text(
-                                    "${wine.currency ?: "$"} ${String.format("%.0f", it)}",
-                                    fontFamily = Inter,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    lineHeight = 20.sp,
-                                    color = BrandBurgundy600
-                                )
-                            }
-                        }
-                    }
-                }
-                Icon(
-                    AppIcons.ChevronRight,
-                    contentDescription = null,
-                    tint = BrandTextSecondary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            if (onConfirm != null) {
-                Spacer(modifier = Modifier.height(12.dp))
-                BrandButton(
-                    text = stringResource(R.string.scan_result_confirm),
-                    onClick = { if (confirmEnabled) onConfirm() },
-                    modifier = Modifier.height(44.dp)
-                )
-            }
+        com.wineapp.presentation.common.ui.WineListCard(
+            imageModel = wine.imageUrl?.let { com.wineapp.util.apiImageUrl(it) },
+            imageDescription = wine.name,
+            onClick = onClick,
+            headline = { com.wineapp.presentation.common.ui.WineListHeadline(wine) },
+            tagContent = matchScore?.let { score -> { MatchBadge(score = score) } }
+        )
+        if (onConfirm != null) {
+            BrandButton(
+                text = stringResource(R.string.scan_result_confirm),
+                onClick = { if (confirmEnabled) onConfirm() },
+                modifier = Modifier.height(44.dp)
+            )
         }
     }
 }
@@ -420,12 +241,11 @@ val ScanResultErrorColor = Color(0xFFB65349)
 private fun ScanMatchCardPreview() {
     WineAppTheme {
         Column(Modifier.padding(16.dp)) {
-            ScanResultTopBar(onBack = {}, onNewPhoto = {})
+            ScanResultTopBar(onBack = {})
             ScanMatchCard(
                 wine = MockDataProvider.wines.first(),
                 onClick = {},
                 matchScore = 0.92f,
-                highlighted = true,
                 onConfirm = {}
             )
         }

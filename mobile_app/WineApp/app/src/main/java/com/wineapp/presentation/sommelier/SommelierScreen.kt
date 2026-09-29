@@ -288,21 +288,10 @@ private fun SommelierTopBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Surface(
-            onClick = onBurgerClick,
-            shape = CircleShape,
-            color = Color.Black.copy(alpha = 0.3f),
-            modifier = Modifier.size(44.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    AppIcons.Burger,
-                    contentDescription = null,
-                    tint = BrandCream50,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
+        com.wineapp.presentation.common.ui.CircleIconButton(
+            icon = AppIcons.Burger,
+            onClick = onBurgerClick
+        )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = stringResource(R.string.sommelier_title),
@@ -314,27 +303,16 @@ private fun SommelierTopBar(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Icon(
-                AppIcons.Star,
+                AppIcons.AiStarFilled,
                 contentDescription = null,
                 tint = BrandBurgundy600,
                 modifier = Modifier.size(20.dp)
             )
         }
-        Surface(
-            onClick = onCloseClick,
-            shape = CircleShape,
-            color = Color.Black.copy(alpha = 0.3f),
-            modifier = Modifier.size(44.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    AppIcons.Close,
-                    contentDescription = null,
-                    tint = BrandCream50,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
+        com.wineapp.presentation.common.ui.CircleIconButton(
+            icon = AppIcons.Close,
+            onClick = onCloseClick
+        )
     }
 }
 
@@ -470,7 +448,7 @@ private fun SommelierScanCard(wine: Wine) {
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = String.format("%.2f", wine.rating),
+                                text = com.wineapp.util.formatRating(wine.rating),
                                 fontFamily = Inter,
                                 fontWeight = FontWeight.Medium,
                                 fontSize = 16.sp,
@@ -662,7 +640,7 @@ private fun SommelierInputBar(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        AppIcons.ChevronUp,
+                        AppIcons.ArrowUp,
                         contentDescription = stringResource(R.string.sommelier_send),
                         tint = BrandCream50,
                         modifier = Modifier.size(24.dp)
@@ -705,7 +683,9 @@ private fun SommelierWineBanner(
                             .crossfade(true)
                             .build(),
                         contentDescription = wine.name,
-                        contentScale = ContentScale.Crop,
+                        // Fit, а не Crop: фото каталога — вытянутая бутылка, Crop по ширине
+                        // рамки 43×64 срезал горлышко и дно. Как в остальных карточках вин.
+                        contentScale = ContentScale.Fit,
                         modifier = Modifier
                             .size(width = 43.dp, height = 64.dp)
                             .clip(RoundedCornerShape(12.dp))
@@ -896,7 +876,7 @@ private fun SommelierLoadingRow(text: String) {
             .padding(vertical = 24.dp)
     ) {
         Icon(
-            AppIcons.Star,
+            AppIcons.AiStarFilled,
             contentDescription = null,
             tint = BrandBurgundy600,
             modifier = Modifier.size(20.dp)

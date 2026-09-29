@@ -131,21 +131,7 @@ fun SavedScanDetailScreenContent(
                     .fillMaxWidth()
                     .padding(top = 16.dp, bottom = 8.dp)
             ) {
-                Surface(
-                    onClick = onNavigateBack,
-                    shape = CircleShape,
-                    color = BrandBurgundy600,
-                    modifier = Modifier.size(44.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            AppIcons.ChevronLeft,
-                            contentDescription = null,
-                            tint = BrandCream50,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
+                com.wineapp.presentation.common.ui.BackCircleButton(onClick = onNavigateBack)
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(
                     text = stringResource(R.string.saved_scan_detail_title),
@@ -379,7 +365,9 @@ private fun ScanResultCard(
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = ScanSpecRowPadding)
                     ) {
                         Text(
                             text = stringResource(R.string.detail_rating_title),
@@ -402,7 +390,7 @@ private fun ScanResultCard(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = String.format("%.2f", scan.wine.rating),
+                                text = com.wineapp.util.formatRating(scan.wine.rating),
                                 fontFamily = Playfair,
                                 fontWeight = FontWeight.Medium,
                                 fontSize = 24.sp,
@@ -461,6 +449,9 @@ private fun ScanResultCard(
     }
 }
 
+/** Вертикальный отступ строки таблицы (как в карточке вина) — иначе таблица сплющена. */
+private val ScanSpecRowPadding = 12.dp
+
 @Composable
 private fun ScanSpecRow(
     label: String,
@@ -471,7 +462,9 @@ private fun ScanSpecRow(
         Row(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = ScanSpecRowPadding)
         ) {
             Text(
                 text = label,
