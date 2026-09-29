@@ -1,4 +1,4 @@
-"""Checks for Yandex Disk unpacking without network or real weights."""
+"""Checks for Google Drive unpacking without network or real weights."""
 import hashlib
 import io
 import os
@@ -10,34 +10,67 @@ import unittest.mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from download_yandex_weights import extraction_root, load_env_file, looks_like_archive, resource_url, safe_extract
+from download_gdrive_weights import (
+    confirmation_url, extraction_root, gdrive_file_id, load_env_file, looks_like_archive,
+    resource_url, safe_extract,
+)
+
+WARNING = """<!DOCTYPE html><html><body>
+<form id="download-form" action="https://drive.usercontent.google.com/download" method="get">
+<input type="submit" id="uc-download-link" value="Download anyway"/>
+<input type="hidden" name="id" value="FILE">
+<input type="hidden" name="export" value="download">
+<input type="hidden" name="confirm" value="t">
+<input type="hidden" name="uuid" value="uuid-1">
+</form>
+<p class="uc-warning-caption">Google Drive can't scan this file for viruses.</p>
+</body></html>"""
 
 
 class DownloadWeightsTest(unittest.TestCase):
     def test_env_file_skips_comments(self):
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "yandex.env"
-            path.write_text("# comment\n\nYANDEX_RECOGNIZER_URL=https://disk.yandex.ru/d/abc\n")
+            path = Path(directory) / "gdrive.env"
+            path.write_text("# comment\n\nGDRIVE_RECOGNIZER_URL=https://drive.google.com/file/d/abc/view\n")
             self.assertEqual(
                 load_env_file(path),
-                {"YANDEX_RECOGNIZER_URL": "https://disk.yandex.ru/d/abc"},
+                {"GDRIVE_RECOGNIZER_URL": "https://drive.google.com/file/d/abc/view"},
             )
 
     def test_url_prefers_environment_over_file_and_manifest(self):
-        item = {"url": "https://disk.yandex.ru/d/from-manifest"}
-        with unittest.mock.patch.dict(os.environ, {"YANDEX_RECOGNIZER_URL": "https://disk.yandex.ru/d/env"}):
+        item = {"url": "https://drive.google.com/file/d/from-manifest/view"}
+        with unittest.mock.patch.dict(os.environ, {"GDRIVE_RECOGNIZER_URL": "https://drive.google.com/file/d/env/view"}):
             self.assertEqual(
-                resource_url("YANDEX_RECOGNIZER_URL", {"YANDEX_RECOGNIZER_URL": "https://disk.yandex.ru/d/file"}, item),
-                "https://disk.yandex.ru/d/env",
+                resource_url("GDRIVE_RECOGNIZER_URL", {"GDRIVE_RECOGNIZER_URL": "https://drive.google.com/file/d/file/view"}, item),
+                "https://drive.google.com/file/d/env/view",
             )
         with unittest.mock.patch.dict(os.environ):
-            os.environ.pop("YANDEX_RECOGNIZER_URL", None)
+            os.environ.pop("GDRIVE_RECOGNIZER_URL", None)
             self.assertEqual(
-                resource_url("YANDEX_RECOGNIZER_URL", {"YANDEX_RECOGNIZER_URL": "https://disk.yandex.ru/d/file"}, item),
-                "https://disk.yandex.ru/d/file",
+                resource_url("GDRIVE_RECOGNIZER_URL", {"GDRIVE_RECOGNIZER_URL": "https://drive.google.com/file/d/file/view"}, item),
+                "https://drive.google.com/file/d/file/view",
             )
-            self.assertEqual(resource_url("YANDEX_RECOGNIZER_URL", {}, item), "https://disk.yandex.ru/d/from-manifest")
-            self.assertIsNone(resource_url("YANDEX_RECOGNIZER_URL", {}, {"url": None}))
+            self.assertIsNone(resource_url("GDRIVE_RECOGNIZER_URL", {}, {"url": None}))
+
+    def test_file_id_from_share_link(self):
+        self.assertEqual(
+            gdrive_file_id("https://drive.google.com/file/d/1UxZS4mxsFoLbzn0kYlqVCFYVDylGH6eu/view?usp=drive_link"),
+            "1UxZS4mxsFoLbzn0kYlqVCFYVDylGH6eu",
+        )
+        self.assertEqual(
+            gdrive_file_id("https://drive.google.com/uc?id=1IOhFNwSN3DrTZGStjkQt8yM3HswRywyJ&export=download"),
+            "1IOhFNwSN3DrTZGStjkQt8yM3HswRywyJ",
+        )
+        with self.assertRaises(SystemExit):
+            gdrive_file_id("https://docs.google.com/document/d/12pu8f6JP6tPiznArGW3J53WpngQIiMYc/edit")
+
+    def test_confirmation_form_becomes_download_url(self):
+        url = confirmation_url(WARNING)
+        self.assertTrue(url.startswith("https://drive.usercontent.google.com/download?"))
+        self.assertIn("id=FILE", url)
+        self.assertIn("confirm=t", url)
+        self.assertIn("uuid=uuid-1", url)
+        self.assertNotIn("Download+anyway", url)
 
     def test_archive_with_repo_prefix_unpacks_at_root(self):
         self.assertEqual(

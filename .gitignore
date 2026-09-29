@@ -61,11 +61,11 @@ backend/.venv/
 !/scripts/package_recognizer.py
 !/scripts/package_catalog_images.py
 !/scripts/prepare_scan_image.py
-!/scripts/download_yandex_weights.py
-!/scripts/test_download_yandex_weights.py
+!/scripts/download_gdrive_weights.py
+!/scripts/test_download_gdrive_weights.py
 !/scripts/README.md
 
-/build_env/yandex.env
+/build_env/gdrive.env
 
 # Offline ML experiments, not production imports.
 /worker/pipeline/catalog_membership.py

@@ -220,12 +220,13 @@ Bundle содержит также индекс и снимок каталога
 и файл `.tar.sha256`. Он содержит только ресурсы под `weights/`; код берётся из
 этого Git checkout. Сборка архива: `python3 scripts/package_recognizer.py`;
 существующий архив команда не перезаписывает. Размеры, SHA-256 и пути ресурсов записаны в [../build_env/artifacts.json](../build_env/artifacts.json).
-Публичные ссылки Яндекс Диска записываются в `build_env/yandex.env`
-(`YANDEX_RECOGNIZER_URL`, `YANDEX_CATALOG_IMAGES_URL`, `YANDEX_RECOMMENDATIONS_URL`).
-`make setup`, `make install`, `make dev` и `make prod` вызывают
-`scripts/download_yandex_weights.py`: скрипт получает временный URL через
-публичное API Диска, сверяет SHA-256 из `build_env/artifacts.json` и распаковывает
-архив. Уже распакованный каталог повторно не скачивается.
+Публичные ссылки Google Диска записываются в `build_env/gdrive.env`
+(`GDRIVE_RECOGNIZER_URL`, `GDRIVE_CATALOG_IMAGES_URL`, `GDRIVE_RECOMMENDATIONS_URL`).
+Образец — `build_env/gdrive.env.example`. `make setup`, `make install`, `make dev`
+и `make prod` вызывают `scripts/download_gdrive_weights.py`: для большого файла
+скрипт подтверждает страницу проверки Google, сверяет SHA-256 из
+`build_env/artifacts.json` и распаковывает архив. Уже распакованный каталог
+повторно не скачивается.
 
 При получении архива ресурсов проверить `.sha256` из доверенного источника,
 затем распаковать архив из корня репозитория:
@@ -252,7 +253,7 @@ curl -f http://127.0.0.1:8000/ready
 
 На текущем компьютере из-за проблем bridge-сети используется дополнительный `docker-compose.host.yml` и проект `wine-integration`; его команда приведена в [API_RECOGNITION.md](API_RECOGNITION.md). Этот профиль и локальные VPN-правила не являются обязательной частью переноса на другой сервер. Не запускать второй проект поверх уже работающих контейнеров с фиксированными именами.
 
-На новой машине заполните `build_env/yandex.env` и запускайте `make setup`: веса скачиваются до старта контейнеров. Голый `docker compose up` файлы не скачивает. GPU и драйвер NVIDIA по-прежнему настраиваются заранее.
+На новой машине проверьте `build_env/gdrive.env` и запускайте `make setup`: веса скачиваются до старта контейнеров. Голый `docker compose up` файлы не скачивает. GPU и драйвер NVIDIA по-прежнему настраиваются заранее.
 
 ## Что проверить бэкендеру при приёмке
 

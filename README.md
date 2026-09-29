@@ -38,7 +38,7 @@ Android-приложение и GPU-сервис для поиска вина п
 
 ## Запуск собственного сервера
 
-Нужны Linux, NVIDIA GPU, Docker Compose и NVIDIA Container Toolkit. Скопируйте `build_env/yandex.env.example` в `build_env/yandex.env` и вставьте публичные ссылки Яндекс Диска на три архива. Контрольные суммы — в [build_env/artifacts.json](build_env/artifacts.json). `make setup`, `make install`, `make dev` и `make prod` скачивают отсутствующие файлы до запуска контейнеров:
+Нужны Linux, NVIDIA GPU, Docker Compose и NVIDIA Container Toolkit. Публичные ссылки Google Диска лежат в `build_env/gdrive.env.example`; локальная замена — `build_env/gdrive.env`. Контрольные суммы — в [build_env/artifacts.json](build_env/artifacts.json). `make setup`, `make install`, `make dev` и `make prod` скачивают отсутствующие файлы до запуска контейнеров:
 
 | Ресурс | Локальный путь |
 |---|---|

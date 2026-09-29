@@ -10,7 +10,7 @@ TEST_BUILD_NETWORK ?= default
 help:
 	@echo "make setup             — скопировать env, скачать веса, собрать образы, поднять стек, дождаться API"
 	@echo "make env               — создать .env и build_env/.env.* из шаблонов, если их нет"
-	@echo "make download-weights  — скачать веса и картинки с Яндекс Диска (build_env/yandex.env)"
+	@echo "make download-weights  — скачать веса и картинки с Google Диска (build_env/gdrive.env)"
 	@echo "make install           — скачать веса, затем pip install внутри api и worker"
 	@echo "make install-api       — pip install в контейнере api"
 	@echo "make install-worker    — pip install в контейнере worker"
@@ -49,11 +49,12 @@ env:
 	@if [ ! -f .env ]; then cp .env.example .env && echo "создан .env"; else echo ".env уже есть"; fi
 	@if [ ! -f $(ENV_DEV) ]; then cp build_env/env.dev.example $(ENV_DEV) && echo "создан $(ENV_DEV)"; else echo "$(ENV_DEV) уже есть"; fi
 	@if [ ! -f $(ENV_PROD) ]; then cp build_env/env.prod.example $(ENV_PROD) && echo "создан $(ENV_PROD)"; else echo "$(ENV_PROD) уже есть"; fi
+	@if [ ! -f build_env/gdrive.env ]; then cp build_env/gdrive.env.example build_env/gdrive.env && echo "создан build_env/gdrive.env"; else echo "build_env/gdrive.env уже есть"; fi
 
 install: download-weights install-api install-worker
 
 download-weights:
-	python3 scripts/download_yandex_weights.py $(if $(FORCE),--force,)
+	python3 scripts/download_gdrive_weights.py $(if $(FORCE),--force,)
 
 build:
 	$(COMPOSE_DEV) build
