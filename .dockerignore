@@ -34,6 +34,7 @@ build_env/yandex.env
 .cache
 scripts
 local_scripts
+local_docs
 worker/pipeline/catalog_membership.py
 worker/pipeline/confidence.py
 worker/pipeline/confirmation.py

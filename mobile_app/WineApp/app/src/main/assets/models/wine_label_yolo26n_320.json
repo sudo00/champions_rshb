@@ -44,7 +44,7 @@
   },
   "recommended_runtime": "LiteRT 2.2.0 CompiledModel GPU with CPU fallback",
   "gpu_validation": "S25+ LiteRT 2.2 GPU: one fixed 320px photo parity checked against desktop CPU; score 0.936035 vs 0.934663; max coordinate delta < 0.001; full camera video quality pending",
-  "quality_report": "docs/MOBILE_HANDOFF.md",
+  "quality_report": "docs/ARCHITECTURE.md#детектор-камеры",
   "automatic_capture_enabled": true,
   "source": {
     "dataset": "https://zenodo.org/records/16410628",

@@ -2,7 +2,7 @@
 
 Android — `mobile_app/WineApp`, FastAPI — `backend/api`, очередь — `backend/worker`, ML-пайплайн — `worker/pipeline`. В `scripts/` находятся самостоятельные CLI; приложение их не импортирует.
 
-Запуск и контракты — [API_RECOGNITION.md](API_RECOGNITION.md), зависимости — [DEPENDENCIES.md](DEPENDENCIES.md). Использовать отдельные среды проекта: `.venv`, `.venv-ocr-gpu`, `.venv-api`.
+Запуск, переменные окружения, зависимости и оценочный HTTP-контракт — [README.md](../README.md); пайплайн и границы компонентов — [ARCHITECTURE.md](ARCHITECTURE.md). Использовать отдельные среды проекта: `.venv`, `.venv-ocr-gpu`, `.venv-api`.
 
 Тесты API, worker и модульные тесты Android входят в Git. Для проверки API без GPU и работающей инфраструктуры: `make test-api`; в локальном окружении: `.venv-api/bin/python -m pytest -q`. Проверки worker: `.venv/bin/python -m pytest backend/worker/tests -q`. Исследовательские ML-тесты в корневой `tests/` остаются локальными и исключены из Git. Локальные эксперименты, разовые проверки и шаблоны отчётов вынесены в `local_scripts/`, также исключённую из Git и Docker-контекста. Оценщик организаторов запускается на ML-машине из `local_scripts/participant_test.sh`; скрипт, фотографии и разметка не входят в Git.
 

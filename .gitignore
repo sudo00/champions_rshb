@@ -22,24 +22,12 @@ AGENTS.md
 # Default evaluation output; datasets and reports belong under data/.
 /predictions.jsonl
 others/
-# Only shared integration/deployment documentation belongs in Git.
-# Research notes and new documents stay local unless explicitly allowlisted.
+# Shared backend documentation; internal handoffs and reports live in local_docs/.
 /docs/*
 !/docs/ARCHITECTURE.md
 !/docs/architecture.mmd
-!/docs/API_RECOGNITION.md
-!/docs/BACKEND_HANDOFF.md
-!/docs/MOBILE_HANDOFF.md
-!/docs/DEPENDENCIES.md
 !/docs/DEVELOPMENT.md
-!/docs/API_INTEGRATION_VALIDATION.md
 !/docs/openapi.yaml
-!/docs/examples/
-/docs/examples/*
-!/docs/examples/scan-response.json
-!/docs/examples/scan-unverified.jpg
-!/docs/examples/scan-confirmed.jpg
-!/docs/examples/scan-absent.jpg
 literature/
 notes.txt
 node_modules/
@@ -54,6 +42,7 @@ backend/.venv/
 /weights/
 /tests/
 /local_scripts/
+/local_docs/
 
 # Shared operational tools only; research lives in ignored local_scripts/.
 /scripts/*

@@ -33,6 +33,6 @@
     "bytes": 9757969,
     "sha256": "ecd817f904b8d159ee924c15b2ca06dce80bf28e4c6d7086a35601cca5a59abf",
     "status": "integrated on-device camera detector with automatic capture",
-    "documentation": "docs/MOBILE_HANDOFF.md"
+    "documentation": "docs/ARCHITECTURE.md#детектор-камеры"
   }
 }

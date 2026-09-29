@@ -3,12 +3,14 @@ ENV_PROD := build_env/.env.prod
 COMPOSE_DEV := docker compose --env-file $(ENV_DEV) -f docker-compose.yml -f docker-compose.gpu.yml -f docker-compose.dev.yml
 COMPOSE_PROD := docker compose --env-file $(ENV_PROD) -f docker-compose.yml -f docker-compose.gpu.yml
 API_HEALTH := http://127.0.0.1:8000/health
+API_READY := http://127.0.0.1:8000/ready
+READY_TIMEOUT_SECONDS ?= 300
 TEST_BUILD_NETWORK ?= default
 
-.PHONY: help setup env wait-api install install-api install-worker build dev prod up down ddown logs restart test test-api import-catalog download-weights
+.PHONY: help setup env wait-api wait-ready install install-api install-worker build dev prod up down ddown logs restart test test-api import-catalog download-weights
 
 help:
-	@echo "make setup             — скопировать env, скачать веса, собрать образы, поднять стек, дождаться API"
+	@echo "make setup             — скопировать env, скачать ресурсы, собрать и поднять стек, дождаться ML /ready"
 	@echo "make env               — создать .env и build_env/.env.* из шаблонов, если их нет"
 	@echo "make download-weights  — скачать веса и картинки с Google Диска (build_env/gdrive.env)"
 	@echo "make install           — скачать веса, затем pip install внутри api и worker"
@@ -28,8 +30,19 @@ help:
 
 setup: env download-weights
 	$(COMPOSE_DEV) up -d --build
-	$(MAKE) wait-api
-	@echo "Веса скачаны. Дождитесь загрузки моделей в GPU: GET /ready"
+	$(MAKE) wait-ready
+	@echo "Сервис готов: API, каталог и GPU-модели загружены"
+
+wait-ready:
+	@echo "Ждём распознавание $(API_READY) (до $(READY_TIMEOUT_SECONDS) с) ..."
+	@deadline=$$(( $$(date +%s) + $(READY_TIMEOUT_SECONDS) )); \
+	until curl --connect-timeout 2 --max-time 3 -fsS "$(API_READY)" 2>/dev/null; do \
+		if [ "$$(date +%s)" -ge "$$deadline" ]; then \
+			echo; echo "Распознавание не готово за $(READY_TIMEOUT_SECONDS) с. Логи: make logs"; \
+			exit 1; \
+		fi; \
+		sleep 2; \
+	done; echo
 
 wait-api:
 	@echo "Ждём API $(API_HEALTH) ..."
