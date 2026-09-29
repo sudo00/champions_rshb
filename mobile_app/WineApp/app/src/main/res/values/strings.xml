@@ -295,6 +295,7 @@
     <string name="winepath_territories_desc">Открывайте новые винные регионы, сканируйте вина и прокладывайте свой путь по карте России</string>
     <string name="winepath_rewards">Награды</string>
     <string name="winepath_rewards_desc">Получайте награды за открытия новых регионов и достижения в своей винной истории</string>
+    <string name="winepath_map_attribution">Карта: © участники OpenStreetMap</string>
 
     <string name="cancel">Отмена</string>
 

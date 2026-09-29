@@ -4,6 +4,7 @@ import com.wineapp.presentation.common.ui.AppIcons
 import android.annotation.SuppressLint
 import android.app.Activity
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
@@ -68,6 +69,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -101,6 +103,7 @@ import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.wineapp.R
 import com.wineapp.data.game.TerritoryTier
+import com.wineapp.data.local.TerritoryRegistry
 import com.wineapp.data.local.TerritoryShapes
 import com.wineapp.domain.model.BadgeUi
 import com.wineapp.domain.model.TerritoryProgress
@@ -179,6 +182,11 @@ fun WinePathScreenContent(
     val scope = rememberCoroutineScope()
     var selectedId by remember { mutableStateOf<String?>(null) }
     val mapUi = rememberWinePathMapState()
+    // Видимая часть карты: сверху её перекрывает панель (статус-бар + кнопки/заголовок),
+    // снизу — свёрнутая шторка. Ставим до первого onSize, чтобы и стартовый вид учёл их.
+    val density = LocalDensity.current
+    val statusBarTop = WindowInsets.statusBars.getTop(density)
+    with(density) { mapUi.setInsets(top = statusBarTop + MapTopBarHeight.toPx(), bottom = SheetPeekHeight.toPx()) }
 
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
@@ -196,6 +204,9 @@ fun WinePathScreenContent(
                 onSelectTerritory = { id ->
                     selectedId = id
                     scope.launch { scaffoldState.bottomSheetState.partialExpand() }
+                    TerritoryRegistry.byId[id]?.let { territory ->
+                        scope.launch { mapUi.flyToPoint(Offset(territory.anchorX, territory.anchorY)) }
+                    }
                 }
             )
         },
@@ -279,10 +290,11 @@ fun WinePathScreenContent(
             MapOverlayTopBar(
                 points = (state as? WinePathState.Success)?.summary?.totalPoints,
                 onBack = onNavigateBack,
+                // Всегда к винным регионам. Раньше кнопка была переключателем: карта
+                // открывается уже увеличенной на юго-западе, и первое нажатие уводило
+                // на обзор всей страны.
                 onZoomToggle = {
-                    scope.launch {
-                        if (mapUi.isZoomed()) mapUi.resetView() else mapUi.flyToWineRegions()
-                    }
+                    scope.launch { mapUi.flyToWineRegions() }
                 },
                 modifier = Modifier.align(Alignment.TopCenter)
             )
@@ -346,6 +358,16 @@ private fun WinePathSheetContent(
             )
             Spacer(modifier = Modifier.height(24.dp))
             MedallionGrid(badges = badges)
+
+            // Атрибуция данных карты — требование лицензии ODbL (OpenStreetMap).
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = stringResource(R.string.winepath_map_attribution),
+                style = SheetCaptionStyle,
+                color = Color.White.copy(alpha = 0.5f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
@@ -371,9 +393,13 @@ private fun WinePathDragHandle() {
 private const val MAP_DATA_ASPECT = 2.02f
 private const val MAP_MIN_SCALE = 1f
 private const val MAP_MAX_SCALE = 8f
-/** Bbox винного кластера в долях карты — цель кнопки «К винным регионам». */
-private val WINE_BBOX_MIN = Offset(0.04f, 0.60f)
-private val WINE_BBOX_MAX = Offset(0.28f, 0.98f)
+/**
+ * Bbox винного кластера в долях карты — цель кнопки «К винным регионам» и стартовый вид:
+ * от запада Крыма (x≈0,078) до востока Башкирии (≈0,236), от севера Подмосковья
+ * (y≈0,612) до юга Дагестана (≈0,995) — с небольшим запасом по краям.
+ */
+private val WINE_BBOX_MIN = Offset(0.065f, 0.600f)
+private val WINE_BBOX_MAX = Offset(0.250f, 1.005f)
 
 /** Состояние панорамирования/зума карты. Живёт в remember, переживает рекомпозиции жестов. */
 class WinePathMapState {
@@ -406,11 +432,9 @@ class WinePathMapState {
         if (!initialized) {
             initialized = true
             // Стартовый вид — сразу фокус на юго-западе (винные регионы), а не обзор всей страны.
-            val min = toPx(WINE_BBOX_MIN)
-            val max = toPx(WINE_BBOX_MAX)
-            scale = minOf(w / (max.x - min.x), h / (max.y - min.y)).coerceIn(MAP_MIN_SCALE, MAP_MAX_SCALE)
-            val c = Offset((min.x + max.x) / 2f, (min.y + max.y) / 2f)
-            offset = clamp(Offset(w / 2f - scale * c.x, h / 2f - scale * c.y))
+            val (s, o) = wineRegionsView()
+            scale = s
+            offset = clamp(o)
         } else {
             offset = clamp(offset)
         }
@@ -436,27 +460,74 @@ class WinePathMapState {
         offset = clamp(centroid - Offset(base.x * newScale, base.y * newScale))
     }
 
-    fun isZoomed(): Boolean = scale > 2f
-
+    /**
+     * Плавный перелёт: интерполируем центр вида (в координатах канвы) и масштаб,
+     * а сдвиг выводим из них — так карта летит к цели, а не «ныряет» по дуге.
+     * Раньше масштаб и сдвиг присваивались только по окончании анимации — карта
+     * стояла 450 мс и затем прыгала.
+     */
     suspend fun animateTo(targetScale: Float, targetOffset: Offset) {
         val s = targetScale.coerceIn(MAP_MIN_SCALE, MAP_MAX_SCALE)
         val o = clamp(targetOffset, s)
-        kotlinx.coroutines.coroutineScope {
-            launch { scale = Animatable(scale).animateTo(s, tween(450)).endState.value }
-            launch { offset = offset.copy(x = Animatable(offset.x).animateTo(o.x, tween(450)).endState.value) }
-            launch { offset = offset.copy(y = Animatable(offset.y).animateTo(o.y, tween(450)).endState.value) }
+        val screenCenter = Offset(boxW / 2f, boxH / 2f)
+        val startScale = scale
+        val startCenter = (screenCenter - offset) / startScale
+        val endCenter = (screenCenter - o) / s
+        Animatable(0f).animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing)
+        ) {
+            val t = value
+            val currentScale = startScale + (s - startScale) * t
+            val center = startCenter + (endCenter - startCenter) * t
+            scale = currentScale
+            offset = screenCenter - center * currentScale
         }
+        scale = s
+        offset = o
     }
 
-    suspend fun resetView() = animateTo(1f, Offset.Zero)
+    /**
+     * Центрировать точку карты (доли 0..1) в видимой области, не меняя масштаб.
+     * Для выбора территории из списка шторки: иначе, например, Дальний Восток
+     * подсвечивается за краем экрана, пока карта смотрит на юго-запад.
+     */
+    suspend fun flyToPoint(fraction: Offset) {
+        if (boxW <= 0f) return
+        val p = toPx(fraction)
+        val visibleCenterY = insetTop + (boxH - insetTop - insetBottom).coerceAtLeast(boxH / 3f) / 2f
+        animateTo(scale, Offset(boxW / 2f - scale * p.x, visibleCenterY - scale * p.y))
+    }
 
+    /** Кнопка «К винным регионам»: юго-запад страны в видимой части карты. */
     suspend fun flyToWineRegions() {
         if (boxW <= 0f) return
+        val (s, o) = wineRegionsView()
+        animateTo(s, o)
+    }
+
+    /**
+     * Масштаб и сдвиг, вписывающие рамку винных регионов в видимую область —
+     * между верхней панелью и свёрнутой шторкой, а не во весь экран: иначе
+     * Дагестан и Крым прячутся под шторкой.
+     */
+    private fun wineRegionsView(): Pair<Float, Offset> {
         val min = toPx(WINE_BBOX_MIN)
         val max = toPx(WINE_BBOX_MAX)
-        val s = minOf(boxW / (max.x - min.x), boxH / (max.y - min.y)).coerceIn(MAP_MIN_SCALE, MAP_MAX_SCALE)
+        val visibleH = (boxH - insetTop - insetBottom).coerceAtLeast(boxH / 3f)
+        val s = minOf(boxW / (max.x - min.x), visibleH / (max.y - min.y)).coerceIn(MAP_MIN_SCALE, MAP_MAX_SCALE)
         val c = Offset((min.x + max.x) / 2f, (min.y + max.y) / 2f)
-        animateTo(s, Offset(boxW / 2f - s * c.x, boxH / 2f - s * c.y))
+        val visibleCenterY = insetTop + visibleH / 2f
+        return s to Offset(boxW / 2f - s * c.x, visibleCenterY - s * c.y)
+    }
+
+    /** Сколько карты перекрыто сверху панелью и снизу шторкой, px. */
+    private var insetTop = 0f
+    private var insetBottom = 0f
+
+    fun setInsets(top: Float, bottom: Float) {
+        insetTop = top
+        insetBottom = bottom
     }
 
     private fun clamp(o: Offset, s: Float = scale): Offset {
@@ -677,18 +748,8 @@ private fun WinePathMap(
             }
         }
 
-        val bgSeamPaths = remember(sizeKey) {
-            TerritoryShapes.backgroundSeams.flatten().map { line -> linePath(line, mapUi) }
-        }
-        val wineSeamPaths = remember(sizeKey) {
-            TerritoryShapes.outlineSeams.mapValues { (_, lines) -> lines.map { line -> linePath(line, mapUi) } }
-        }
-        // Ширина шва = максимальная закрываемая щель; в px канвы, зум масштабирует её вместе с картой.
-        val seamStroke = Stroke(
-            width = TerritoryShapes.SEAM_EPS * mapUi.drawW,
-            cap = StrokeCap.Butt,
-            join = StrokeJoin.Round
-        )
+        val ringTerritories = TerritoryShapes.backgroundTerritories
+        val territoryById = territories.associateBy { it.territoryId }
 
         // Подписи рисуем только для выбранного региона (см. ниже) — карта остаётся чистой.
 
@@ -728,31 +789,18 @@ private fun WinePathMap(
             // на стыках регионов появляются дырки, а винные регионы теряют границу целиком.
             val dash = PathEffect.dashPathEffect(floatArrayOf(8f, 6f), 0f)
 
-            // Проход 0: швы под заливками — закрывают щели между соседними регионами.
-            // Сначала серые, затем швы винных регионов в цвете их заливки.
-            bgSeamPaths.forEach { path -> drawPath(path, MapRegionFill, style = seamStroke) }
-            territories.forEach { territory ->
-                val seams = wineSeamPaths[territory.territoryId] ?: return@forEach
+            // Проход 1: заливки — по кольцам фона в их порядке (большие первыми), цвет по
+            // территории кольца. Так анклавы (Адыгея внутри Кубани) остаются поверх
+            // и не перекрашиваются заливкой объемлющего винного региона.
+            bgPaths.forEachIndexed { index, path ->
+                val territory = ringTerritories.getOrNull(index)?.let { territoryById[it] }
                 val fill = when {
+                    territory == null -> MapRegionFill
                     territory.territoryId == selectedId -> MapSelectedFill
                     !territory.locked && territory.totalWines > 0 -> MapWineFill
-                    else -> return@forEach
+                    else -> MapRegionFill
                 }
-                seams.forEach { path -> drawPath(path, fill, style = seamStroke) }
-            }
-
-            // Проход 1: заливки.
-            bgPaths.forEach { path -> drawPath(path, MapRegionFill) }
-            territories.forEach { territory ->
-                val paths = winePaths[territory.territoryId] ?: return@forEach
-                val isWine = !territory.locked && territory.totalWines > 0
-                val selected = territory.territoryId == selectedId
-                val fill = when {
-                    selected -> MapSelectedFill
-                    isWine -> MapWineFill
-                    else -> null
-                }
-                if (fill != null) paths.forEach { path -> drawPath(path, fill) }
+                drawPath(path, fill)
             }
 
             // Проход 2: обводки.
@@ -800,18 +848,8 @@ private fun WinePathMap(
                 if (territory.territoryId != selectedId) return@forEach
                 val center = mapUi.toPx(Offset(territory.anchorX, territory.anchorY))
                 val above = labelsAbove.contains(territory.territoryId)
-                drawLabel(textMeasurer, territory.name, center, selectedLabelStyle, above, labelGap)
+                drawLabel(textMeasurer, territory.name, center, selectedLabelStyle, above, labelGap, zoomSafe)
             }
-        }
-    }
-}
-
-/** Открытая ломаная (шов) в пикселях канвы. */
-private fun linePath(line: List<Offset>, mapUi: WinePathMapState): Path {
-    return Path().apply {
-        line.forEachIndexed { i, p ->
-            val pt = mapUi.toPx(p)
-            if (i == 0) moveTo(pt.x, pt.y) else lineTo(pt.x, pt.y)
         }
     }
 }
@@ -999,17 +1037,31 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawLabel(
     center: Offset,
     style: TextStyle,
     above: Boolean = false,
-    gapPx: Float = 14f
+    gapPx: Float = 14f,
+    /** Текущий зум: отступы подложки делим на него, как кегль, — на экране она постоянного размера. */
+    zoom: Float = 1f
 ) {
     val layout = textMeasurer.measure(text, style)
-    drawText(
-        layout,
-        topLeft = Offset(
-            (center.x - layout.size.width / 2f).coerceAtLeast(0f),
-            if (above) center.y - layout.size.height - gapPx else center.y + gapPx
-        )
+    val padH = 8f / zoom
+    val padV = 3f / zoom
+    val pillW = layout.size.width + padH * 2
+    val pillH = layout.size.height + padV * 2
+    // Подложка-пилюля: без неё белая подпись сливается с кремовыми границами регионов.
+    val pillTopLeft = Offset(
+        (center.x - pillW / 2f).coerceAtLeast(0f),
+        if (above) center.y - pillH - gapPx else center.y + gapPx
     )
+    drawRoundRect(
+        color = MapLabelBackground,
+        topLeft = pillTopLeft,
+        size = Size(pillW, pillH),
+        cornerRadius = CornerRadius(pillH / 2f)
+    )
+    drawText(layout, topLeft = pillTopLeft + Offset(padH, padV))
 }
+
+/** Полупрозрачная тёмная подложка подписи региона на карте. */
+private val MapLabelBackground = Color(0xB3292925)
 
 /* ------------------------------- Шторка «прогресс» ------------------------------- */
 
@@ -1030,6 +1082,9 @@ private fun pointsText(points: Int): String =
  * отступа перекрыла бы карточку снизу.
  */
 private val SheetPeekHeight = 180.dp
+
+/** Высота верхней панели карты без статус-бара: отступы 8+8 и колонка заголовка с очками. */
+private val MapTopBarHeight = 76.dp
 
 // Толщины обводок карты, px в системе координат канвы (до graphicsLayer-масштаба).
 // Базовый слой рисует обводку один раз на весь регион, остальные состояния

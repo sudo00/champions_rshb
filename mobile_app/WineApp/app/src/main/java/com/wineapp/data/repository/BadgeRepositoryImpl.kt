@@ -76,7 +76,7 @@ class BadgeRepositoryImpl @Inject constructor(
                 val scannedWines = scanHistoryDao.getScannedWinesCount()
                 if (openedCount >= 3) awardBadge(BadgeDefs.EXPLORER_3)?.let { fresh.add(it) }
                 if (openedCount >= 5) awardBadge(BadgeDefs.EXPLORER_5)?.let { fresh.add(it) }
-                if (openedCount >= 8) awardBadge(BadgeDefs.EXPLORER_8)?.let { fresh.add(it) }
+                if (openedCount >= BadgeDefs.OPENABLE_TERRITORIES) awardBadge(BadgeDefs.EXPLORER_8)?.let { fresh.add(it) }
                 if (scannedWines >= 10) awardBadge(BadgeDefs.TASTER_10)?.let { fresh.add(it) }
                 if (scannedWines >= 50) awardBadge(BadgeDefs.TASTER_50)?.let { fresh.add(it) }
 

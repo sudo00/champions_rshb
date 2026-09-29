@@ -1,4 +1,4 @@
-﻿package com.wineapp.data.local
+package com.wineapp.data.local
 
 import android.content.Context
 import android.util.Log
@@ -8,11 +8,19 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Границы для карты «Винного пути»: вся Россия фоном + детальные винодельческие регионы.
- * Данные лежат в res/raw/territories.json (GeoJSON после генерализации Douglas-Peucker;
- * Крым — по реальным координатам побережья), грузятся лениво один раз.
- * API: [backgroundRings], [outlines], [territoryAt]. Координаты — доли карты 0..1
- * (вьюпорт lon 19–193 с заворотом Чукотки, lat 41–82).
+ * Границы для карты «Винного пути»: все субъекты РФ фоном + винодельческие территории.
+ *
+ * res/raw/territories.json собран из OSM (© участники OpenStreetMap, ODbL):
+ * субъекты — timurkanaz/Russia_geojson_OSM; ДНР, ЛНР, Запорожская и Херсонская области —
+ * geoBoundaries ADM1 (тоже OSM), их стыки притянуты к границам соседних субъектов.
+ * Упрощение топологическое: общая граница соседей — одна дуга, упрощённая один раз,
+ * поэтому у соседей она совпадает точно (без щелей и двойных линий).
+ * Проекция: x = (lon − 19) / 174 (Чукотка за 180° — lon + 360), y = (82 − lat) / 41.
+ *
+ * Кольца фона отсортированы по площади по убыванию: анклавы (Адыгея, Москва) идут после
+ * объемлющих регионов и рисуются поверх. Контуры винных территорий — точные копии
+ * колец фона их субъектов.
+ * API: [backgroundRings], [backgroundTerritories], [outlines], [territoryAt].
  */
 object TerritoryShapes {
 
@@ -22,34 +30,21 @@ object TerritoryShapes {
     val isLoaded: Boolean
         get() = holder != null
 
-    /** Фон: все субъекты РФ. До загрузки — пусто. */
+    /** Фон: все субъекты РФ, большие первыми. До загрузки — пусто. */
     val backgroundRings: List<List<Offset>>
         get() = holder?.background ?: emptyList()
+
+    /** Территория каждого кольца [backgroundRings] (null — не винный регион). */
+    val backgroundTerritories: List<String?>
+        get() = holder?.backgroundTerritories ?: emptyList()
 
     /** Контуры винных территорий по id. До загрузки — пусто. */
     val outlines: Map<String, List<List<Offset>>>
         get() = holder?.outlines ?: emptyMap()
 
     /**
-     * «Швы» фона: для каждого кольца [backgroundRings] — ломаные из рёбер, за которыми
-     * (по внешней нормали) ближе [SEAM_EPS] лежит соседний регион. Контуры упрощали
-     * по отдельности, поэтому общие границы соседей не совпадают и между ними видна
-     * тёмная подложка. Карта обводит швы цветом заливки под самими заливками —
-     * щели закрываются, а береговая линия (соседа за ней нет) остаётся как есть.
-     */
-    val backgroundSeams: List<List<List<Offset>>>
-        get() = holder?.backgroundSeams ?: emptyList()
-
-    /** Швы винных территорий по id — в цвете их заливки. */
-    val outlineSeams: Map<String, List<List<Offset>>>
-        get() = holder?.outlineSeams ?: emptyMap()
-
-    /** Максимальная ширина щели, которую закрывают швы, в долях ширины карты. */
-    const val SEAM_EPS = 0.005f
-
-    /**
      * Загрузить и распарсить JSON. Идемпотентно и потокобезопасно.
-     * Вызывать с фонового потока — парсинг ~100 КБ занимает десятки миллисекунд.
+     * Вызывать с фонового потока — парсинг ~270 КБ занимает десятки миллисекунд.
      */
     fun ensureLoaded(context: Context) {
         if (holder != null) return
@@ -59,7 +54,7 @@ object TerritoryShapes {
                 parse(context.resources.openRawResource(R.raw.territories).bufferedReader().use { it.readText() })
             } catch (e: Exception) {
                 Log.e("TerritoryShapes", "Failed to load territories.json", e)
-                Holder(emptyList(), emptyMap(), emptyList(), emptyMap())
+                Holder(emptyList(), emptyList(), emptyMap())
             }
         }
     }
@@ -91,76 +86,16 @@ object TerritoryShapes {
             }
             outlines[id] = rings
         }
-        val backgroundSeams = computeSeams(background)
-        // Винные контуры в JSON совпадают с кольцами фона — берём их швы по совпадению колец.
-        val outlineSeams = outlines.mapValues { (_, rings) ->
-            rings.flatMap { ring ->
+        // Контуры — точные копии колец фона: сопоставляем по совпадению колец.
+        val territories = arrayOfNulls<String>(background.size)
+        outlines.forEach { (id, rings) ->
+            rings.forEach { ring ->
                 val index = background.indexOf(ring)
-                if (index >= 0) backgroundSeams[index] else emptyList()
+                if (index >= 0) territories[index] = id
+                else Log.w("TerritoryShapes", "Outline ring of $id not found in background")
             }
         }
-        return Holder(background, outlines, backgroundSeams, outlineSeams)
-    }
-
-    private fun computeSeams(rings: List<List<Offset>>): List<List<List<Offset>>> {
-        val eps = SEAM_EPS
-        val boxes = rings.map { ring ->
-            floatArrayOf(
-                ring.minOf { it.x } - eps, ring.minOf { it.y } - eps,
-                ring.maxOf { it.x } + eps, ring.maxOf { it.y } + eps
-            )
-        }
-        fun FloatArray.has(x: Float, y: Float) = x >= this[0] && x <= this[2] && y >= this[1] && y <= this[3]
-        return rings.mapIndexed { i, ring ->
-            val box = boxes[i]
-            val neighbours = rings.indices.filter { k ->
-                val other = boxes[k]
-                k != i && other[2] >= box[0] && other[0] <= box[2] && other[3] >= box[1] && other[1] <= box[3]
-            }
-            val lines = ArrayList<List<Offset>>()
-            var current: ArrayList<Offset>? = null
-            for (s in 0 until ring.size - 1) {
-                val a = ring[s]
-                val b = ring[s + 1]
-                if (isSeam(ring, a, b, neighbours.filter { boxes[it].has((a.x + b.x) / 2f, (a.y + b.y) / 2f) }.map { rings[it] })) {
-                    if (current == null) {
-                        current = arrayListOf(a)
-                        lines.add(current)
-                    }
-                    current.add(b)
-                } else {
-                    current = null
-                }
-            }
-            lines
-        }
-    }
-
-    /** Ребро [a]–[b] кольца [ring] — шов, если снаружи от него (не внутрь) рядом чужое кольцо. */
-    private fun isSeam(ring: List<Offset>, a: Offset, b: Offset, others: List<List<Offset>>): Boolean {
-        val mid = Offset((a.x + b.x) / 2f, (a.y + b.y) / 2f)
-        val d = b - a
-        val len = d.getDistance()
-        if (len == 0f || others.isEmpty()) return false
-        var normal = Offset(-d.y / len, d.x / len)
-        if (contains(mid + normal * 1e-5f, ring)) normal = -normal
-        for (other in others) {
-            for (t in 0 until other.size - 1) {
-                val toOther = nearestOnSegment(mid, other[t], other[t + 1]) - mid
-                val dist = toOther.getDistance()
-                // Совпадающая граница или сосед за ребром (а не вдоль берега у стыка).
-                if (dist < 1e-6f) return true
-                if (dist < SEAM_EPS && toOther.x * normal.x + toOther.y * normal.y > 0.7f * dist) return true
-            }
-        }
-        return false
-    }
-
-    private fun nearestOnSegment(p: Offset, a: Offset, b: Offset): Offset {
-        val d = b - a
-        val lenSq = d.x * d.x + d.y * d.y
-        val t = if (lenSq == 0f) 0f else (((p.x - a.x) * d.x + (p.y - a.y) * d.y) / lenSq).coerceIn(0f, 1f)
-        return a + d * t
+        return Holder(background, territories.toList(), outlines)
     }
 
     /** Ray casting: точка внутри полигона или нет. Координаты — в одном пространстве. */
@@ -182,28 +117,21 @@ object TerritoryShapes {
         return inside
     }
 
-    /** Территория под точкой (дроби 0..1). Маленькие полигоны проверяются первыми. */
+    /**
+     * Территория под точкой (дроби 0..1). Ищем с конца фона — там меньшие кольца,
+     * поэтому анклав побеждает объемлющий регион: тап по Адыгее не выбирает Кубань.
+     */
     fun territoryAt(point: Offset): String? {
-        return outlines.entries
-            .sortedBy { (_, rings) -> rings.maxOfOrNull { polygonArea(it) } ?: 0f }
-            .firstOrNull { (_, rings) -> rings.any { contains(point, it) } }
-            ?.key
-    }
-
-    private fun polygonArea(poly: List<Offset>): Float {
-        var area = 0f
-        var j = poly.size - 1
-        for (i in poly.indices) {
-            area += (poly[j].x + poly[i].x) * (poly[j].y - poly[i].y)
-            j = i
+        val current = holder ?: return null
+        for (i in current.background.indices.reversed()) {
+            if (contains(point, current.background[i])) return current.backgroundTerritories[i]
         }
-        return kotlin.math.abs(area / 2f)
+        return null
     }
 
     private data class Holder(
         val background: List<List<Offset>>,
-        val outlines: Map<String, List<List<Offset>>>,
-        val backgroundSeams: List<List<List<Offset>>>,
-        val outlineSeams: Map<String, List<List<Offset>>>
+        val backgroundTerritories: List<String?>,
+        val outlines: Map<String, List<List<Offset>>>
     )
 }
