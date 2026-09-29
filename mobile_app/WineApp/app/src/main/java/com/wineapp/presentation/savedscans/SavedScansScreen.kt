@@ -1,5 +1,6 @@
 package com.wineapp.presentation.savedscans
 
+import com.wineapp.presentation.common.ui.AppIcons
 import android.app.Activity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -20,10 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Scanner
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -224,7 +222,7 @@ private fun SavedScansHeader(
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
+                    AppIcons.ChevronLeft,
                     contentDescription = null,
                     tint = BrandCream50,
                     modifier = Modifier.size(24.dp)
@@ -357,7 +355,7 @@ fun SavedScanCard(
                     if (scan.wine.rating != null) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                Icons.Default.Star,
+                                AppIcons.Star,
                                 contentDescription = null,
                                 tint = BrandCream500,
                                 modifier = Modifier.size(16.dp)
@@ -399,7 +397,7 @@ fun SavedScanCard(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        Icons.Default.Delete,
+                        AppIcons.Trash,
                         contentDescription = stringResource(R.string.saved_scans_delete),
                         tint = BrandTextSecondary,
                         modifier = Modifier.size(20.dp)

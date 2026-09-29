@@ -30,6 +30,28 @@
     <string name="scan_result_best_match">Лучшее совпадение</string>
     <string name="scan_result_alternatives">Возможные варианты</string>
     <string name="scan_result_already_tried">Вы уже пробовали это вино</string>
+    <string name="scan_result_new_photo">Новое фото</string>
+    <string name="scan_result_your_photo">Ваше фото</string>
+    <string name="scan_result_title_absent">Мы не нашли ваше вино</string>
+    <string name="scan_result_title_choosing">Выберите своё вино</string>
+    <string name="scan_result_title_found">Мы нашли ваше вино</string>
+    <string name="scan_result_title_likely">Скорее всего, мы нашли ваше вино</string>
+    <string name="scan_result_sub_absent_recs">Но можем порекомендовать похожие вина.</string>
+    <string name="scan_result_sub_retry">Попробуйте сфотографировать этикетку ближе.</string>
+    <string name="scan_result_sub_choosing">Выберите правильную карточку среди результатов поиска.</string>
+    <string name="scan_result_sub_found">Откройте карточку, чтобы узнать о нём больше.</string>
+    <string name="scan_result_sub_likely_recs">Посмотрите подборку похожих вин.</string>
+    <string name="scan_result_match">Совпадение %1$d%%</string>
+    <string name="scan_result_not_in_catalog">Нет в каталоге</string>
+    <string name="scan_result_needs_check">Требует проверки</string>
+    <string name="scan_result_confirm">Это моё вино</string>
+    <string name="scan_result_choose_other">Выбрать другое вино</string>
+    <string name="scan_result_back_to_result">Вернуться к результату</string>
+    <string name="scan_result_recommend_also">Рекомендуем также</string>
+    <string name="scan_result_similar">Похожие вина</string>
+    <string name="scan_result_recs_ambiguous">Не удалось подобрать похожие вина. Попробуйте более чёткое фото этикетки.</string>
+    <string name="scan_result_recs_none">Похожих вин пока нет в каталоге.</string>
+    <string name="scan_result_recs_failed">Не удалось подобрать похожие вина. Попробуйте сфотографировать этикетку ближе.</string>
 
     <string name="search_title">Поиск вин</string>
     <string name="search_hint">Искать вина</string>
@@ -118,6 +140,7 @@
     <string name="mywines_collection_sub">Вина, которые вы попробовали</string>
     <string name="mywines_scans">Сканы</string>
     <string name="mywines_scans_sub">Ваши сканы вин</string>
+    <string name="mywines_roulette">Винная рулетка</string>
     <string name="nav_search">Поиск</string>
     <string name="nav_sommelier">Сомелье</string>
     <string name="nav_saved_scans">Сохранённые</string>
@@ -154,6 +177,17 @@
     <string name="favorites_liked">Понравилось</string>
     <string name="detail_liked">Понравилось</string>
     <string name="detail_wish">Хочу попробовать</string>
+
+    <string name="roulette_title">Винная рулетка</string>
+    <string name="roulette_subtitle">Выберите из каких вин крутить рулетку</string>
+    <string name="roulette_tab_collection">Коллекция</string>
+    <string name="roulette_tab_favorites">Избранное</string>
+    <string name="roulette_spin">Крутить</string>
+    <string name="roulette_close">Закрыть</string>
+    <string name="roulette_hint">Нажмите «Крутить», чтобы выбрать вино</string>
+    <string name="roulette_empty">Нечего крутить</string>
+    <string name="roulette_empty_hint">Добавьте вина в коллекцию или избранное</string>
+    <string name="roulette_error">Не удалось загрузить вина для рулетки</string>
 
     <string name="cellar_title">Моя коллекция</string>
     <string name="cellar_empty">Коллекция пока пуста</string>

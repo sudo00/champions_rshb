@@ -1,5 +1,6 @@
 package com.wineapp.presentation.savedscans
 
+import com.wineapp.presentation.common.ui.AppIcons
 import android.app.Activity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -22,11 +23,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.WineBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -141,7 +139,7 @@ fun SavedScanDetailScreenContent(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
+                            AppIcons.ChevronLeft,
                             contentDescription = null,
                             tint = BrandCream50,
                             modifier = Modifier.size(24.dp)
@@ -396,7 +394,7 @@ private fun ScanResultCard(
                             modifier = Modifier.weight(1f)
                         ) {
                             Icon(
-                                Icons.Default.Star,
+                                AppIcons.Star,
                                 contentDescription = null,
                                 tint = BrandCream500,
                                 modifier = Modifier.size(20.dp)
@@ -517,7 +515,7 @@ private fun ConversationSection(conversation: List<SommelierMessage>) {
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.Default.WineBar,
+                        AppIcons.WineBottle,
                         contentDescription = null,
                         tint = BrandCream50,
                         modifier = Modifier.size(20.dp)
@@ -580,7 +578,7 @@ private fun ConversationBubble(message: SommelierMessage) {
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.Default.WineBar,
+                            AppIcons.WineBottle,
                             contentDescription = null,
                             tint = BrandCream50,
                             modifier = Modifier.size(12.dp)

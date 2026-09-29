@@ -1,5 +1,6 @@
 package com.wineapp.presentation.mywines
 
+import com.wineapp.presentation.common.ui.AppIcons
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -19,10 +20,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.WineBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -48,6 +45,7 @@ import coil.request.ImageRequest
 import com.wineapp.R
 import com.wineapp.data.mock.MockDataProvider
 import com.wineapp.domain.model.Wine
+import com.wineapp.presentation.common.ui.BrandButton
 import com.wineapp.presentation.common.ui.BrandSecondaryButton
 import com.wineapp.presentation.common.ui.TransparentSystemBars
 import com.wineapp.ui.theme.BrandBorderLight
@@ -70,6 +68,7 @@ fun MyWinesScreen(
     onNavigateToCellar: () -> Unit = {},
     onNavigateToFavorites: () -> Unit = {},
     onNavigateToSavedScans: () -> Unit = {},
+    onNavigateToRoulette: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {}
 ) {
     val viewModel: MyWinesViewModel = hiltViewModel()
@@ -80,6 +79,7 @@ fun MyWinesScreen(
         onNavigateToCellar = onNavigateToCellar,
         onNavigateToFavorites = onNavigateToFavorites,
         onNavigateToSavedScans = onNavigateToSavedScans,
+        onNavigateToRoulette = onNavigateToRoulette,
         onNavigateToDetail = onNavigateToDetail,
         onToggleFavorite = { wineId -> viewModel.sendIntent(MyWinesIntent.ToggleFavorite(wineId)) }
     )
@@ -91,6 +91,7 @@ fun MyWinesContent(
     onNavigateToCellar: () -> Unit = {},
     onNavigateToFavorites: () -> Unit = {},
     onNavigateToSavedScans: () -> Unit = {},
+    onNavigateToRoulette: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
     onToggleFavorite: (String) -> Unit = {}
 ) {
@@ -135,6 +136,12 @@ fun MyWinesContent(
         } else {
             // Кнопка-переход лежит под своей секцией; пустые секции скрыты целиком.
             Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                // Рулетка всегда доступна: пул берётся из коллекции и избранного.
+                BrandButton(
+                    text = stringResource(R.string.mywines_roulette),
+                    onClick = onNavigateToRoulette,
+                    leadingIcon = AppIcons.Play
+                )
                 if (state.favorites.isNotEmpty()) {
                     MyWinesSection(
                         title = stringResource(R.string.mywines_favorites),
@@ -283,7 +290,7 @@ private fun MyWinesScanCard(
                                     .background(BrandBorderLight)
                             ) {
                                 Icon(
-                                    Icons.Default.WineBar,
+                                    AppIcons.WineBottle,
                                     contentDescription = null,
                                     tint = BrandTextSecondary.copy(alpha = 0.4f),
                                     modifier = Modifier.size(32.dp)
@@ -303,7 +310,7 @@ private fun MyWinesScanCard(
                             .background(BrandBorderLight)
                     ) {
                         Icon(
-                            Icons.Default.WineBar,
+                            AppIcons.WineBottle,
                             contentDescription = null,
                             tint = BrandTextSecondary.copy(alpha = 0.4f),
                             modifier = Modifier.size(32.dp)
@@ -365,7 +372,7 @@ private fun MyWinesScanCard(
                         if (wine.rating != null) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    Icons.Default.Star,
+                                    AppIcons.Star,
                                     contentDescription = null,
                                     tint = BrandCream500,
                                     modifier = Modifier.size(16.dp)
@@ -405,7 +412,7 @@ private fun MyWinesScanCard(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        if (isFavorite) AppIcons.HeartFilled else AppIcons.Heart,
                         contentDescription = null,
                         tint = if (isFavorite) BrandBurgundy600 else BrandTextPrimary,
                         modifier = Modifier.size(24.dp)

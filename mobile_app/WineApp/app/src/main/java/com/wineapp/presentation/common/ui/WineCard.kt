@@ -14,10 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -30,7 +26,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -39,7 +34,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
-import kotlinx.coroutines.withTimeoutOrNull
 import com.wineapp.data.mock.MockDataProvider
 import com.wineapp.domain.model.Wine
 import com.wineapp.ui.theme.BrandCream100
@@ -83,7 +77,7 @@ fun WineCard(
                 // Рейтинг.
                 if (wine.rating != null) Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        Icons.Default.Star,
+                        AppIcons.Star,
                         contentDescription = null,
                         tint = BrandCream500,
                         modifier = Modifier.size(16.dp)
@@ -163,7 +157,7 @@ fun WineCard(
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
-                            if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            if (isFavorite) AppIcons.HeartFilled else AppIcons.Heart,
                             contentDescription = null,
                             tint = if (isFavorite) com.wineapp.ui.theme.BrandBurgundy600 else BrandTextPrimary,
                             modifier = Modifier.size(24.dp)

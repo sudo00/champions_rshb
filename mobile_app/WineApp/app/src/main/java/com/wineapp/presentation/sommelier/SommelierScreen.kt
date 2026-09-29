@@ -1,5 +1,7 @@
 ﻿package com.wineapp.presentation.sommelier
 
+import androidx.compose.ui.graphics.graphicsLayer
+import com.wineapp.presentation.common.ui.AppIcons
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -28,15 +30,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.ThumbDown
-import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material.icons.filled.WineBar
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -292,7 +285,7 @@ private fun SommelierTopBar(
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    Icons.Default.Menu,
+                    AppIcons.Burger,
                     contentDescription = null,
                     tint = BrandCream50,
                     modifier = Modifier.size(24.dp)
@@ -310,7 +303,7 @@ private fun SommelierTopBar(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Icon(
-                Icons.Default.Star,
+                AppIcons.Star,
                 contentDescription = null,
                 tint = BrandBurgundy600,
                 modifier = Modifier.size(20.dp)
@@ -324,7 +317,7 @@ private fun SommelierTopBar(
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    Icons.Default.Close,
+                    AppIcons.Close,
                     contentDescription = null,
                     tint = BrandCream50,
                     modifier = Modifier.size(24.dp)
@@ -459,7 +452,7 @@ private fun SommelierScanCard(wine: Wine) {
                     if (wine.rating != null) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                Icons.Default.Star,
+                                AppIcons.Star,
                                 contentDescription = null,
                                 tint = BrandCream500,
                                 modifier = Modifier.size(24.dp)
@@ -539,7 +532,7 @@ private fun SommelierScanCardSkeleton() {
 @Composable
 private fun WinePhotoPlaceholder() {
     Icon(
-        Icons.Default.WineBar,
+        AppIcons.WineBottle,
         contentDescription = null,
         tint = BrandTextSecondary.copy(alpha = 0.3f),
         modifier = Modifier.size(72.dp)
@@ -633,7 +626,7 @@ private fun SommelierInputBar(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        Icons.Default.Add,
+                        AppIcons.Plus,
                         contentDescription = null,
                         tint = BrandTextPrimary,
                         modifier = Modifier.size(24.dp)
@@ -683,7 +676,7 @@ private fun SommelierInputBar(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        Icons.Filled.KeyboardArrowUp,
+                        AppIcons.ChevronUp,
                         contentDescription = stringResource(R.string.sommelier_send),
                         tint = BrandCream50,
                         modifier = Modifier.size(24.dp)
@@ -740,7 +733,7 @@ private fun SommelierWineBanner(
                             .background(BrandBorderLight)
                     ) {
                         Icon(
-                            Icons.Default.WineBar,
+                            AppIcons.WineBottle,
                             contentDescription = null,
                             tint = BrandTextSecondary.copy(alpha = 0.4f),
                             modifier = Modifier.size(24.dp)
@@ -784,7 +777,7 @@ private fun SommelierWineBanner(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        Icons.Filled.ChevronRight,
+                        AppIcons.ChevronRight,
                         contentDescription = null,
                         tint = BrandTextPrimary,
                         modifier = Modifier.size(24.dp)
@@ -853,11 +846,15 @@ private fun SommelierAssistantMessage(message: ChatMessage) {
                 modifier = Modifier.size(36.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
+                    // like.xml в ресурсах — копия heart.xml, поэтому «палец вверх»
+                    // рисуем отражённым по вертикали dislike.xml.
                     Icon(
-                        Icons.Default.ThumbUp,
+                        AppIcons.Dislike,
                         contentDescription = null,
                         tint = if (vote == 1) BrandBurgundy600 else BrandTextPrimary,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier
+                            .size(24.dp)
+                            .graphicsLayer(scaleY = -1f)
                     )
                 }
             }
@@ -869,7 +866,7 @@ private fun SommelierAssistantMessage(message: ChatMessage) {
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        Icons.Default.ThumbDown,
+                        AppIcons.Dislike,
                         contentDescription = null,
                         tint = if (vote == 2) BrandBurgundy600 else BrandTextPrimary,
                         modifier = Modifier.size(24.dp)
@@ -913,7 +910,7 @@ private fun SommelierLoadingRow(text: String) {
             .padding(vertical = 24.dp)
     ) {
         Icon(
-            Icons.Default.Star,
+            AppIcons.Star,
             contentDescription = null,
             tint = BrandBurgundy600,
             modifier = Modifier.size(20.dp)

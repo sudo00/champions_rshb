@@ -1,5 +1,6 @@
 package com.wineapp.presentation.scanner
 
+import com.wineapp.presentation.common.ui.AppIcons
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
@@ -34,12 +35,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FlashAuto
-import androidx.compose.material.icons.filled.FlashOff
-import androidx.compose.material.icons.filled.FlashOn
-import androidx.compose.material.icons.filled.PhotoLibrary
-import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -157,6 +152,7 @@ fun ScannerScreen(
         viewModel.setScanScreenActive(lifecycleOwner.lifecycle.currentState.isAtLeast(
             androidx.lifecycle.Lifecycle.State.RESUMED))
         onDispose {
+            viewModel.consumeAutoOpenWine()
             viewModel.setScanScreenActive(false)
             lifecycleOwner.lifecycle.removeObserver(observer)
             viewModel.cameraHelper.shutdown()
@@ -170,6 +166,19 @@ fun ScannerScreen(
     }
 
     val success = state as? ScannerState.Success
+    val autoOpenWine by viewModel.autoOpenWine.collectAsState()
+    LaunchedEffect(success, autoOpenWine) {
+        val wineId = autoOpenWine ?: return@LaunchedEffect
+        val current = success ?: return@LaunchedEffect
+        // Событие гасится в onDispose ниже: так во время анимации перехода
+        // под карточкой остаётся фон, а по «назад» уже показывается итог скана.
+        onNavigateToDetail(wineId, current.imagePath, current.result.detailRecognitionStatus(wineId))
+    }
+    if (success != null && autoOpenWine != null) {
+        // Переход на карточку уже запущен — держим фирменный фон вместо вспышки итога.
+        Box(modifier = Modifier.fillMaxSize().background(com.wineapp.ui.theme.BrandCream50))
+        return
+    }
     if (success != null) {
         val alreadyTried by viewModel.alreadyTried.collectAsState()
         ScanSummaryScreen(
@@ -484,7 +493,7 @@ fun ScannerTopBar(
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    Icons.Default.Close,
+                    AppIcons.Close,
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)
@@ -520,19 +529,17 @@ fun ScannerTopBar(
             modifier = Modifier.size(40.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
+                // В ресурсах одна молния: выключенная вспышка — приглушённая.
+                val flashOff = flashMode == androidx.camera.core.ImageCapture.FLASH_MODE_OFF
                 Icon(
-                    when (flashMode) {
-                        androidx.camera.core.ImageCapture.FLASH_MODE_ON -> Icons.Default.FlashOn
-                        androidx.camera.core.ImageCapture.FLASH_MODE_AUTO -> Icons.Default.FlashAuto
-                        else -> Icons.Default.FlashOff
-                    },
+                    AppIcons.Lightning,
                     contentDescription = stringResource(
-                        if (flashMode == androidx.camera.core.ImageCapture.FLASH_MODE_OFF)
+                        if (flashOff)
                             com.wineapp.R.string.scanner_flash_off
                         else
                             com.wineapp.R.string.scanner_flash_on
                     ),
-                    tint = Color.White,
+                    tint = if (flashOff) Color.White.copy(alpha = 0.4f) else Color.White,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -582,7 +589,7 @@ fun ScannerShutterControls(
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    Icons.Default.PhotoLibrary,
+                    AppIcons.Gallery,
                     contentDescription = stringResource(com.wineapp.R.string.scanner_gallery),
                     tint = Color.White,
                     modifier = Modifier.size(32.dp)
@@ -621,7 +628,7 @@ fun ScannerShutterControls(
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    Icons.Default.QuestionMark,
+                    AppIcons.Question,
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(32.dp)

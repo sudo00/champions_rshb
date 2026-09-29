@@ -28,6 +28,7 @@ import com.wineapp.presentation.common.ui.WineBottomBar
 import com.wineapp.presentation.detail.DetailScreen
 import com.wineapp.presentation.favorites.FavoritesScreen
 import com.wineapp.presentation.mywines.MyWinesScreen
+import com.wineapp.presentation.roulette.WineRouletteScreen
 import com.wineapp.presentation.savedscans.SavedScanDetailScreen
 import com.wineapp.presentation.savedscans.SavedScansScreen
 import com.wineapp.presentation.scanner.ScannerScreen
@@ -99,6 +100,7 @@ fun AppNavHost(startRoute: String? = null) {
                 onNavigateToCellar = { navController.navigate("cellar") },
                 onNavigateToFavorites = { navController.navigate("favorites") },
                 onNavigateToSavedScans = { navController.navigate("saved_scans") },
+                onNavigateToRoulette = { navController.navigate("roulette") },
                 onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") }
             )
         }
@@ -234,6 +236,12 @@ fun AppNavHost(startRoute: String? = null) {
         }
         composable("cellar") {
             CellarScreen(
+                onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") },
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable("roulette") {
+            WineRouletteScreen(
                 onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") },
                 onNavigateBack = { navController.popBackStack() }
             )

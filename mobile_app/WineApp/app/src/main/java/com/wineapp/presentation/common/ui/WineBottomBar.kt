@@ -10,12 +10,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.Restaurant
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -24,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
+import androidx.annotation.DrawableRes
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -39,14 +35,16 @@ import com.wineapp.ui.theme.WineAppTheme
  */
 enum class BottomTab(
     val route: String,
-    val icon: ImageVector,
-    val labelRes: Int
+    val labelRes: Int,
+    @DrawableRes val iconRes: Int,
+    /** Закрашенный вариант для активной вкладки (если есть в ресурсах). */
+    @DrawableRes val selectedIconRes: Int = iconRes
 ) {
-    HOME("search", Icons.Default.Home, R.string.nav_home),
-    SEARCH("search_tab", Icons.Default.Search, R.string.nav_search),
-    SCANNER("scanner", Icons.Default.PhotoCamera, R.string.nav_scanner),
-    MY_WINES("my_wines", Icons.Default.Restaurant, R.string.nav_mywines),
-    MAP("wine_path", Icons.Default.LocationOn, R.string.nav_map)
+    HOME("search", R.string.nav_home, R.drawable.home, R.drawable.home_filled),
+    SEARCH("search_tab", R.string.nav_search, R.drawable.search, R.drawable.search_filled),
+    SCANNER("scanner", R.string.nav_scanner, R.drawable.camera_filled),
+    MY_WINES("my_wines", R.string.nav_mywines, R.drawable.grape),
+    MAP("wine_path", R.string.nav_map, R.drawable.map_marker, R.drawable.map_marker_filled)
 }
 
 @Composable
@@ -95,7 +93,9 @@ fun WineBottomBar(
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                tab.icon,
+                                ImageVector.vectorResource(
+                                    if (isSelected) tab.selectedIconRes else tab.iconRes
+                                ),
                                 contentDescription = stringResource(tab.labelRes),
                                 tint = if (isScanner) BrandCream50 else BrandTextPrimary,
                                 modifier = Modifier.size(24.dp)

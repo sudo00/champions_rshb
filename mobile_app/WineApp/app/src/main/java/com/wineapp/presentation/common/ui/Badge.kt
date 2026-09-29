@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -19,6 +17,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
+import androidx.annotation.DrawableRes
+import com.wineapp.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -31,7 +32,9 @@ import androidx.compose.ui.unit.sp
 enum class BadgeType(
     val background: Color,
     val main: Color,
-    val icon: ImageVector?
+    val icon: ImageVector?,
+    /** Иконка из res/drawable, приоритетнее [icon]. */
+    @DrawableRes val iconRes: Int? = null
 ) {
     SUCCESS(
         background = Color(0xFFEDF2E8),
@@ -41,12 +44,14 @@ enum class BadgeType(
     WARNING(
         background = Color(0xFFF8EFD6),
         main = Color(0xFFB1873E),
-        icon = Icons.Default.Warning
+        icon = null,
+        iconRes = R.drawable.alert_sign
     ),
     ERROR(
         background = Color(0xFFF7E5E1),
         main = Color(0xFFB65349),
-        icon = Icons.Default.Error
+        icon = null,
+        iconRes = R.drawable.alert_sign
     ),
     NEUTRAL(
         background = Color(0xFFF2EEE8),
@@ -70,7 +75,8 @@ fun WineBadge(
             modifier = Modifier.padding(start = 4.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            type.icon?.let { icon ->
+            val badgeIcon = type.iconRes?.let { ImageVector.vectorResource(it) } ?: type.icon
+            badgeIcon?.let { icon ->
                 Icon(
                     icon,
                     contentDescription = null,

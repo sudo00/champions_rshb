@@ -17,8 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,9 +27,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -196,7 +196,7 @@ private fun HeroBlock(
             BrandButton(
                 text = stringResource(R.string.home_scan),
                 onClick = onNavigateToScanner,
-                leadingIcon = Icons.Default.PhotoCamera
+                leadingIcon = ImageVector.vectorResource(R.drawable.photo_camera)
             )
             Spacer(modifier = Modifier.height(12.dp))
             BrandSecondaryButton(
@@ -247,7 +247,7 @@ private fun PopularBlock(
 //            )
 //            Spacer(modifier = Modifier.width(4.dp))
 //            Icon(
-//                Icons.Default.FilterList,
+//                AppIcons.Filter,
 //                contentDescription = null,
 //                tint = BrandBurgundy600,
 //                modifier = Modifier.size(24.dp)

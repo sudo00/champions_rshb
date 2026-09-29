@@ -1,17 +1,11 @@
-package com.wineapp.presentation.cellar
+﻿package com.wineapp.presentation.cellar
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import com.wineapp.presentation.common.ui.AppIcons
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -29,10 +23,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Casino
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.AlertDialog
@@ -40,7 +30,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -53,21 +42,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TileMode
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlin.math.sin
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
@@ -108,116 +91,7 @@ fun CellarScreen(
 }
 
 @Composable
-fun DrinkTodayButton(onClick: () -> Unit) {
-    val shape = RoundedCornerShape(16.dp)
-    val animatorsEnabled = remember {
-        try {
-            android.animation.ValueAnimator.areAnimatorsEnabled()
-        } catch (_: Exception) {
-            true
-        }
-    }
-    // Один transition на всё: фаза перелива, блика и пульса контента синхронны.
-    // Без анимаций в системе значения игнорируются — статичное золото.
-    val transition = rememberInfiniteTransition(label = "drink")
-    val flowShiftRaw by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2800, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "flowShift"
-    )
-    val sweepShiftRaw by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3600, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "sweepShift"
-    )
-    val flowPhase = if (animatorsEnabled) flowShiftRaw else 0f
-    val sweepPhase = if (animatorsEnabled) sweepShiftRaw else -1f
-    // Текучий градиент: один период палитры тайлится (Repeated) и за цикл
-    // сдвигается ровно на период — стыка нет по построению.
-    val period = 800f
-    val rise = 420f
-    // Сдвиг строго вдоль вектора градиента ровно на один тайл —
-    // только так зацикливание бесшовно (горизонтальный сдвиг при
-    // диагональном векторе давал дробь периода и видимый скачок).
-    val x0 = flowPhase * period
-    val y0 = flowPhase * rise
-    val flowBrush = Brush.linearGradient(
-        colors = listOf(
-            Color(0xFF8A5A1A),
-            Color(0xFFC9A227),
-            Color(0xFFFFE08A),
-            Color(0xFFC9A227)
-        ),
-        start = Offset(x0, y0),
-        end = Offset(x0 + period, y0 + rise),
-        tileMode = TileMode.Repeated
-    )
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val bw = with(LocalDensity.current) { maxWidth.toPx() }.coerceAtLeast(1f)
-        Surface(
-            onClick = onClick,
-            shape = shape,
-            color = Color.Transparent,
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(flowBrush, shape)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                if (animatorsEnabled) {
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .graphicsLayer { translationX = (sweepPhase * 1.5f - 0.75f) * (bw + 240f) }
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(Color.Transparent, Color.White.copy(alpha = 0.28f), Color.Transparent)
-                                ),
-                                shape
-                            )
-                    )
-                }
-                Row(
-                    modifier = Modifier
-                        .padding(vertical = 16.dp)
-                        .graphicsLayer {
-                            // Пульс контента в такт фону: один вдох-выдох за цикл перелива.
-                            val pulse = 1f + 0.05f * sin(flowPhase * 2f * Math.PI.toFloat())
-                            scaleX = pulse
-                            scaleY = pulse
-                        },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Casino,
-                        contentDescription = null,
-                        tint = Color.Black,
-                        modifier = Modifier
-                            .padding(end = 8.dp)
-                            .size(28.dp)
-                    )
-                    Text(
-                        stringResource(R.string.cellar_drink_today),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun CellarScreenContent(
-    state: CellarState,
+fun CellarScreenContent(    state: CellarState,
     onFilter: (String?) -> Unit = {},
     onRetry: () -> Unit = {},
     onIncrement: (String) -> Unit = {},
@@ -264,22 +138,6 @@ fun CellarScreenContent(
                         message = stringResource(R.string.cellar_empty_hint)
                     )
                 } else {
-                    val inStock = state.items.filter { it.status == CellarStatus.IN_STOCK }
-                    var rouletteOpen by remember { mutableStateOf(false) }
-                    if (inStock.isNotEmpty()) {
-                        DrinkTodayButton(onClick = { rouletteOpen = true })
-                        Spacer(modifier = Modifier.height(4.dp))
-                    }
-                    if (rouletteOpen && inStock.isNotEmpty()) {
-                        DrinkRouletteDialog(
-                            items = inStock,
-                            onDismiss = { rouletteOpen = false },
-                            onOpenDetail = { wineId ->
-                                rouletteOpen = false
-                                onNavigateToDetail(wineId)
-                            }
-                        )
-                    }
                     val totalBottles = state.items.sumOf { it.quantity }
                     Text(
                         text = stringResource(R.string.cellar_total, state.items.size, totalBottles),
@@ -346,7 +204,7 @@ private fun CellarHeader(
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
+                    AppIcons.ChevronLeft,
                     contentDescription = null,
                     tint = BrandCream50,
                     modifier = Modifier.size(24.dp)
@@ -481,7 +339,7 @@ private fun CellarRow(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            Icons.Default.Delete,
+                            AppIcons.Trash,
                             contentDescription = stringResource(R.string.cellar_delete),
                             tint = BrandTextSecondary,
                             modifier = Modifier.size(20.dp)
@@ -571,7 +429,7 @@ private fun CellarRow(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            Icons.Default.Add,
+                            AppIcons.Plus,
                             contentDescription = stringResource(R.string.cellar_increase),
                             tint = BrandCream50,
                             modifier = Modifier.size(20.dp)

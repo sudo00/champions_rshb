@@ -1,5 +1,6 @@
 package com.wineapp.presentation.detail
 
+import com.wineapp.presentation.common.ui.AppIcons
 import android.annotation.SuppressLint
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -23,17 +24,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.WineBar
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -348,7 +338,7 @@ private fun DetailHero(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        Icons.Default.ChevronLeft,
+                        AppIcons.ChevronLeft,
                         contentDescription = null,
                         tint = BrandCream50,
                         modifier = Modifier.size(24.dp)
@@ -367,7 +357,7 @@ private fun DetailHero(
                     overflow = TextOverflow.Ellipsis
                 )
                 Icon(
-                    Icons.Filled.ChevronRight,
+                    AppIcons.ChevronRight,
                     contentDescription = null,
                     tint = BrandCream50,
                     modifier = Modifier.size(20.dp)
@@ -381,7 +371,7 @@ private fun DetailHero(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        if (isFavorite) AppIcons.HeartFilled else AppIcons.Heart,
                         contentDescription = null,
                         tint = BrandCream50,
                         modifier = Modifier.size(24.dp)
@@ -410,7 +400,7 @@ private fun DetailHero(
                 )
             } else {
                 Icon(
-                    Icons.Default.WineBar,
+                    AppIcons.WineBottle,
                     contentDescription = null,
                     tint = BrandCream50.copy(alpha = 0.5f),
                     modifier = Modifier.size(120.dp)
@@ -434,7 +424,7 @@ private fun DetailHero(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        Icons.Default.Star,
+                        AppIcons.Star,
                         contentDescription = stringResource(R.string.detail_ask_sommelier),
                         tint = BrandCream50,
                         modifier = Modifier.size(24.dp)
@@ -451,7 +441,7 @@ private fun DetailHero(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        if (isWished) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                        if (isWished) AppIcons.BookmarkFilled else AppIcons.Bookmark,
                         contentDescription = stringResource(R.string.detail_wish),
                         tint = if (isWished) BrandBurgundy600 else BrandCream50,
                         modifier = Modifier.size(24.dp)
@@ -668,7 +658,7 @@ private fun DetailSheetContent(
                     Surface(onClick = onFilterClick, color = Color.Transparent) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                Icons.Default.FilterList,
+                                AppIcons.Filter,
                                 contentDescription = null,
                                 tint = BrandBurgundy600,
                                 modifier = Modifier.size(20.dp)
@@ -769,7 +759,7 @@ private fun DetailDescriptionBlock(text: String) {
                     color = BrandBurgundy600
                 )
                 Icon(
-                    if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    if (expanded) AppIcons.ChevronUp else AppIcons.ChevronDown,
                     contentDescription = null,
                     tint = BrandBurgundy600,
                     modifier = Modifier.size(20.dp)
@@ -797,7 +787,7 @@ private fun DetailRateBlock() {
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            Icons.Default.Star,
+                            AppIcons.Star,
                             contentDescription = null,
                             tint = BrandCream50.copy(alpha = if (rating >= index) 1f else 0.4f),
                             modifier = Modifier.size(24.dp)
@@ -838,7 +828,7 @@ private fun DetailSimilarCard(
                 if (wine.rating != null) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            Icons.Default.Star,
+                            AppIcons.Star,
                             contentDescription = null,
                             tint = BrandCream500,
                             modifier = Modifier.size(16.dp)
@@ -883,7 +873,7 @@ private fun DetailSimilarCard(
                         )
                     } else {
                         Icon(
-                            Icons.Default.WineBar,
+                            AppIcons.WineBottle,
                             contentDescription = null,
                             tint = BrandTextSecondary.copy(alpha = 0.3f),
                             modifier = Modifier.size(48.dp)

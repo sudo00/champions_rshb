@@ -1,5 +1,6 @@
 package com.wineapp.presentation.search
 
+import com.wineapp.presentation.common.ui.AppIcons
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -21,12 +22,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -192,7 +187,7 @@ fun SearchTabContent(
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
-                                    Icons.Default.Search,
+                                    AppIcons.Search,
                                     contentDescription = null,
                                     tint = BrandCream50,
                                     modifier = Modifier.size(24.dp)
@@ -266,7 +261,7 @@ fun SearchTabContent(
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                Icons.Default.Close,
+                                AppIcons.Close,
                                 contentDescription = stringResource(R.string.search_clear),
                                 tint = BrandTextPrimary,
                                 modifier = Modifier.size(24.dp)
@@ -286,7 +281,7 @@ fun SearchTabContent(
                 Surface(onClick = {}, color = Color.Transparent) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            Icons.Default.SwapVert,
+                            AppIcons.Sort,
                             contentDescription = null,
                             tint = BrandBurgundy600,
                             modifier = Modifier.size(20.dp)
@@ -305,7 +300,7 @@ fun SearchTabContent(
                 Surface(onClick = {}, color = Color.Transparent) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            Icons.Default.FilterList,
+                            AppIcons.Filter,
                             contentDescription = null,
                             tint = BrandBurgundy600,
                             modifier = Modifier.size(20.dp)
@@ -404,7 +399,7 @@ fun SearchRichEmpty(
         BrandButton(
             text = stringResource(R.string.search_add_winery),
             onClick = onAddWinery,
-            leadingIcon = Icons.Default.Add
+            leadingIcon = AppIcons.Plus
         )
     }
 }

@@ -1,5 +1,6 @@
 ﻿package com.wineapp.presentation.winepath
 
+import com.wineapp.presentation.common.ui.AppIcons
 import android.annotation.SuppressLint
 import android.app.Activity
 import androidx.compose.animation.core.Animatable
@@ -35,10 +36,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.CircularProgressIndicator
@@ -554,7 +552,7 @@ private fun MapOverlayTopBar(
                 contentDescription = stringResource(R.string.winepath_back)
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    imageVector = AppIcons.ChevronLeft,
                     contentDescription = null,
                     tint = BrandCream50,
                     modifier = Modifier.size(24.dp)
@@ -589,7 +587,7 @@ private fun MapOverlayTopBar(
                 contentDescription = stringResource(R.string.winepath_zoom)
             ) {
                 Icon(
-                    imageVector = Icons.Default.MyLocation,
+                    imageVector = AppIcons.MyLocation,
                     contentDescription = null,
                     tint = BrandCream50,
                     modifier = Modifier.size(24.dp)
@@ -902,7 +900,7 @@ private fun TerritoryDetailCard(
                     .offset(x = (-4).dp, y = 4.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Close,
+                    imageVector = AppIcons.Close,
                     contentDescription = stringResource(R.string.winepath_close),
                     tint = BrandTextPrimary,
                     modifier = Modifier.size(24.dp)

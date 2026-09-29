@@ -51,6 +51,18 @@ class ScannerViewModel @Inject constructor(
     private val _alreadyTried = kotlinx.coroutines.flow.MutableStateFlow(false)
     val alreadyTried: kotlinx.coroutines.flow.StateFlow<Boolean> = _alreadyTried
 
+    /**
+     * Разовое событие: ID вина, карточку которого надо открыть сразу после скана
+     * (успешное распознавание). Экран сбрасывает его через [consumeAutoOpenWine],
+     * поэтому по «назад» с карточки показывается итог скана, а не повторный переход.
+     */
+    private val _autoOpenWine = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    val autoOpenWine: kotlinx.coroutines.flow.StateFlow<String?> = _autoOpenWine
+
+    fun consumeAutoOpenWine() {
+        _autoOpenWine.value = null
+    }
+
     /** Режим автораспознавания: вкл — фото улетает на бэк само, выкл — только по кнопке. */
     private val _autoCapture =
         kotlinx.coroutines.flow.MutableStateFlow(com.wineapp.data.local.ScannerPrefs.isAutoCapture(context))
@@ -118,6 +130,7 @@ class ScannerViewModel @Inject constructor(
     private fun handleProcess(imagePath: String) {
         if (_state.value is ScannerState.Processing) return
         _alreadyTried.value = false
+        _autoOpenWine.value = null
         updateState(ScannerState.Processing(imagePath, nextSeed(), nextFactIndex()))
         viewModelScope.launch {
             val result = scanWineUseCase(imagePath)
@@ -136,8 +149,11 @@ class ScannerViewModel @Inject constructor(
                 if (scanResult.wine != null || scanResult.recognitionStatus == "not_in_catalog") {
                     // ID найденного вина запоминаем здесь, а suspend-проверку погреба/
                     // избранного делаем ниже — внутри onSuccess нет корутинного контекста.
-                    triedCandidateId = scanResult.confirmation()?.candidate?.wine?.id
-                        ?: scanResult.wine?.id
+                    val confirmedId = scanResult.confirmation()?.candidate?.wine?.id
+                    triedCandidateId = confirmedId ?: scanResult.wine?.id
+                    // Уверенное совпадение — сразу открываем карточку вина.
+                    // Ставим до Success, чтобы итог не мелькнул перед переходом.
+                    _autoOpenWine.value = confirmedId
                     updateState(ScannerState.Success(scanResult, imagePath, confirmationError =
                         if (saveError != null) "Результат получен, но сохранить сканирование не удалось." else null))
                 } else {
@@ -229,6 +245,7 @@ class ScannerViewModel @Inject constructor(
 
     fun resetToReady() {
         _alreadyTried.value = false
+        _autoOpenWine.value = null
         updateState(ScannerState.Ready())
     }
 

@@ -1,5 +1,6 @@
 package com.wineapp.presentation.favorites
 
+import com.wineapp.presentation.common.ui.AppIcons
 import android.app.Activity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -22,10 +23,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -178,7 +175,7 @@ fun FavoritesScreenContent(
             is FavoritesState.Success -> {
                 if (state.items.isEmpty() && state.filter == null) {
                     EmptyState(
-                        icon = Icons.Default.FavoriteBorder,
+                        icon = AppIcons.Heart,
                         title = stringResource(R.string.favorites_empty),
                         message = stringResource(R.string.favorites_empty_hint)
                     )
@@ -190,7 +187,7 @@ fun FavoritesScreenContent(
                         )
                         if (state.items.isEmpty()) {
                             EmptyState(
-                                icon = Icons.Default.FavoriteBorder,
+                                icon = AppIcons.Heart,
                                 title = stringResource(R.string.favorites_empty),
                                 message = stringResource(R.string.favorites_empty_hint)
                             )
@@ -240,7 +237,7 @@ private fun FavoritesHeader(
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
+                    AppIcons.ChevronLeft,
                     contentDescription = null,
                     tint = BrandCream50,
                     modifier = Modifier.size(24.dp)
@@ -451,7 +448,7 @@ fun FavoriteWineCard(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                Icons.Default.Star,
+                                AppIcons.Star,
                                 contentDescription = null,
                                 tint = BrandCream500,
                                 modifier = Modifier.size(16.dp)
@@ -502,7 +499,7 @@ fun FavoriteWineCard(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        Icons.Default.Delete,
+                        AppIcons.Trash,
                         contentDescription = stringResource(R.string.favorites_remove),
                         tint = BrandTextSecondary,
                         modifier = Modifier.size(20.dp)

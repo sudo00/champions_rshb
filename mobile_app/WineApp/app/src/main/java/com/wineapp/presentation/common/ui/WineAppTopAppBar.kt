@@ -1,8 +1,6 @@
 package com.wineapp.presentation.common.ui
 
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,7 +30,7 @@ fun WineAppTopAppBar(
             if (showBack) {
                 IconButton(onClick = onBack) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        imageVector = AppIcons.ChevronLeft,
                         contentDescription = stringResource(id = com.wineapp.R.string.app_name)
                     )
                 }
