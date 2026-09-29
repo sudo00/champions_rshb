@@ -28,9 +28,13 @@ class GetWinePathUseCase @Inject constructor(
             scanHistoryDao.getAllScans()
         ) { points, badges, scans ->
             val earnedCodes = badges.map { it.code }.toSet()
+            // Только подтверждённые сканы — как в BadgeRepositoryImpl (награды «Дегустатор»):
+            // не пойманные этикетки, «нет в каталоге» и диалоги с сомелье сканами не считаются.
+            val confirmedScans = scans.filter {
+                it.recognitionStatus in setOf("legacy", "user_confirmed", "score_confirmed")
+            }
             // territoryId из колонки; для старых сканов — нормализация сырого region на лету.
-            val entitiesByTerritory: Map<String, List<com.wineapp.data.local.ScanHistoryEntity>> = scans
-                .filter { it.recognitionStatus in setOf("legacy", "user_confirmed", "score_confirmed") }
+            val entitiesByTerritory: Map<String, List<com.wineapp.data.local.ScanHistoryEntity>> = confirmedScans
                 .groupBy { entity ->
                     entity.territoryId ?: TerritoryRegistry.normalize(entity.region)
                 }
@@ -76,7 +80,7 @@ class GetWinePathUseCase @Inject constructor(
                     levelProgress = levelInfo.progress,
                     territoriesOpened = openCount,
                     territoriesTotal = TerritoryRegistry.territories.count { !it.locked },
-                    scansCount = scans.size,
+                    scansCount = confirmedScans.size,
                     levelPointsFrom = levelInfo.pointsFrom,
                     levelPointsTo = levelInfo.pointsTo
                 ),

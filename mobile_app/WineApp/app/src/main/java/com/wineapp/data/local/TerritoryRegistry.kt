@@ -34,6 +34,7 @@ object TerritoryRegistry {
     const val OSSETIA = "ossetia"
     const val MOSCOW = "moscow"
     const val BASHKIRIA = "bashkiria"
+    const val FAR_EAST = "fareast"
 
     val territories: List<Territory> = listOf(
         Territory(KUBAN, "Кубань", "Кубани", listOf("кубань", "тамань", "краснодар"), 0.117f, 0.889f, 1067),
@@ -44,6 +45,12 @@ object TerritoryRegistry {
         Territory(DAGESTAN, "Дагестан", "Дагестана", listOf("дагестан", "дербент"), 0.158f, 0.942f, 97),
         Territory(VOLGA, "Нижняя Волга", "Нижней Волги", listOf("нижняя волга", "волгоград", "астрахань"), 0.154f, 0.825f, 22),
         Territory(SAMARA, "Самара", "Самары", listOf("самара"), 0.181f, 0.698f, 21),
+        // В каталоге регион записан как «Дальневосточная зона»; на карте — Приморский край.
+        Territory(
+            FAR_EAST, "Дальний Восток", "Дальнего Востока",
+            listOf("дальневосточн", "дальний восток", "приморье", "приморский", "владивосток"),
+            0.664f, 0.895f, 1
+        ),
         Territory(BASHKIRIA, "Башкирия", "Башкирии", listOf("башкирия", "башкортостан", "уфа"), 0.220f, 0.681f, 0, locked = true),
         Territory(MOSCOW, "Подмосковье", "Подмосковья", listOf("подмосковье", "московская", "москва"), 0.107f, 0.643f, 0, locked = true)
     )

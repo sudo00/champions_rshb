@@ -22,6 +22,16 @@ data class Wine(
     val winery: String?
 )
 
+/**
+ * Демо-заглушка: если у вина нет рейтинга, возвращает стабильную оценку 4.0–5.0,
+ * вычисленную из id, чтобы одно и то же вино везде показывало одинаковое значение.
+ */
+fun ratingOrDemo(rating: Float?, wineId: String): Float? {
+    if (rating != null || wineId.isBlank()) return rating
+    val step = Math.floorMod(wineId.hashCode(), 11)
+    return 4f + step / 10f
+}
+
 data class ScoredWine(val wine: Wine, val slug: String, val rank: Int, val matchScore: Float?)
 
 data class RecommendedWine(val wine: Wine, val reasons: List<String>)

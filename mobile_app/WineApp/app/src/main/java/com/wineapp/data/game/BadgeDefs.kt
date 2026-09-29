@@ -50,6 +50,9 @@ object BadgeDefs {
 
     const val POINTS_SCAN = 10
 
+    /** Сколько территорий можно открыть сканированием — порог «Легенды пути». */
+    val OPENABLE_TERRITORIES: Int = TerritoryRegistry.territories.count { !it.locked }
+
     fun codeFor(tier: TerritoryTier, territoryId: String) = "${tier.codePrefix}_$territoryId"
 
     fun territoryBadge(tier: TerritoryTier, territory: Territory): BadgeDef = BadgeDef(
@@ -74,7 +77,8 @@ object BadgeDefs {
         BadgeDef(FIRST_SCAN, "Первый глоток", "Отсканируйте первую этикетку", 10),
         BadgeDef(EXPLORER_3, "Исследователь", "Откройте 3 территории", 30),
         BadgeDef(EXPLORER_5, "Путешественник", "Откройте 5 территорий", 100),
-        BadgeDef(EXPLORER_8, "Легенда пути", "Откройте все 8 территорий", 200),
+        // Код explorer_8 историческое имя (хранится в БД); порог — все открываемые территории.
+        BadgeDef(EXPLORER_8, "Легенда пути", "Откройте все $OPENABLE_TERRITORIES территорий", 200),
         BadgeDef(TASTER_10, "Дегустатор", "Отсканируйте 10 вин", 20),
         BadgeDef(TASTER_50, "Сомелье", "Отсканируйте 50 вин", 100)
     )

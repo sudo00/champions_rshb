@@ -38,7 +38,7 @@ Android-приложение и GPU-сервис для поиска вина п
 
 ## Запуск собственного сервера
 
-Нужны Linux, NVIDIA GPU, Docker Compose и NVIDIA Container Toolkit. Сначала получить и распаковать ресурсы из [build_env/artifacts.json](build_env/artifacts.json):
+Нужны Linux, NVIDIA GPU, Docker Compose и NVIDIA Container Toolkit. Публичные ссылки Google Диска лежат в `build_env/gdrive.env.example`; локальная замена — `build_env/gdrive.env`. Контрольные суммы — в [build_env/artifacts.json](build_env/artifacts.json). `make setup`, `make install`, `make dev` и `make prod` скачивают отсутствующие файлы до запуска контейнеров:
 
 | Ресурс | Локальный путь |
 |---|---|
@@ -52,7 +52,7 @@ make dev
 curl --fail http://localhost:8000/ready
 ```
 
-Docker устанавливает закреплённые зависимости, но **не скачивает автоматически серверные веса и картинки**. Ссылки на архивы нужно получить у владельца развёртывания; SHA256 указаны в манифесте. Без текстового индекса подбор работает только по атрибутам. `/health` проверяет API, `/ready` — готовность распознавания; Swagger: `http://localhost:8000/docs`.
+Если каталог уже распакован, повторное скачивание не выполняется. Без текстового индекса подбор работает только по атрибутам. `/health` проверяет API, `/ready` — готовность распознавания; Swagger: `http://localhost:8000/docs`.
 
 ## API сканирования
 

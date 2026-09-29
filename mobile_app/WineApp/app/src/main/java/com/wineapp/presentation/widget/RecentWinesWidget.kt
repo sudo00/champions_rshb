@@ -95,21 +95,22 @@ class RecentWinesWidget : GlanceAppWidget() {
     companion object {
         const val MAX_ITEMS = 3
         const val EXTRA_DESTINATION = "widget_destination"
-        const val EXTRA_WINE_ID = "widget_wine_id"
+        const val EXTRA_SCAN_ID = "widget_scan_id"
         const val DEST_SCANNER = "scanner"
-        const val DEST_DETAIL = "detail"
+        const val DEST_SCAN = "scan"
 
         private val destinationKey = ActionParameters.Key<String>(EXTRA_DESTINATION)
-        private val wineIdKey = ActionParameters.Key<String>(EXTRA_WINE_ID)
+        private val scanIdKey = ActionParameters.Key<String>(EXTRA_SCAN_ID)
 
         fun openScannerAction() = actionStartActivity<MainActivity>(
             parameters = actionParametersOf(destinationKey to DEST_SCANNER)
         )
 
-        fun openDetailAction(wineId: String) = actionStartActivity<MainActivity>(
+        /** Открывает сохранённый скан (фото, результат и беседа с сомелье). */
+        fun openScanAction(scanId: String) = actionStartActivity<MainActivity>(
             parameters = actionParametersOf(
-                destinationKey to DEST_DETAIL,
-                wineIdKey to wineId
+                destinationKey to DEST_SCAN,
+                scanIdKey to scanId
             )
         )
     }
@@ -222,7 +223,7 @@ private fun WidgetWineRow(scan: SavedScan) {
     Row(
         modifier = GlanceModifier
             .fillMaxWidth()
-            .clickable(RecentWinesWidget.openDetailAction(wine.id)),
+            .clickable(RecentWinesWidget.openScanAction(scan.id)),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = GlanceModifier.defaultWeight()) {

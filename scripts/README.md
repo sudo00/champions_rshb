@@ -12,6 +12,8 @@ API, worker и мобильное приложение не импортирую
 | `recognize_photo.py` | Прямой вызов ML-класса; нужен GPU и проверенный bundle |
 | `package_recognizer.py` | Упаковать и проверить готовый bundle |
 | `package_catalog_images.py` | Упаковать изображения проверенного каталога |
+| `download_gdrive_weights.py` | Скачать архивы с Google Диска, проверить SHA-256 и распаковать; вызывается из `make setup`, `make install`, `make dev` и `make prod` |
+| `test_download_gdrive_weights.py` | Проверить загрузчик и безопасную распаковку без сети и настоящих весов |
 
 Пример: `python3 scripts/scan_api.py photo.jpg --base http://localhost:8000 --output result.json`.
 `scan_api.py` использует стандартную библиотеку Python и работает независимо
@@ -24,5 +26,6 @@ API, worker и мобильное приложение не импортирую
 `local_scripts/`; ML-тесты — в корневой `tests/`. Обе папки исключены из Git
 и Docker-контекста. Их файлы после клонирования репозитория не появляются.
 
-В `scripts/` оставляем четыре общие команды запуска и упаковки ресурсов.
+В `scripts/` находятся общие команды запуска, загрузки и упаковки ресурсов,
+а также тест загрузчика. Запуск теста: `python3 scripts/test_download_gdrive_weights.py`.
 Новые общие утилиты нужно явно добавлять в разрешённый список `.gitignore`.

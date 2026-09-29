@@ -7,6 +7,7 @@
 mobile_app
 pgvector_data
 data
+screenshots_mobile
 *.md
 .DS_Store
 backend/.venv
@@ -23,6 +24,8 @@ tests
 .env.*
 **/.env
 **/.env.*
+build_env/gdrive.env
+build_env/yandex.env
 /claude_token.txt
 /cli_test_cmd.txt
 /predictions.jsonl

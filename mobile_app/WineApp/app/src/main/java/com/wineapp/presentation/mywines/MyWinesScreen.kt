@@ -1,5 +1,6 @@
 package com.wineapp.presentation.mywines
 
+import com.wineapp.presentation.common.ui.BrandLoader
 import com.wineapp.presentation.common.ui.AppIcons
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -20,7 +21,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -31,7 +31,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -51,6 +59,7 @@ import com.wineapp.domain.model.Wine
 import com.wineapp.presentation.common.ui.BrandButton
 import com.wineapp.presentation.common.ui.BrandSecondaryButton
 import com.wineapp.presentation.common.ui.TransparentSystemBars
+import com.wineapp.ui.theme.BrandBorderDefault
 import com.wineapp.ui.theme.BrandBorderLight
 import com.wineapp.ui.theme.BrandBurgundy600
 import com.wineapp.ui.theme.BrandCream100
@@ -134,10 +143,11 @@ fun MyWinesContent(
                     .height(200.dp),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = BrandBurgundy600)
+                BrandLoader()
             }
         } else {
-            // Кнопка-переход лежит под своей секцией; пустые секции скрыты целиком.
+            // Секции видны всегда: у пустой вместо вин — плашка-подсказка,
+            // кнопка-переход на раздел лежит под секцией в любом случае.
             Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
                 // Рулетка всегда доступна: пул берётся из коллекции и избранного.
                 BrandButton(
@@ -145,49 +155,49 @@ fun MyWinesContent(
                     onClick = onNavigateToRoulette,
                     leadingIcon = AppIcons.Play
                 )
-                if (state.favorites.isNotEmpty()) {
-                    MyWinesSection(
-                        title = stringResource(R.string.mywines_favorites),
-                        subtitle = stringResource(R.string.mywines_favorites_sub),
-                        wines = state.favorites,
-                        likedIds = state.likedIds,
-                        onWineClick = onNavigateToDetail,
-                        onToggleFavorite = onToggleFavorite
-                    )
-                    BrandSecondaryButton(
-                        text = stringResource(R.string.mywines_favorites),
-                        onClick = onNavigateToFavorites
-                    )
-                }
-                if (state.collection.isNotEmpty()) {
-                    MyWinesSection(
-                        title = stringResource(R.string.mywines_collection),
-                        subtitle = stringResource(R.string.mywines_collection_sub),
-                        wines = state.collection,
-                        likedIds = state.likedIds,
-                        onWineClick = onNavigateToDetail,
-                        onToggleFavorite = onToggleFavorite
-                    )
-                    BrandSecondaryButton(
-                        text = stringResource(R.string.mywines_collection),
-                        onClick = onNavigateToCellar
-                    )
-                }
-                if (state.scans.isNotEmpty()) {
-                    MyWinesSection(
-                        title = stringResource(R.string.mywines_scans),
-                        subtitle = stringResource(R.string.mywines_scans_sub),
-                        wines = state.scans.map { it.wine },
-                        userPhotos = state.scans.map { it.labelPhotoPath },
-                        likedIds = state.likedIds,
-                        onWineClick = onNavigateToDetail,
-                        onToggleFavorite = onToggleFavorite
-                    )
-                    BrandSecondaryButton(
-                        text = stringResource(R.string.mywines_scans),
-                        onClick = onNavigateToSavedScans
-                    )
-                }
+                MyWinesSection(
+                    title = stringResource(R.string.mywines_favorites),
+                    subtitle = stringResource(R.string.mywines_favorites_sub),
+                    wines = state.favorites,
+                    emptyIcon = AppIcons.Heart,
+                    emptyHint = stringResource(R.string.favorites_empty_hint),
+                    likedIds = state.likedIds,
+                    onWineClick = onNavigateToDetail,
+                    onToggleFavorite = onToggleFavorite
+                )
+                BrandSecondaryButton(
+                    text = stringResource(R.string.mywines_favorites),
+                    onClick = onNavigateToFavorites
+                )
+                MyWinesSection(
+                    title = stringResource(R.string.mywines_collection),
+                    subtitle = stringResource(R.string.mywines_collection_sub),
+                    wines = state.collection,
+                    emptyIcon = AppIcons.WineBottle,
+                    emptyHint = stringResource(R.string.cellar_empty_hint),
+                    likedIds = state.likedIds,
+                    onWineClick = onNavigateToDetail,
+                    onToggleFavorite = onToggleFavorite
+                )
+                BrandSecondaryButton(
+                    text = stringResource(R.string.mywines_collection),
+                    onClick = onNavigateToCellar
+                )
+                MyWinesSection(
+                    title = stringResource(R.string.mywines_scans),
+                    subtitle = stringResource(R.string.mywines_scans_sub),
+                    wines = state.scans.map { it.wine },
+                    userPhotos = state.scans.map { it.labelPhotoPath },
+                    emptyIcon = AppIcons.Camera,
+                    emptyHint = stringResource(R.string.mywines_scans_empty_hint),
+                    likedIds = state.likedIds,
+                    onWineClick = onNavigateToDetail,
+                    onToggleFavorite = onToggleFavorite
+                )
+                BrandSecondaryButton(
+                    text = stringResource(R.string.mywines_scans),
+                    onClick = onNavigateToSavedScans
+                )
             }
         }
         // Место под висящий поверх нижний бар.
@@ -201,6 +211,8 @@ private fun MyWinesSection(
     title: String,
     subtitle: String,
     wines: List<Wine>,
+    emptyIcon: ImageVector,
+    emptyHint: String,
     likedIds: Set<String>,
     onWineClick: (String) -> Unit,
     onToggleFavorite: (String) -> Unit,
@@ -226,7 +238,9 @@ private fun MyWinesSection(
             color = BrandTextSecondary,
             modifier = Modifier.fillMaxWidth()
         )
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (wines.isEmpty()) {
+            MyWinesEmptySection(icon = emptyIcon, hint = emptyHint)
+        } else Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             wines.forEachIndexed { index, wine ->
                 MyWinesScanCard(
                     wine = wine,
@@ -240,6 +254,75 @@ private fun MyWinesSection(
             }
         }
     }
+}
+
+/**
+ * Плашка пустой секции: в стиле scan-карточки (Cream100, r20), но с пунктирной
+ * рамкой — место под будущие вина. Иконка раздела + «пока пусто» + как наполнить.
+ */
+@Composable
+private fun MyWinesEmptySection(icon: ImageVector, hint: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(BrandCream100)
+            .dashedBorder(color = BrandBorderDefault, cornerRadius = 20.dp)
+            .padding(16.dp)
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(BrandCream50)
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = BrandBurgundy600,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        Column(
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = stringResource(R.string.mywines_section_empty),
+                fontFamily = Inter,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
+                lineHeight = 20.sp,
+                color = BrandTextPrimary
+            )
+            Text(
+                text = hint,
+                fontFamily = Inter,
+                fontWeight = FontWeight.Normal,
+                fontSize = 14.sp,
+                lineHeight = 18.sp,
+                color = BrandTextSecondary
+            )
+        }
+    }
+}
+
+private fun Modifier.dashedBorder(color: Color, cornerRadius: Dp): Modifier = drawBehind {
+    val strokeWidth = 1.5.dp.toPx()
+    val inset = strokeWidth / 2f
+    drawRoundRect(
+        color = color,
+        topLeft = Offset(inset, inset),
+        size = Size(size.width - strokeWidth, size.height - strokeWidth),
+        cornerRadius = CornerRadius(cornerRadius.toPx() - inset),
+        style = Stroke(
+            width = strokeWidth,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(8.dp.toPx(), 6.dp.toPx()))
+        )
+    )
 }
 
 /**
@@ -380,9 +463,7 @@ private fun MyWinesScanCard(
                             .joinToString(", ")
                         if (regionText.isNotEmpty()) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                com.wineapp.presentation.common.ui.CountryFlag(
-                                    country = wine.country
-                                )
+                                com.wineapp.presentation.common.ui.CountryFlag()
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = regionText,
@@ -469,5 +550,13 @@ private fun MyWinesPreview() {
                 isLoading = false
             )
         )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 1000)
+@Composable
+private fun MyWinesEmptyPreview() {
+    WineAppTheme {
+        MyWinesContent(state = MyWinesState(isLoading = false))
     }
 }

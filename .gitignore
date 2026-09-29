@@ -17,6 +17,7 @@ venv/
 *.log
 pgvector_data/
 /data/
+/screenshots_mobile/
 AGENTS.md
 # Default evaluation output; datasets and reports belong under data/.
 /predictions.jsonl
@@ -60,7 +61,12 @@ backend/.venv/
 !/scripts/recognize_photo.py
 !/scripts/package_recognizer.py
 !/scripts/package_catalog_images.py
+!/scripts/download_gdrive_weights.py
+!/scripts/test_download_gdrive_weights.py
 !/scripts/README.md
+
+/build_env/gdrive.env
+/build_env/yandex.env
 
 # Offline ML experiments, not production imports.
 /worker/pipeline/catalog_membership.py

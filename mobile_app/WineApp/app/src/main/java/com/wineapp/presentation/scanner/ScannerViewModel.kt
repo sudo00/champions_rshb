@@ -25,7 +25,6 @@ import java.io.File
 import java.io.FileOutputStream
 import javax.inject.Inject
 import androidx.core.net.toUri
-import com.wineapp.domain.repository.BadgeRepository
 import com.wineapp.domain.repository.WineRepository
 import com.wineapp.util.HapticHelper
 
@@ -35,17 +34,12 @@ class ScannerViewModel @Inject constructor(
     private val scanWineUseCase: ScanWineUseCase,
     private val wineRepository: WineRepository,
     private val saveScanUseCase: SaveScanUseCase,
-    private val badgeRepository: BadgeRepository,
     private val getCellarEntryUseCase: GetCellarEntryUseCase,
     private val isFavoriteUseCase: IsFavoriteUseCase,
     val cameraHelper: CameraHelper
 ) : BaseViewModel<ScannerState, ScannerIntent>() {
 
     override fun getInitialState(): ScannerState = ScannerState.Ready()
-
-    /** Текст тоста о новой награде «Винного пути». Нуллабельный одноразовый сигнал для UI. */
-    private val _badgeMessage = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
-    val badgeMessage: kotlinx.coroutines.flow.StateFlow<String?> = _badgeMessage
 
     /** Найденное вино уже пробовали: есть в погребе или в «Понравилось». Для баннера итога. */
     private val _alreadyTried = kotlinx.coroutines.flow.MutableStateFlow(false)
@@ -72,30 +66,6 @@ class ScannerViewModel @Inject constructor(
         val next = !_autoCapture.value
         _autoCapture.value = next
         com.wineapp.data.local.ScannerPrefs.setAutoCapture(context, next)
-    }
-
-    init {
-        viewModelScope.launch {
-            try {
-                badgeRepository.freshBadges.collect { fresh ->
-                    if (fresh.isEmpty()) return@collect
-                    // Один скан может закрыть несколько ступеней территории — тогда
-                    // тост показывает счётчик, детали живут в «Винном пути».
-                    _badgeMessage.value = if (fresh.size == 1) {
-                        context.getString(
-                            com.wineapp.R.string.winepath_new_badge,
-                            fresh.first().def.title
-                        )
-                    } else {
-                        context.getString(com.wineapp.R.string.winepath_new_badges, fresh.size)
-                    }
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e("ScannerViewModel", "Fresh badges failed", e)
-            }
-        }
     }
 
     override fun reduce(intent: ScannerIntent) {
@@ -293,9 +263,6 @@ class ScannerViewModel @Inject constructor(
         }
     }
 
-    fun consumeBadgeMessage() {
-        _badgeMessage.value = null
-    }
 
     fun getFlashMode(): Int = cameraHelper.getFlashMode()
 }

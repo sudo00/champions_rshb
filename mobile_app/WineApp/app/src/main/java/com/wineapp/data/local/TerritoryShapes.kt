@@ -1,4 +1,4 @@
-﻿package com.wineapp.data.local
+package com.wineapp.data.local
 
 import android.content.Context
 import android.util.Log
@@ -8,11 +8,19 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Границы для карты «Винного пути»: вся Россия фоном + детальные винодельческие регионы.
- * Данные лежат в res/raw/territories.json (GeoJSON после генерализации Douglas-Peucker;
- * Крым — по реальным координатам побережья), грузятся лениво один раз.
- * API: [backgroundRings], [outlines], [territoryAt]. Координаты — доли карты 0..1
- * (вьюпорт lon 19–193 с заворотом Чукотки, lat 41–82).
+ * Границы для карты «Винного пути»: все субъекты РФ фоном + винодельческие территории.
+ *
+ * res/raw/territories.json собран из OSM (© участники OpenStreetMap, ODbL):
+ * субъекты — timurkanaz/Russia_geojson_OSM; ДНР, ЛНР, Запорожская и Херсонская области —
+ * geoBoundaries ADM1 (тоже OSM), их стыки притянуты к границам соседних субъектов.
+ * Упрощение топологическое: общая граница соседей — одна дуга, упрощённая один раз,
+ * поэтому у соседей она совпадает точно (без щелей и двойных линий).
+ * Проекция: x = (lon − 19) / 174 (Чукотка за 180° — lon + 360), y = (82 − lat) / 41.
+ *
+ * Кольца фона отсортированы по площади по убыванию: анклавы (Адыгея, Москва) идут после
+ * объемлющих регионов и рисуются поверх. Контуры винных территорий — точные копии
+ * колец фона их субъектов.
+ * API: [backgroundRings], [backgroundTerritories], [outlines], [territoryAt].
  */
 object TerritoryShapes {
 
@@ -22,9 +30,13 @@ object TerritoryShapes {
     val isLoaded: Boolean
         get() = holder != null
 
-    /** Фон: все субъекты РФ. До загрузки — пусто. */
+    /** Фон: все субъекты РФ, большие первыми. До загрузки — пусто. */
     val backgroundRings: List<List<Offset>>
         get() = holder?.background ?: emptyList()
+
+    /** Территория каждого кольца [backgroundRings] (null — не винный регион). */
+    val backgroundTerritories: List<String?>
+        get() = holder?.backgroundTerritories ?: emptyList()
 
     /** Контуры винных территорий по id. До загрузки — пусто. */
     val outlines: Map<String, List<List<Offset>>>
@@ -32,7 +44,7 @@ object TerritoryShapes {
 
     /**
      * Загрузить и распарсить JSON. Идемпотентно и потокобезопасно.
-     * Вызывать с фонового потока — парсинг ~100 КБ занимает десятки миллисекунд.
+     * Вызывать с фонового потока — парсинг ~270 КБ занимает десятки миллисекунд.
      */
     fun ensureLoaded(context: Context) {
         if (holder != null) return
@@ -42,7 +54,7 @@ object TerritoryShapes {
                 parse(context.resources.openRawResource(R.raw.territories).bufferedReader().use { it.readText() })
             } catch (e: Exception) {
                 Log.e("TerritoryShapes", "Failed to load territories.json", e)
-                Holder(emptyList(), emptyMap())
+                Holder(emptyList(), emptyList(), emptyMap())
             }
         }
     }
@@ -74,7 +86,16 @@ object TerritoryShapes {
             }
             outlines[id] = rings
         }
-        return Holder(background, outlines)
+        // Контуры — точные копии колец фона: сопоставляем по совпадению колец.
+        val territories = arrayOfNulls<String>(background.size)
+        outlines.forEach { (id, rings) ->
+            rings.forEach { ring ->
+                val index = background.indexOf(ring)
+                if (index >= 0) territories[index] = id
+                else Log.w("TerritoryShapes", "Outline ring of $id not found in background")
+            }
+        }
+        return Holder(background, territories.toList(), outlines)
     }
 
     /** Ray casting: точка внутри полигона или нет. Координаты — в одном пространстве. */
@@ -96,26 +117,21 @@ object TerritoryShapes {
         return inside
     }
 
-    /** Территория под точкой (дроби 0..1). Маленькие полигоны проверяются первыми. */
+    /**
+     * Территория под точкой (дроби 0..1). Ищем с конца фона — там меньшие кольца,
+     * поэтому анклав побеждает объемлющий регион: тап по Адыгее не выбирает Кубань.
+     */
     fun territoryAt(point: Offset): String? {
-        return outlines.entries
-            .sortedBy { (_, rings) -> rings.maxOfOrNull { polygonArea(it) } ?: 0f }
-            .firstOrNull { (_, rings) -> rings.any { contains(point, it) } }
-            ?.key
-    }
-
-    private fun polygonArea(poly: List<Offset>): Float {
-        var area = 0f
-        var j = poly.size - 1
-        for (i in poly.indices) {
-            area += (poly[j].x + poly[i].x) * (poly[j].y - poly[i].y)
-            j = i
+        val current = holder ?: return null
+        for (i in current.background.indices.reversed()) {
+            if (contains(point, current.background[i])) return current.backgroundTerritories[i]
         }
-        return kotlin.math.abs(area / 2f)
+        return null
     }
 
     private data class Holder(
         val background: List<List<Offset>>,
+        val backgroundTerritories: List<String?>,
         val outlines: Map<String, List<List<Offset>>>
     )
 }

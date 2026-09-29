@@ -1,11 +1,11 @@
 ﻿package com.wineapp.presentation.winepath
 
-import com.wineapp.presentation.common.ui.AppIcons
 import android.annotation.SuppressLint
 import android.app.Activity
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -35,8 +35,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.CircularProgressIndicator
@@ -44,7 +42,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RichTooltip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -68,6 +65,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -101,10 +99,12 @@ import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.wineapp.R
 import com.wineapp.data.game.TerritoryTier
+import com.wineapp.data.local.TerritoryRegistry
 import com.wineapp.data.local.TerritoryShapes
 import com.wineapp.domain.model.BadgeUi
 import com.wineapp.domain.model.TerritoryProgress
 import com.wineapp.domain.model.WinePathSummary
+import com.wineapp.presentation.common.ui.AppIcons
 import com.wineapp.presentation.common.ui.ErrorMessage
 import com.wineapp.ui.theme.BrandBorderDefault
 import com.wineapp.ui.theme.BrandBurgundy300
@@ -151,7 +151,6 @@ fun WinePathScreen(
     WinePathScreenContent(
         state = state,
         onRetry = { viewModel.sendIntent(WinePathIntent.LoadPath) },
-        onConsumeCelebration = { viewModel.sendIntent(WinePathIntent.ConsumeCelebration) },
         onNavigateBack = onNavigateBack,
         onNavigateToScanner = onNavigateToScanner
     )
@@ -162,7 +161,6 @@ fun WinePathScreen(
 fun WinePathScreenContent(
     state: WinePathState,
     onRetry: () -> Unit = {},
-    onConsumeCelebration: () -> Unit = {},
     onNavigateBack: () -> Unit = {},
     onNavigateToScanner: () -> Unit = {}
 ) {
@@ -181,6 +179,11 @@ fun WinePathScreenContent(
     val scope = rememberCoroutineScope()
     var selectedId by remember { mutableStateOf<String?>(null) }
     val mapUi = rememberWinePathMapState()
+    // Видимая часть карты: сверху её перекрывает панель (статус-бар + кнопки/заголовок),
+    // снизу — свёрнутая шторка. Ставим до первого onSize, чтобы и стартовый вид учёл их.
+    val density = LocalDensity.current
+    val statusBarTop = WindowInsets.statusBars.getTop(density)
+    with(density) { mapUi.setInsets(top = statusBarTop + MapTopBarHeight.toPx(), bottom = SheetPeekHeight.toPx()) }
 
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
@@ -198,6 +201,9 @@ fun WinePathScreenContent(
                 onSelectTerritory = { id ->
                     selectedId = id
                     scope.launch { scaffoldState.bottomSheetState.partialExpand() }
+                    TerritoryRegistry.byId[id]?.let { territory ->
+                        scope.launch { mapUi.flyToPoint(Offset(territory.anchorX, territory.anchorY)) }
+                    }
                 }
             )
         },
@@ -281,49 +287,15 @@ fun WinePathScreenContent(
             MapOverlayTopBar(
                 points = (state as? WinePathState.Success)?.summary?.totalPoints,
                 onBack = onNavigateBack,
+                // Всегда к винным регионам. Раньше кнопка была переключателем: карта
+                // открывается уже увеличенной на юго-западе, и первое нажатие уводило
+                // на обзор всей страны.
                 onZoomToggle = {
-                    scope.launch {
-                        if (mapUi.isZoomed()) mapUi.resetView() else mapUi.flyToWineRegions()
-                    }
+                    scope.launch { mapUi.flyToWineRegions() }
                 },
                 modifier = Modifier.align(Alignment.TopCenter)
             )
         }
-    }
-
-    val celebration = (state as? WinePathState.Success)?.celebration
-    if (celebration != null) {
-        AlertDialog(
-            onDismissRequest = onConsumeCelebration,
-            icon = {
-                androidx.compose.material3.Icon(
-                    Icons.Default.EmojiEvents,
-                    contentDescription = null,
-                    tint = Color(0xFFFFC107),
-                    modifier = Modifier.size(40.dp)
-                )
-            },
-            title = { Text(stringResource(R.string.winepath_celebration_title), textAlign = TextAlign.Center) },
-            text = {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        celebration.def.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        stringResource(R.string.winepath_celebration_points, celebration.def.points),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = BrandBurgundy600,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = onConsumeCelebration) { Text("OK") }
-            }
-        )
     }
 }
 
@@ -383,6 +355,16 @@ private fun WinePathSheetContent(
             )
             Spacer(modifier = Modifier.height(24.dp))
             MedallionGrid(badges = badges)
+
+            // Атрибуция данных карты — требование лицензии ODbL (OpenStreetMap).
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = stringResource(R.string.winepath_map_attribution),
+                style = SheetCaptionStyle,
+                color = Color.White.copy(alpha = 0.5f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
@@ -408,9 +390,13 @@ private fun WinePathDragHandle() {
 private const val MAP_DATA_ASPECT = 2.02f
 private const val MAP_MIN_SCALE = 1f
 private const val MAP_MAX_SCALE = 8f
-/** Bbox винного кластера в долях карты — цель кнопки «К винным регионам». */
-private val WINE_BBOX_MIN = Offset(0.04f, 0.60f)
-private val WINE_BBOX_MAX = Offset(0.28f, 0.98f)
+/**
+ * Bbox винного кластера в долях карты — цель кнопки «К винным регионам» и стартовый вид:
+ * от запада Крыма (x≈0,078) до востока Башкирии (≈0,236), от севера Подмосковья
+ * (y≈0,612) до юга Дагестана (≈0,995) — с небольшим запасом по краям.
+ */
+private val WINE_BBOX_MIN = Offset(0.065f, 0.600f)
+private val WINE_BBOX_MAX = Offset(0.250f, 1.005f)
 
 /** Состояние панорамирования/зума карты. Живёт в remember, переживает рекомпозиции жестов. */
 class WinePathMapState {
@@ -443,11 +429,9 @@ class WinePathMapState {
         if (!initialized) {
             initialized = true
             // Стартовый вид — сразу фокус на юго-западе (винные регионы), а не обзор всей страны.
-            val min = toPx(WINE_BBOX_MIN)
-            val max = toPx(WINE_BBOX_MAX)
-            scale = minOf(w / (max.x - min.x), h / (max.y - min.y)).coerceIn(MAP_MIN_SCALE, MAP_MAX_SCALE)
-            val c = Offset((min.x + max.x) / 2f, (min.y + max.y) / 2f)
-            offset = clamp(Offset(w / 2f - scale * c.x, h / 2f - scale * c.y))
+            val (s, o) = wineRegionsView()
+            scale = s
+            offset = clamp(o)
         } else {
             offset = clamp(offset)
         }
@@ -473,27 +457,74 @@ class WinePathMapState {
         offset = clamp(centroid - Offset(base.x * newScale, base.y * newScale))
     }
 
-    fun isZoomed(): Boolean = scale > 2f
-
+    /**
+     * Плавный перелёт: интерполируем центр вида (в координатах канвы) и масштаб,
+     * а сдвиг выводим из них — так карта летит к цели, а не «ныряет» по дуге.
+     * Раньше масштаб и сдвиг присваивались только по окончании анимации — карта
+     * стояла 450 мс и затем прыгала.
+     */
     suspend fun animateTo(targetScale: Float, targetOffset: Offset) {
         val s = targetScale.coerceIn(MAP_MIN_SCALE, MAP_MAX_SCALE)
         val o = clamp(targetOffset, s)
-        kotlinx.coroutines.coroutineScope {
-            launch { scale = Animatable(scale).animateTo(s, tween(450)).endState.value }
-            launch { offset = offset.copy(x = Animatable(offset.x).animateTo(o.x, tween(450)).endState.value) }
-            launch { offset = offset.copy(y = Animatable(offset.y).animateTo(o.y, tween(450)).endState.value) }
+        val screenCenter = Offset(boxW / 2f, boxH / 2f)
+        val startScale = scale
+        val startCenter = (screenCenter - offset) / startScale
+        val endCenter = (screenCenter - o) / s
+        Animatable(0f).animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing)
+        ) {
+            val t = value
+            val currentScale = startScale + (s - startScale) * t
+            val center = startCenter + (endCenter - startCenter) * t
+            scale = currentScale
+            offset = screenCenter - center * currentScale
         }
+        scale = s
+        offset = o
     }
 
-    suspend fun resetView() = animateTo(1f, Offset.Zero)
+    /**
+     * Центрировать точку карты (доли 0..1) в видимой области, не меняя масштаб.
+     * Для выбора территории из списка шторки: иначе, например, Дальний Восток
+     * подсвечивается за краем экрана, пока карта смотрит на юго-запад.
+     */
+    suspend fun flyToPoint(fraction: Offset) {
+        if (boxW <= 0f) return
+        val p = toPx(fraction)
+        val visibleCenterY = insetTop + (boxH - insetTop - insetBottom).coerceAtLeast(boxH / 3f) / 2f
+        animateTo(scale, Offset(boxW / 2f - scale * p.x, visibleCenterY - scale * p.y))
+    }
 
+    /** Кнопка «К винным регионам»: юго-запад страны в видимой части карты. */
     suspend fun flyToWineRegions() {
         if (boxW <= 0f) return
+        val (s, o) = wineRegionsView()
+        animateTo(s, o)
+    }
+
+    /**
+     * Масштаб и сдвиг, вписывающие рамку винных регионов в видимую область —
+     * между верхней панелью и свёрнутой шторкой, а не во весь экран: иначе
+     * Дагестан и Крым прячутся под шторкой.
+     */
+    private fun wineRegionsView(): Pair<Float, Offset> {
         val min = toPx(WINE_BBOX_MIN)
         val max = toPx(WINE_BBOX_MAX)
-        val s = minOf(boxW / (max.x - min.x), boxH / (max.y - min.y)).coerceIn(MAP_MIN_SCALE, MAP_MAX_SCALE)
+        val visibleH = (boxH - insetTop - insetBottom).coerceAtLeast(boxH / 3f)
+        val s = minOf(boxW / (max.x - min.x), visibleH / (max.y - min.y)).coerceIn(MAP_MIN_SCALE, MAP_MAX_SCALE)
         val c = Offset((min.x + max.x) / 2f, (min.y + max.y) / 2f)
-        animateTo(s, Offset(boxW / 2f - s * c.x, boxH / 2f - s * c.y))
+        val visibleCenterY = insetTop + visibleH / 2f
+        return s to Offset(boxW / 2f - s * c.x, visibleCenterY - s * c.y)
+    }
+
+    /** Сколько карты перекрыто сверху панелью и снизу шторкой, px. */
+    private var insetTop = 0f
+    private var insetBottom = 0f
+
+    fun setInsets(top: Float, bottom: Float) {
+        insetTop = top
+        insetBottom = bottom
     }
 
     private fun clamp(o: Offset, s: Float = scale): Offset {
@@ -572,7 +603,7 @@ private fun MapOverlayTopBar(
                 if (points != null) {
                     Surface(shape = RoundedCornerShape(50), color = WarningBackground) {
                         Text(
-                            text = stringResource(R.string.winepath_points, points),
+                            text = pointsText(points),
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             style = SheetCaptionMediumStyle,
                             color = WarningMain
@@ -714,6 +745,9 @@ private fun WinePathMap(
             }
         }
 
+        val ringTerritories = TerritoryShapes.backgroundTerritories
+        val territoryById = territories.associateBy { it.territoryId }
+
         // Подписи рисуем только для выбранного региона (см. ниже) — карта остаётся чистой.
 
         Canvas(
@@ -724,13 +758,10 @@ private fun WinePathMap(
                         mapUi.onTransformAround(centroid, pan, zoom)
                     }
                 }
-                .graphicsLayer(
-                    scaleX = mapUi.scale,
-                    scaleY = mapUi.scale,
-                    translationX = mapUi.offset.x,
-                    translationY = mapUi.offset.y,
-                    transformOrigin = TransformOrigin(0f, 0f)
-                )
+                // Тап — обязательно ДО graphicsLayer: здесь координаты экранные, и
+                // toFraction снимает зум/сдвиг сам. После graphicsLayer Compose отдаёт
+                // уже локальные координаты слоя, обратное преобразование применялось
+                // дважды — точка улетала мимо региона, и тап не срабатывал.
                 .pointerInput(mapUi) {
                     detectTapGestures { tap ->
                         val point = mapUi.toFraction(tap)
@@ -741,6 +772,13 @@ private fun WinePathMap(
                         }
                     }
                 }
+                .graphicsLayer(
+                    scaleX = mapUi.scale,
+                    scaleY = mapUi.scale,
+                    translationX = mapUi.offset.x,
+                    translationY = mapUi.offset.y,
+                    transformOrigin = TransformOrigin(0f, 0f)
+                )
         ) {
             // Рисуем в два прохода: сначала ВСЕ заливки, потом ВСЕ обводки поверх них.
             // Обводка отдельным проходом обязательна: контуры соседей совпадают,
@@ -748,18 +786,18 @@ private fun WinePathMap(
             // на стыках регионов появляются дырки, а винные регионы теряют границу целиком.
             val dash = PathEffect.dashPathEffect(floatArrayOf(8f, 6f), 0f)
 
-            // Проход 1: заливки.
-            bgPaths.forEach { path -> drawPath(path, MapRegionFill) }
-            territories.forEach { territory ->
-                val paths = winePaths[territory.territoryId] ?: return@forEach
-                val isWine = !territory.locked && territory.totalWines > 0
-                val selected = territory.territoryId == selectedId
+            // Проход 1: заливки — по кольцам фона в их порядке (большие первыми), цвет по
+            // территории кольца. Так анклавы (Адыгея внутри Кубани) остаются поверх
+            // и не перекрашиваются заливкой объемлющего винного региона.
+            bgPaths.forEachIndexed { index, path ->
+                val territory = ringTerritories.getOrNull(index)?.let { territoryById[it] }
                 val fill = when {
-                    selected -> MapSelectedFill
-                    isWine -> MapWineFill
-                    else -> null
+                    territory == null -> MapRegionFill
+                    territory.territoryId == selectedId -> MapSelectedFill
+                    !territory.locked && territory.totalWines > 0 -> MapWineFill
+                    else -> MapRegionFill
                 }
-                if (fill != null) paths.forEach { path -> drawPath(path, fill) }
+                drawPath(path, fill)
             }
 
             // Проход 2: обводки.
@@ -807,7 +845,7 @@ private fun WinePathMap(
                 if (territory.territoryId != selectedId) return@forEach
                 val center = mapUi.toPx(Offset(territory.anchorX, territory.anchorY))
                 val above = labelsAbove.contains(territory.territoryId)
-                drawLabel(textMeasurer, territory.name, center, selectedLabelStyle, above, labelGap)
+                drawLabel(textMeasurer, territory.name, center, selectedLabelStyle, above, labelGap, zoomSafe)
             }
         }
     }
@@ -834,12 +872,7 @@ private fun TerritoryDetailCard(
     territory: TerritoryProgress,
     onClose: () -> Unit
 ) {
-    val inCatalog = territory.totalWines > 0
-    val percent = if (inCatalog) {
-        (territory.triedWines * 100 / territory.totalWines).coerceIn(0, 100)
-    } else {
-        0
-    }
+    val percent = territoryPercent(territory)
     val description = if (territory.locked) {
         stringResource(R.string.winepath_locked_hint)
     } else {
@@ -867,7 +900,7 @@ private fun TerritoryDetailCard(
                 ) {
                     CircularTerritoryProgress(
                         progress = percent / 100f,
-                        percent = percent
+                        percentText = formatPercent(percent)
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(
@@ -910,9 +943,28 @@ private fun TerritoryDetailCard(
     }
 }
 
+/** Доля попробованных вин территории в процентах (0–100). */
+private fun territoryPercent(territory: TerritoryProgress): Float =
+    if (territory.totalWines > 0) {
+        (territory.triedWines * 100f / territory.totalWines).coerceIn(0f, 100f)
+    } else {
+        0f
+    }
+
+/**
+ * Процент с одной десятой: каталог регионов большой, и целые проценты
+ * показывали «0%» даже при нескольких винах. Ненулевой прогресс не округляем
+ * до «0», неполный — до «100».
+ */
+private fun formatPercent(percent: Float): String = when {
+    percent <= 0f -> "0%"
+    percent >= 100f -> "100%"
+    else -> String.format(java.util.Locale("ru"), "%.1f%%", percent.coerceIn(0.1f, 99.9f))
+}
+
 /** Circular Progress indicator из макета: трек Burgundy 300, заливка Burgundy 600, процент по центру. */
 @Composable
-private fun CircularTerritoryProgress(progress: Float, percent: Int) {
+private fun CircularTerritoryProgress(progress: Float, percentText: String) {
     Box(modifier = Modifier.size(76.dp), contentAlignment = Alignment.Center) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val strokeWidth = 6.dp.toPx()
@@ -941,7 +993,7 @@ private fun CircularTerritoryProgress(progress: Float, percent: Int) {
             }
         }
         Text(
-            text = "$percent%",
+            text = percentText,
             style = SheetTitleStyle,
             color = BrandTextPrimary
         )
@@ -982,22 +1034,44 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawLabel(
     center: Offset,
     style: TextStyle,
     above: Boolean = false,
-    gapPx: Float = 14f
+    gapPx: Float = 14f,
+    /** Текущий зум: отступы подложки делим на него, как кегль, — на экране она постоянного размера. */
+    zoom: Float = 1f
 ) {
     val layout = textMeasurer.measure(text, style)
-    drawText(
-        layout,
-        topLeft = Offset(
-            (center.x - layout.size.width / 2f).coerceAtLeast(0f),
-            if (above) center.y - layout.size.height - gapPx else center.y + gapPx
-        )
+    val padH = 8f / zoom
+    val padV = 3f / zoom
+    val pillW = layout.size.width + padH * 2
+    val pillH = layout.size.height + padV * 2
+    // Подложка-пилюля: без неё белая подпись сливается с кремовыми границами регионов.
+    val pillTopLeft = Offset(
+        (center.x - pillW / 2f).coerceAtLeast(0f),
+        if (above) center.y - pillH - gapPx else center.y + gapPx
     )
+    drawRoundRect(
+        color = MapLabelBackground,
+        topLeft = pillTopLeft,
+        size = Size(pillW, pillH),
+        cornerRadius = CornerRadius(pillH / 2f)
+    )
+    drawText(layout, topLeft = pillTopLeft + Offset(padH, padV))
 }
+
+/** Полупрозрачная тёмная подложка подписи региона на карте. */
+private val MapLabelBackground = Color(0xB3292925)
 
 /* ------------------------------- Шторка «прогресс» ------------------------------- */
 
-/** Метки-вехи на шкале уровня: доли пройденного пути, в которые попадает маркер. */
-private val LevelMilestones = listOf(0.125f, 0.25f, 0.5f, 0.75f)
+/**
+ * Метки-вехи на шкале уровня: равные шаги по 20% очков уровня. Раньше были
+ * 12,5/25/50/75% — неравномерные засечки ни к чему не привязаны и путали.
+ */
+private val LevelMilestones = listOf(0.2f, 0.4f, 0.6f, 0.8f)
+
+/** «1 очко», «2 очка», «10 очков» — сумма очков бывает любой. */
+@Composable
+private fun pointsText(points: Int): String =
+    LocalContext.current.resources.getQuantityString(R.plurals.winepath_points, points, points)
 
 /**
  * Свёрнутая высота шторки. От неё зависит и сам BottomSheetScaffold, и отступ
@@ -1005,6 +1079,9 @@ private val LevelMilestones = listOf(0.125f, 0.25f, 0.5f, 0.75f)
  * отступа перекрыла бы карточку снизу.
  */
 private val SheetPeekHeight = 180.dp
+
+/** Высота верхней панели карты без статус-бара: отступы 8+8 и колонка заголовка с очками. */
+private val MapTopBarHeight = 76.dp
 
 // Толщины обводок карты, px в системе координат канвы (до graphicsLayer-масштаба).
 // Базовый слой рисует обводку один раз на весь регион, остальные состояния
@@ -1127,10 +1204,11 @@ private fun LevelProgressCard(summary: WinePathSummary) {
                     text = if (summary.isMaxLevel) {
                         stringResource(R.string.winepath_level_max)
                     } else {
-                        stringResource(
-                            R.string.winepath_level_progress,
-                            (summary.levelProgress * 100).toInt(),
-                            summary.level + 1
+                        // Раньше тут был «N% до уровня X», где N — уже пройденная доля:
+                        // «90% до уровня 2» читалось как «осталось 90%». Показываем остаток в очках.
+                        val left = (summary.levelPointsTo - summary.totalPoints).coerceAtLeast(0)
+                        LocalContext.current.resources.getQuantityString(
+                            R.plurals.winepath_points_to_level, left, left, summary.level + 1
                         )
                     },
                     style = SheetCaptionMediumStyle,
@@ -1146,15 +1224,18 @@ private fun LevelProgressCard(summary: WinePathSummary) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = stringResource(R.string.winepath_points, summary.levelPointsFrom),
+                    text = pointsText(summary.levelPointsFrom),
                     style = SheetCaptionStyle,
                     color = BrandTextTertiary
                 )
-                Text(
-                    text = stringResource(R.string.winepath_points, summary.levelPointsTo),
-                    style = SheetCaptionStyle,
-                    color = BrandTextTertiary
-                )
+                // На максимуме обе границы совпадают — вторую не дублируем.
+                if (!summary.isMaxLevel) {
+                    Text(
+                        text = pointsText(summary.levelPointsTo),
+                        style = SheetCaptionStyle,
+                        color = BrandTextTertiary
+                    )
+                }
             }
 
             Surface(
@@ -1228,12 +1309,7 @@ private fun WinePathSection(title: String, description: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TerritoryProgressCard(territory: TerritoryProgress, onClick: () -> Unit) {
-    val inCatalog = territory.totalWines > 0
-    val percent = if (inCatalog) {
-        (territory.triedWines * 100 / territory.totalWines).coerceAtMost(100)
-    } else {
-        0
-    }
+    val percent = territoryPercent(territory)
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -1257,7 +1333,7 @@ private fun TerritoryProgressCard(territory: TerritoryProgress, onClick: () -> U
                 )
             }
             Text(
-                text = "$percent%",
+                text = formatPercent(percent),
                 style = SheetTitleStyle,
                 color = BrandTextPrimary
             )
@@ -1438,7 +1514,7 @@ private fun MedalPointsChip(points: Int, tier: MedalTier?) {
 }
 
 /** Уровень награды определяет иконку медали, цвет тени, чип очков и тост. */
-private enum class MedalTier(
+internal enum class MedalTier(
     val accent: Color,
     val accentSoft: Color,
     @DrawableRes val iconRes: Int,

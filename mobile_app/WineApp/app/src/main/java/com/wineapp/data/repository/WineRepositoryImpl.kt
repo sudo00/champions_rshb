@@ -13,6 +13,7 @@ import com.wineapp.data.remote.dto.ScanConfirmationRequest
 import com.wineapp.domain.model.ScanResult
 import com.wineapp.domain.model.SearchResult
 import com.wineapp.domain.model.Wine
+import com.wineapp.domain.model.ratingOrDemo
 import com.wineapp.domain.repository.WineRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -146,7 +147,7 @@ class WineRepositoryImpl @javax.inject.Inject constructor(
                 id = entity.id,
                 name = entity.name,
                 vintage = entity.vintage,
-                rating = entity.rating,
+                rating = ratingOrDemo(entity.rating, entity.id),
                 reviewsCount = entity.reviewsCount,
                 price = entity.price,
                 currency = entity.currency,

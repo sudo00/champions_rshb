@@ -5,12 +5,13 @@ COMPOSE_PROD := docker compose --env-file $(ENV_PROD) -f docker-compose.yml -f d
 API_HEALTH := http://127.0.0.1:8000/health
 TEST_BUILD_NETWORK ?= default
 
-.PHONY: help setup env wait-api install install-api install-worker build dev prod up down ddown logs restart test test-api import-catalog
+.PHONY: help setup env wait-api install install-api install-worker build dev prod up down ddown logs restart test test-api import-catalog download-weights
 
 help:
-	@echo "make setup             — скопировать env, собрать образы, поднять стек, дождаться API"
+	@echo "make setup             — скопировать env, скачать веса, собрать образы, поднять стек, дождаться API"
 	@echo "make env               — создать .env и build_env/.env.* из шаблонов, если их нет"
-	@echo "make install           — pip install внутри api и worker"
+	@echo "make download-weights  — скачать веса и картинки с Google Диска (build_env/gdrive.env)"
+	@echo "make install           — скачать веса, затем pip install внутри api и worker"
 	@echo "make install-api       — pip install в контейнере api"
 	@echo "make install-worker    — pip install в контейнере worker"
 	@echo "make build             — собрать Docker-образы"
@@ -25,10 +26,10 @@ help:
 	@echo "make test-api          — автономные API-тесты в Docker, без GPU и сервисов"
 	@echo "make import-catalog    — скачать vino-svoe.ru в Postgres и MinIO"
 
-setup: env
+setup: env download-weights
 	$(COMPOSE_DEV) up -d --build
 	$(MAKE) wait-api
-	@echo "Модели загружаются отдельно: проверьте GET /ready перед оценкой."
+	@echo "Веса скачаны. Дождитесь загрузки моделей в GPU: GET /ready"
 
 wait-api:
 	@echo "Ждём API $(API_HEALTH) ..."
@@ -48,8 +49,12 @@ env:
 	@if [ ! -f .env ]; then cp .env.example .env && echo "создан .env"; else echo ".env уже есть"; fi
 	@if [ ! -f $(ENV_DEV) ]; then cp build_env/env.dev.example $(ENV_DEV) && echo "создан $(ENV_DEV)"; else echo "$(ENV_DEV) уже есть"; fi
 	@if [ ! -f $(ENV_PROD) ]; then cp build_env/env.prod.example $(ENV_PROD) && echo "создан $(ENV_PROD)"; else echo "$(ENV_PROD) уже есть"; fi
+	@if [ ! -f build_env/gdrive.env ]; then cp build_env/gdrive.env.example build_env/gdrive.env && echo "создан build_env/gdrive.env"; else echo "build_env/gdrive.env уже есть"; fi
 
-install: install-api install-worker
+install: download-weights install-api install-worker
+
+download-weights:
+	python3 scripts/download_gdrive_weights.py $(if $(FORCE),--force,)
 
 build:
 	$(COMPOSE_DEV) build
@@ -64,10 +69,10 @@ install-worker:
 	$(COMPOSE_DEV) build worker
 	$(COMPOSE_DEV) up -d worker
 
-dev:
+dev: download-weights
 	$(COMPOSE_DEV) up -d --build
 
-prod:
+prod: download-weights
 	$(COMPOSE_PROD) up -d --build
 
 up:

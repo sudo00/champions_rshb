@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +37,7 @@ import com.wineapp.presentation.scanresult.ScanResultScreen
 import com.wineapp.presentation.search.SearchScreen
 import com.wineapp.presentation.search.SearchTabScreen
 import com.wineapp.presentation.sommelier.SommelierScreen
+import com.wineapp.presentation.winepath.BadgeCelebrationHost
 import com.wineapp.presentation.winepath.WinePathScreen
 
 /**
@@ -44,8 +46,15 @@ import com.wineapp.presentation.winepath.WinePathScreen
  */
 private val TAB_ROUTES = setOf("search", "search_tab", "my_wines")
 
+/**
+ * @param widgetRoute роут, открытый с виджета. Переходим на него поверх главной,
+ * чтобы «назад» возвращал на главную, а не закрывал приложение.
+ */
 @Composable
-fun AppNavHost(startRoute: String? = null) {
+fun AppNavHost(
+    widgetRoute: String? = null,
+    onWidgetRouteHandled: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val context = LocalContext.current
     val activity = context as? Activity
@@ -61,7 +70,7 @@ fun AppNavHost(startRoute: String? = null) {
 
     // Бар висит поверх контента, а не отжимает его (как плавающая пилюля раньше).
     Box(modifier = Modifier.fillMaxSize()) {
-        NavHost(navController, startDestination = startRoute ?: "search") {
+        NavHost(navController, startDestination = "search") {
         composable(
             route = "scanner?pickGallery={pickGallery}",
             arguments = listOf(
@@ -231,18 +240,21 @@ fun AppNavHost(startRoute: String? = null) {
         composable("saved_scans") {
             SavedScansScreen(
                 onNavigateToDetail = { scanId -> navController.navigate("saved_scan_detail/$scanId") },
+                onScan = { navController.navigate("scanner") },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
         composable("favorites") {
             FavoritesScreen(
                 onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") },
+                onFindWine = { navController.navigateTab("search_tab") },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
         composable("cellar") {
             CellarScreen(
                 onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") },
+                onFindWine = { navController.navigateTab("search_tab") },
                 onAskSommelier = { question ->
                     navController.navigate(
                         if (question.isBlank()) "sommelier"
@@ -284,6 +296,23 @@ fun AppNavHost(startRoute: String? = null) {
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
+    }
+
+    // Награды «Винного пути» — поверх любого экрана: выдаются при сохранении скана,
+    // когда сканер уже уводит на карточку вина.
+    BadgeCelebrationHost(
+        onOpenWinePath = {
+            navController.navigate("wine_path") { launchSingleTop = true }
+        }
+    )
+
+    LaunchedEffect(widgetRoute) {
+        val route = widgetRoute ?: return@LaunchedEffect
+        navController.navigate(route) {
+            popUpTo(navController.graph.findStartDestination().id)
+            launchSingleTop = true
+        }
+        onWidgetRouteHandled()
     }
 
     // Гейт — строго ПОСЛЕ NavHost: обычный Box-оверлей рисуется поверх только так

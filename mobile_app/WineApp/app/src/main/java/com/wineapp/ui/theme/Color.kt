@@ -5,8 +5,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-val Purple700 = Color(0xFF7B61FF)
-val Purple500 = Color(0xFF9B7FFF)
 val Teal200 = Color(0xFF03DAC5)
 val Teal700 = Color(0xFF018786)
 val SurfaceDark = Color(0xFF1E1E1E)
@@ -70,8 +68,8 @@ val MedalGoldBottom = Color(0xFFE3A302)
 val MedalLocked = Color(0xFFACACAC)
 
 private val DarkColorScheme = androidx.compose.material3.darkColorScheme(
-    primary = Purple700,
-    primaryContainer = Purple500,
+    primary = BrandBurgundy300,
+    primaryContainer = BrandBurgundy700,
     secondary = Teal200,
     secondaryContainer = Teal700,
     surface = SurfaceDark,
@@ -87,8 +85,8 @@ private val DarkColorScheme = androidx.compose.material3.darkColorScheme(
 )
 
 private val LightColorScheme = androidx.compose.material3.lightColorScheme(
-    primary = Purple700,
-    primaryContainer = Color(0xFFE8E0FF),
+    primary = BrandBurgundy600,
+    primaryContainer = BrandCream200,
     secondary = Teal700,
     secondaryContainer = Color(0xFFCCF3F2),
     surface = Color.White,

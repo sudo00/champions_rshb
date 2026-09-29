@@ -1,5 +1,6 @@
 package com.wineapp.presentation.savedscans
 
+import com.wineapp.presentation.common.ui.BrandLoader
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -23,7 +24,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Scanner
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -82,6 +82,7 @@ private val ErrorMain = Color(0xFFB65349)
 @Composable
 fun SavedScansScreen(
     onNavigateToDetail: (String) -> Unit = {},
+    onScan: () -> Unit = {},
     onNavigateBack: () -> Unit = {}
 ) {
     val viewModel: SavedScansViewModel = hiltViewModel()
@@ -99,6 +100,7 @@ fun SavedScansScreen(
         onQuery = { viewModel.sendIntent(SavedScansIntent.SetQuery(it)) },
         onToggleFavorite = { viewModel.sendIntent(SavedScansIntent.ToggleFavorite(it)) },
         onNavigateToDetail = onNavigateToDetail,
+        onScan = onScan,
         onNavigateBack = onNavigateBack
     )
 }
@@ -112,6 +114,7 @@ fun SavedScansScreenContent(
     onQuery: (String) -> Unit = {},
     onToggleFavorite: (String) -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
+    onScan: () -> Unit = {},
     onNavigateBack: () -> Unit = {},
 ) {
     TransparentSystemBars()
@@ -178,7 +181,7 @@ fun SavedScansScreenContent(
                             .fillMaxWidth()
                             .padding(vertical = 120.dp),
                         contentAlignment = Alignment.Center
-                    ) { CircularProgressIndicator(color = BrandBurgundy600) }
+                    ) { BrandLoader() }
                 }
 
                 is SavedScansState.Error -> item(key = "error") {
@@ -193,9 +196,12 @@ fun SavedScansScreenContent(
                     if (state.isHistoryEmpty) {
                         item(key = "empty") {
                             EmptyState(
-                                icon = Icons.Default.Scanner,
+                                icon = AppIcons.Camera,
                                 title = stringResource(R.string.saved_scans_empty),
-                                message = stringResource(R.string.saved_scans_empty_hint),
+                                message = stringResource(R.string.mywines_scans_empty_hint),
+                                actionText = stringResource(R.string.home_scan),
+                                actionIcon = AppIcons.Camera,
+                                onAction = onScan,
                                 modifier = Modifier.padding(vertical = 80.dp)
                             )
                         }

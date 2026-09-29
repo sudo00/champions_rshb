@@ -1,5 +1,6 @@
 package com.wineapp.presentation.roulette
 
+import com.wineapp.presentation.common.ui.BrandLoader
 import com.wineapp.presentation.common.ui.AppIcons
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.BorderStroke
@@ -21,7 +22,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -481,7 +481,7 @@ private fun RouletteResultCard(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        CountryFlag(country = current.country, size = 16.dp)
+                        CountryFlag(size = 16.dp)
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = listOfNotNull(current.region, current.vintage?.toString())
@@ -611,7 +611,7 @@ private fun LoadingBody() {
         contentAlignment = Alignment.Center,
         modifier = Modifier.fillMaxSize()
     ) {
-        CircularProgressIndicator(color = BrandBurgundy600)
+        BrandLoader()
     }
 }
 
