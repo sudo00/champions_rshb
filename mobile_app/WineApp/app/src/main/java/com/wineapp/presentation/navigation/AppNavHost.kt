@@ -216,8 +216,14 @@ fun AppNavHost(startRoute: String? = null) {
                 onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") }
             )
         }
-        composable("sommelier") {
+        composable(
+            route = "sommelier?question={question}",
+            arguments = listOf(
+                navArgument("question") { type = NavType.StringType; nullable = true; defaultValue = null }
+            )
+        ) { backStackEntry ->
             SommelierScreen(
+                initialQuestion = backStackEntry.arguments?.getString("question"),
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") }
             )
@@ -237,6 +243,12 @@ fun AppNavHost(startRoute: String? = null) {
         composable("cellar") {
             CellarScreen(
                 onNavigateToDetail = { wineId -> navController.navigate("detail/$wineId") },
+                onAskSommelier = { question ->
+                    navController.navigate(
+                        if (question.isBlank()) "sommelier"
+                        else "sommelier?question=${Uri.encode(question.trim())}"
+                    )
+                },
                 onNavigateBack = { navController.popBackStack() }
             )
         }

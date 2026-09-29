@@ -99,10 +99,20 @@ fun SommelierScreen(
     wineStyle: String? = null,
     photoPath: String? = null,
     confidence: Float = 1.0f,
+    /** Вопрос, заданный на другом экране (например, из коллекции) — отправляется один раз. */
+    initialQuestion: String? = null,
     onNavigateBack: () -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {}
 ) {
     val viewModel: SommelierViewModel = hiltViewModel()
+
+    var initialQuestionSent by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(initialQuestion) {
+        if (!initialQuestionSent && !initialQuestion.isNullOrBlank()) {
+            initialQuestionSent = true
+            viewModel.sendIntent(SommelierIntent.SendMessage(initialQuestion))
+        }
+    }
 
     LaunchedEffect(wineId) {
         if (wineId != null && wineName != null) {

@@ -61,6 +61,7 @@ class WineRouletteViewModel @Inject constructor(
                         WineRouletteState.Success(
                             source = source,
                             pool = pool,
+                            sectors = buildRouletteSectors(pool),
                             likedIds = latestLikedIds
                         )
                     )
@@ -75,20 +76,21 @@ class WineRouletteViewModel @Inject constructor(
     private fun spin() {
         val current = _state.value as? WineRouletteState.Success ?: return
         if (!current.canSpin) return
-        val pool = if (current.pool.size > 1) {
-            current.pool.filter { it.id != previousWinnerId }.ifEmpty { current.pool }
-        } else {
-            current.pool
-        }
-        val winner: Wine = pool.random()
+        // Победитель — один из видимых секторов, а не произвольное вино пула:
+        // барабан просто докручивается до него, содержимое секторов не меняется.
+        val indices = current.sectors.indices
+        val candidates = indices.filter { current.sectors[it].id != previousWinnerId }
+            .ifEmpty { indices.toList() }
+        val sectorIndex = candidates.random()
+        val winner: Wine = current.sectors[sectorIndex]
         previousWinnerId = winner.id
         updateState(current.copy(isSpinning = true, result = null))
-        viewModelScope.launch { _effects.emit(WineRouletteEffect.Roll(winner)) }
+        viewModelScope.launch { _effects.emit(WineRouletteEffect.Roll(sectorIndex, winner)) }
     }
 
     private fun settle(winner: Wine) {
         val current = _state.value as? WineRouletteState.Success ?: return
-        if (current.result?.id == winner.id) return
+        if (!current.isSpinning) return
         updateState(current.copy(isSpinning = false, result = winner))
     }
 

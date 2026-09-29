@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,10 +41,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.wineapp.R
 import com.wineapp.data.mock.MockDataProvider
+import com.wineapp.domain.model.SavedScan
 import com.wineapp.domain.model.Wine
 import com.wineapp.presentation.common.ui.BrandButton
 import com.wineapp.presentation.common.ui.BrandSecondaryButton
@@ -174,7 +177,8 @@ fun MyWinesContent(
                     MyWinesSection(
                         title = stringResource(R.string.mywines_scans),
                         subtitle = stringResource(R.string.mywines_scans_sub),
-                        wines = state.scans,
+                        wines = state.scans.map { it.wine },
+                        userPhotos = state.scans.map { it.labelPhotoPath },
                         likedIds = state.likedIds,
                         onWineClick = onNavigateToDetail,
                         onToggleFavorite = onToggleFavorite
@@ -199,7 +203,9 @@ private fun MyWinesSection(
     wines: List<Wine>,
     likedIds: Set<String>,
     onWineClick: (String) -> Unit,
-    onToggleFavorite: (String) -> Unit
+    onToggleFavorite: (String) -> Unit,
+    /** Для секции сканов: фото пользователя по индексу вина вместо фото из каталога. */
+    userPhotos: List<String?>? = null
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
@@ -221,9 +227,11 @@ private fun MyWinesSection(
             modifier = Modifier.fillMaxWidth()
         )
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            wines.forEach { wine ->
+            wines.forEachIndexed { index, wine ->
                 MyWinesScanCard(
                     wine = wine,
+                    showUserPhoto = userPhotos != null,
+                    userPhotoPath = userPhotos?.getOrNull(index),
                     isFavorite = wine.id in likedIds,
                     onClick = { onWineClick(wine.id) },
                     onFavoriteClick = { onToggleFavorite(wine.id) },
@@ -244,8 +252,13 @@ private fun MyWinesScanCard(
     isFavorite: Boolean,
     onClick: () -> Unit,
     onFavoriteClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showUserPhoto: Boolean = false,
+    userPhotoPath: String? = null
 ) {
+    val userPhoto = remember(userPhotoPath) {
+        userPhotoPath?.let { java.io.File(it) }?.takeIf { it.exists() }
+    }
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
@@ -260,7 +273,21 @@ private fun MyWinesScanCard(
                     .fillMaxWidth()
                     .padding(end = 36.dp)
             ) {
-                if (wine.imageUrl != null) {
+                if (showUserPhoto && userPhoto != null) {
+                    // Скан: снимок этикетки, сделанный пользователем.
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(userPhoto)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = wine.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(width = 80.dp, height = 120.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(BrandBorderLight)
+                    )
+                } else if (!showUserPhoto && wine.imageUrl != null) {
                     SubcomposeAsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(com.wineapp.util.apiImageUrl(wine.imageUrl))
@@ -432,7 +459,12 @@ private fun MyWinesPreview() {
             state = MyWinesState(
                 favorites = wines.take(3),
                 collection = wines.take(3),
-                scans = wines.take(3),
+                scans = wines.take(3).mapIndexed { i, wine ->
+                    SavedScan(
+                        id = "scan-$i", wine = wine, labelPhotoPath = null, confidence = 0.9f,
+                        conversation = emptyList(), scannedAt = 0L
+                    )
+                },
                 likedIds = setOf(wines.first().id),
                 isLoading = false
             )

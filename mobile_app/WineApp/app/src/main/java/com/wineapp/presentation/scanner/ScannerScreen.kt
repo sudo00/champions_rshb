@@ -1,5 +1,17 @@
 package com.wineapp.presentation.scanner
 
+import com.wineapp.ui.theme.Playfair
+import com.wineapp.ui.theme.Inter
+import com.wineapp.ui.theme.BrandTextSecondary
+import com.wineapp.ui.theme.BrandTextPrimary
+import com.wineapp.ui.theme.BrandCream50
+import com.wineapp.ui.theme.BrandBurgundy600
+import com.wineapp.presentation.common.ui.WineBadge
+import com.wineapp.presentation.common.ui.BadgeType
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import com.wineapp.presentation.common.ui.AppIcons
 import android.Manifest
 import android.app.Activity
@@ -327,7 +339,7 @@ fun ScannerScreenContent(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (state is ScannerState.Ready) ScanHintPill()
+            if (state is ScannerState.Ready) ScanHintPill(highlighted = frameHighlighted)
             ScannerShutterControls(
                 onGalleryClick = onGalleryClick,
                 onCaptureClick = {
@@ -548,15 +560,25 @@ fun ScannerTopBar(
 }
 
 @Composable
-fun ScanHintPill(modifier: Modifier = Modifier) {
+fun ScanHintPill(modifier: Modifier = Modifier, highlighted: Boolean = false) {
+    // Синхронно с уголками рамки и затвором: этикетка в кадре — фон желтеет
+    // (тот же тон, что у подсветки, но светлее, чтобы текст читался).
+    val background by animateColorAsState(
+        targetValue = if (highlighted) Color(0xFFFFF2A8).copy(alpha = 0.9f) else Color.White.copy(alpha = 0.8f),
+        animationSpec = tween(durationMillis = 350),
+        label = "hintPillHighlight"
+    )
     Surface(
         shape = RoundedCornerShape(percent = 50),
-        color = Color.White.copy(alpha = 0.8f),
+        color = background,
         shadowElevation = 8.dp,
         modifier = modifier
     ) {
         Text(
-            stringResource(com.wineapp.R.string.scanner_hint),
+            stringResource(
+                if (highlighted) com.wineapp.R.string.scanner_hint_detected
+                else com.wineapp.R.string.scanner_hint
+            ),
             style = MaterialTheme.typography.labelMedium,
             color = Color.Black.copy(alpha = 0.8f),
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -654,32 +676,97 @@ fun ScannerOnboardingSheet(onDismiss: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = 36.dp)
-                .padding(top = 12.dp, bottom = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
+                .padding(top = 12.dp, bottom = 32.dp)
         ) {
             Box(
                 modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
                     .width(32.dp)
                     .height(4.dp)
                     .clip(RoundedCornerShape(percent = 50))
                     .background(Color.Black.copy(alpha = 0.2f))
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
                 stringResource(com.wineapp.R.string.scanner_onboarding_title),
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center,
-                color = Color.Black.copy(alpha = 0.9f)
+                fontFamily = Playfair,
+                fontWeight = FontWeight.Medium,
+                fontSize = 24.sp,
+                lineHeight = 30.sp,
+                color = BrandTextPrimary
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+            listOf(
+                com.wineapp.R.string.scanner_help_step_frame,
+                com.wineapp.R.string.scanner_help_step_hold,
+                com.wineapp.R.string.scanner_help_step_light,
+                com.wineapp.R.string.scanner_help_step_gallery
+            ).forEachIndexed { index, stepRes ->
+                ScannerHelpStep(number = index + 1, text = stringResource(stepRes))
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
-                stringResource(com.wineapp.R.string.scanner_onboarding_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                color = Color.Black.copy(alpha = 0.6f)
+                stringResource(com.wineapp.R.string.scanner_help_results_title),
+                fontFamily = Playfair,
+                fontWeight = FontWeight.Medium,
+                fontSize = 20.sp,
+                lineHeight = 26.sp,
+                color = BrandTextPrimary
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            listOf(
+                Triple(BadgeType.SUCCESS, com.wineapp.R.string.scanner_help_found, com.wineapp.R.string.scanner_help_found_desc),
+                Triple(BadgeType.WARNING, com.wineapp.R.string.scanner_help_check, com.wineapp.R.string.scanner_help_check_desc),
+                Triple(BadgeType.ERROR, com.wineapp.R.string.scanner_help_absent, com.wineapp.R.string.scanner_help_absent_desc),
+                Triple(BadgeType.NEUTRAL, com.wineapp.R.string.scanner_help_no_label, com.wineapp.R.string.scanner_help_no_label_desc)
+            ).forEach { (type, titleRes, descRes) ->
+                WineBadge(type = type, text = stringResource(titleRes))
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    stringResource(descRes),
+                    fontFamily = Inter,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                    color = BrandTextSecondary
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        }
+    }
+}
+
+/** Шаг инструкции: бордовый кружок с номером + текст. */
+@Composable
+private fun ScannerHelpStep(number: Int, text: String) {
+    Row(verticalAlignment = Alignment.Top) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(BrandBurgundy600)
+        ) {
+            Text(
+                number.toString(),
+                fontFamily = Inter,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                color = BrandCream50
             )
         }
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text,
+            fontFamily = Inter,
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+            color = BrandTextPrimary,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 

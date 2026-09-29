@@ -10,6 +10,8 @@ import com.wineapp.R
  * Icons.Default.* в Icon(...), leadingIcon и т.п. Цвет задаётся tint'ом.
  */
 object AppIcons {
+    val AiStar: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ai_star)
+    val AiStarFilled: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ai_star_filled)
     val Star: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.star_filled)
     val StarOutline: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.star)
     val Heart: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.heart)

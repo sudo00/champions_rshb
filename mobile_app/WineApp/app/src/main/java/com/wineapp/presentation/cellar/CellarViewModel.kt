@@ -1,5 +1,6 @@
 package com.wineapp.presentation.cellar
 
+import com.wineapp.presentation.common.ui.WineListSort
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.wineapp.domain.model.CellarItem
@@ -22,6 +23,9 @@ class CellarViewModel @Inject constructor(
 
     private var allItems: List<CellarItem> = emptyList()
     private var currentFilter: String? = null
+    private var currentSort: WineListSort = WineListSort.NEWEST
+    private var currentStyle: String? = null
+    private var currentQuery: String = ""
 
     override fun getInitialState(): CellarState = CellarState.Loading
 
@@ -33,6 +37,9 @@ class CellarViewModel @Inject constructor(
         when (intent) {
             is CellarIntent.LoadCellar -> loadCellar()
             is CellarIntent.SetFilter -> applyFilter(intent.status)
+            is CellarIntent.SetSort -> { currentSort = intent.sort; emitFiltered() }
+            is CellarIntent.SetStyleFilter -> { currentStyle = intent.style; emitFiltered() }
+            is CellarIntent.SetQuery -> { currentQuery = intent.query; emitFiltered() }
             is CellarIntent.Increment -> changeQuantity(intent.wineId, +1)
             is CellarIntent.Decrement -> changeQuantity(intent.wineId, -1)
             is CellarIntent.SetStatus -> setStatus(intent.wineId, intent.status)
@@ -60,8 +67,44 @@ class CellarViewModel @Inject constructor(
     }
 
     private fun emitFiltered() {
-        val filtered = if (currentFilter == null) allItems else allItems.filter { it.status == currentFilter }
-        updateState(CellarState.Success(filtered, currentFilter))
+        val query = currentQuery.trim()
+        val filtered = allItems
+            .filter { currentFilter == null || it.status == currentFilter }
+            .filter { currentStyle == null || it.wine.style == currentStyle }
+            .filter {
+                query.isEmpty() ||
+                    it.wine.name.contains(query, ignoreCase = true) ||
+                    it.wine.winery?.contains(query, ignoreCase = true) == true
+            }
+        val sorted = when (currentSort) {
+            WineListSort.NEWEST -> filtered.sortedByDescending { it.updatedAt }
+            WineListSort.OLDEST -> filtered.sortedBy { it.updatedAt }
+            WineListSort.RATING -> filtered.sortedByDescending { it.wine.rating ?: -1f }
+            WineListSort.NAME -> filtered.sortedBy { it.wine.name.lowercase() }
+        }
+        updateState(
+            CellarState.Success(
+                items = sorted,
+                filter = currentFilter,
+                sort = currentSort,
+                styleFilter = currentStyle,
+                query = currentQuery,
+                styles = allItems.mapNotNull { it.wine.style }.distinct().sorted(),
+                stats = computeStats(allItems),
+                isCollectionEmpty = allItems.isEmpty()
+            )
+        )
+    }
+
+    private fun computeStats(items: List<CellarItem>): CellarStats {
+        val ratings = items.mapNotNull { it.wine.rating }
+        return CellarStats(
+            totalBottles = items.sumOf { it.quantity },
+            averageRating = if (ratings.isEmpty()) null else ratings.average().toFloat(),
+            favoriteStyle = items.mapNotNull { it.wine.style }
+                .groupingBy { it }.eachCount()
+                .maxByOrNull { it.value }?.key
+        )
     }
 
     private fun changeQuantity(wineId: String, delta: Int) {

@@ -237,7 +237,7 @@ private fun RouletteBody(
                 .weight(1f)
         ) {
             WineRouletteWheel(
-                pool = state.pool,
+                sectors = state.sectors,
                 roll = roll,
                 canSpin = state.canSpin,
                 onSpin = onSpin,
@@ -613,7 +613,8 @@ private fun WineRouletteOneWinePreview() {
         WineRouletteContent(
             state = WineRouletteState.Success(
                 source = RouletteSource.COLLECTION,
-                pool = listOf(wine)
+                pool = listOf(wine),
+                sectors = buildRouletteSectors(listOf(wine))
             )
         )
     }
@@ -628,6 +629,7 @@ private fun WineRouletteFavoritesPreview() {
             state = WineRouletteState.Success(
                 source = RouletteSource.FAVORITES,
                 pool = wines,
+                sectors = buildRouletteSectors(wines),
                 likedIds = setOf(wines.first().id)
             )
         )
@@ -637,7 +639,7 @@ private fun WineRouletteFavoritesPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun WineRouletteManyWinesPreview() {
-    // Больше 17 вин: сектора пересобираются на ходу, пул не заканчивается.
+    // Больше 17 вин: в сектора попадают 17 случайных без повторов.
     val wines = List(20) { index ->
         MockDataProvider.wines[index % MockDataProvider.wines.size].copy(id = "pool-$index")
     }
@@ -645,7 +647,8 @@ private fun WineRouletteManyWinesPreview() {
         WineRouletteContent(
             state = WineRouletteState.Success(
                 source = RouletteSource.COLLECTION,
-                pool = wines
+                pool = wines,
+                sectors = buildRouletteSectors(wines)
             )
         )
     }
@@ -673,6 +676,7 @@ private fun WineRouletteResultPreview() {
             state = WineRouletteState.Success(
                 source = RouletteSource.COLLECTION,
                 pool = wines,
+                sectors = buildRouletteSectors(wines),
                 result = wines.first(),
                 likedIds = setOf(wines.first().id)
             )

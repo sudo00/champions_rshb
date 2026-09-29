@@ -69,7 +69,6 @@ class MyWinesViewModel @Inject constructor(
                     val scans = savedScans
                         .sortedByDescending { it.scannedAt }
                         .take(SECTION_LIMIT)
-                        .map { it.wine }
                     updateState(
                         MyWinesState(
                             favorites = favoriteWines,

@@ -1,42 +1,33 @@
 package com.wineapp.presentation.favorites
 
-import com.wineapp.presentation.common.ui.AppIcons
-import android.app.Activity
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,37 +35,37 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.wineapp.R
 import com.wineapp.data.local.FavoriteKind
 import com.wineapp.data.mock.MockDataProvider
 import com.wineapp.domain.model.FavoriteItem
 import com.wineapp.domain.model.Wine
+import com.wineapp.presentation.common.ui.AppIcons
 import com.wineapp.presentation.common.ui.EmptyState
-import com.wineapp.ui.theme.BrandBorderLight
+import com.wineapp.presentation.common.ui.TransparentSystemBars
+import com.wineapp.presentation.common.ui.WineListCard
+import com.wineapp.presentation.common.ui.WineListHeader
+import com.wineapp.presentation.common.ui.WineListHeadline
+import com.wineapp.presentation.common.ui.WineListIconButton
+import com.wineapp.presentation.common.ui.WineListMonthHeader
+import com.wineapp.presentation.common.ui.WineListNothingFound
+import com.wineapp.presentation.common.ui.WineListSearchField
+import com.wineapp.presentation.common.ui.WineListSort
+import com.wineapp.presentation.common.ui.WineListSortFilterRow
+import com.wineapp.presentation.common.ui.WineListTabs
+import com.wineapp.presentation.common.ui.yearMonthOf
+import com.wineapp.ui.theme.BrandBorderDefault
 import com.wineapp.ui.theme.BrandBurgundy600
-import com.wineapp.ui.theme.BrandCream100
 import com.wineapp.ui.theme.BrandCream50
-import com.wineapp.ui.theme.BrandCream500
-import com.wineapp.ui.theme.BrandTextPrimary
-import com.wineapp.ui.theme.BrandTextSecondary
 import com.wineapp.ui.theme.Inter
-import com.wineapp.ui.theme.Playfair
 
 @Composable
 fun FavoritesScreen(
@@ -88,34 +79,146 @@ fun FavoritesScreen(
         state = state,
         onRemoveFavorite = { viewModel.sendIntent(FavoritesIntent.RemoveFavorite(it)) },
         onFilter = { viewModel.sendIntent(FavoritesIntent.SetFilter(it)) },
+        onSort = { viewModel.sendIntent(FavoritesIntent.SetSort(it)) },
+        onStyleFilter = { viewModel.sendIntent(FavoritesIntent.SetStyleFilter(it)) },
+        onQuery = { viewModel.sendIntent(FavoritesIntent.SetQuery(it)) },
         onSetKind = { wineId, kind -> viewModel.sendIntent(FavoritesIntent.SetKind(wineId, kind)) },
         onNavigateToDetail = onNavigateToDetail,
         onNavigateBack = onNavigateBack
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FavoritesScreenContent(
     state: FavoritesState,
     onRemoveFavorite: (String) -> Unit = {},
     onFilter: (String?) -> Unit = {},
+    onSort: (WineListSort) -> Unit = {},
+    onStyleFilter: (String?) -> Unit = {},
+    onQuery: (String) -> Unit = {},
     onSetKind: (String, String) -> Unit = { _, _ -> },
     onNavigateToDetail: (String) -> Unit = {},
     onNavigateBack: () -> Unit = {}
 ) {
-    val view = LocalView.current
-    SideEffect {
-        (view.context as? Activity)?.let { activity ->
-            val window = activity.window
-            window.statusBarColor = BrandCream50.toArgb()
-            window.navigationBarColor = BrandCream50.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = true
-            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = true
+    TransparentSystemBars()
+    var wineToDelete by remember { mutableStateOf<Wine?>(null) }
+    var searchOpen by remember { mutableStateOf(false) }
+    val success = state as? FavoritesState.Success
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BrandCream50)
+    ) {
+        Image(
+            painter = painterResource(R.drawable.search_tab_ellipse),
+            contentDescription = null,
+            contentScale = ContentScale.FillWidth,
+            modifier = Modifier.fillMaxWidth()
+        )
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding(),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 16.dp,
+                bottom = 24.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+            )
+        ) {
+            item(key = "header") {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    WineListHeader(
+                        title = stringResource(R.string.favorites_title),
+                        searchOpen = searchOpen,
+                        onBack = onNavigateBack,
+                        onSearchClick = {
+                            if (searchOpen) onQuery("")
+                            searchOpen = !searchOpen
+                        }
+                    )
+                    if (searchOpen) {
+                        WineListSearchField(
+                            query = success?.query.orEmpty(),
+                            hint = stringResource(R.string.list_search_hint),
+                            onQuery = onQuery
+                        )
+                    }
+                    if (success != null && !success.isFavoritesEmpty) {
+                        WineListSortFilterRow(
+                            sort = success.sort,
+                            styles = success.styles,
+                            selectedStyle = success.styleFilter,
+                            onSort = onSort,
+                            onStyleFilter = onStyleFilter
+                        )
+                        FavoritesKindTabs(selected = success.filter, onFilter = onFilter)
+                    }
+                }
+            }
+
+            when (state) {
+                is FavoritesState.Loading -> item(key = "loading") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 120.dp),
+                        contentAlignment = Alignment.Center
+                    ) { CircularProgressIndicator(color = BrandBurgundy600) }
+                }
+
+                is FavoritesState.Error -> item(key = "error") {
+                    Text(
+                        text = state.message,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(vertical = 120.dp)
+                    )
+                }
+
+                is FavoritesState.Success -> {
+                    if (state.isFavoritesEmpty) {
+                        item(key = "empty") {
+                            EmptyState(
+                                icon = AppIcons.Heart,
+                                title = stringResource(R.string.favorites_empty),
+                                message = stringResource(R.string.favorites_empty_hint),
+                                modifier = Modifier.padding(vertical = 80.dp)
+                            )
+                        }
+                    } else if (state.items.isEmpty()) {
+                        item(key = "nothing") {
+                            WineListNothingFound(modifier = Modifier.padding(top = 32.dp))
+                        }
+                    } else {
+                        val groups = if (state.sort.groupsByMonth) {
+                            state.items.groupBy { yearMonthOf(it.addedAt) }.toList()
+                        } else {
+                            listOf(null to state.items)
+                        }
+                        groups.forEachIndexed { index, (month, monthItems) ->
+                            if (month != null) {
+                                item(key = "month:$month") {
+                                    WineListMonthHeader(month, isFirst = index == 0)
+                                }
+                            } else {
+                                item(key = "list-top") { Spacer(Modifier.height(32.dp)) }
+                            }
+                            items(monthItems, key = { it.wine.id }) { item ->
+                                FavoriteWineCard(
+                                    item = item,
+                                    onClick = { onNavigateToDetail(item.wine.id) },
+                                    onRemove = { wineToDelete = item.wine },
+                                    onSetKind = { kind -> onSetKind(item.wine.id, kind) },
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
-
-    var wineToDelete by remember { mutableStateOf<Wine?>(null) }
 
     wineToDelete?.let { wine ->
         AlertDialog(
@@ -127,10 +230,7 @@ fun FavoritesScreenContent(
                     onRemoveFavorite(wine.id)
                     wineToDelete = null
                 }) {
-                    Text(
-                        stringResource(R.string.favorites_delete),
-                        color = BrandBurgundy600
-                    )
+                    Text(stringResource(R.string.favorites_delete), color = BrandBurgundy600)
                 }
             },
             dismissButton = {
@@ -140,196 +240,85 @@ fun FavoritesScreenContent(
             }
         )
     }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(BrandCream50)
-            .statusBarsPadding()
-            .padding(horizontal = 16.dp)
-    ) {
-        FavoritesHeader(
-            title = stringResource(R.string.favorites_title),
-            onBack = onNavigateBack
-        )
-        when (state) {
-            is FavoritesState.Loading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = BrandBurgundy600)
-                }
-            }
-            is FavoritesState.Error -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = state.message,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-            is FavoritesState.Success -> {
-                if (state.items.isEmpty() && state.filter == null) {
-                    EmptyState(
-                        icon = AppIcons.Heart,
-                        title = stringResource(R.string.favorites_empty),
-                        message = stringResource(R.string.favorites_empty_hint)
-                    )
-                } else {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        FavoritesFilterRow(
-                            selected = state.filter,
-                            onFilter = onFilter
-                        )
-                        if (state.items.isEmpty()) {
-                            EmptyState(
-                                icon = AppIcons.Heart,
-                                title = stringResource(R.string.favorites_empty),
-                                message = stringResource(R.string.favorites_empty_hint)
-                            )
-                        } else {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                items(
-                                    items = state.items,
-                                    key = { it.wine.id }
-                                ) { item ->
-                                    FavoriteWineCard(
-                                        wine = item.wine,
-                                        kind = item.kind,
-                                        onClick = { onNavigateToDetail(item.wine.id) },
-                                        onRemove = { wineToDelete = item.wine },
-                                        onSetKind = { kind -> onSetKind(item.wine.id, kind) }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
+/** Табы «Все», «Хочу», «Понравилось». */
 @Composable
-private fun FavoritesHeader(
-    title: String,
-    onBack: () -> Unit
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 16.dp, bottom = 8.dp)
-    ) {
-        Surface(
-            onClick = onBack,
-            shape = CircleShape,
-            color = BrandBurgundy600,
-            modifier = Modifier.size(44.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    AppIcons.ChevronLeft,
-                    contentDescription = null,
-                    tint = BrandCream50,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = title,
-            fontFamily = Playfair,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 28.sp,
-            lineHeight = 34.sp,
-            color = BrandTextPrimary
-        )
-    }
-}
-
-@Composable
-fun FavoritesFilterRow(
+private fun FavoritesKindTabs(
     selected: String?,
     onFilter: (String?) -> Unit
 ) {
-    val filters = listOf(
-        null to R.string.favorites_filter_all,
-        FavoriteKind.WISH to R.string.favorites_wish,
-        FavoriteKind.LIKED to R.string.favorites_liked
+    val kinds = listOf(null, FavoriteKind.WISH, FavoriteKind.LIKED)
+    WineListTabs(
+        labels = listOf(
+            stringResource(R.string.favorites_filter_all),
+            stringResource(R.string.favorites_wish),
+            stringResource(R.string.favorites_liked)
+        ),
+        selectedIndex = kinds.indexOf(selected).takeIf { it >= 0 },
+        onSelect = { index -> onFilter(kinds[index]) }
     )
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        filters.forEach { (kind, labelRes) ->
-            val isSelected = selected == kind
-            Surface(
-                onClick = { onFilter(kind) },
-                shape = RoundedCornerShape(percent = 50),
-                color = if (isSelected) BrandBurgundy600 else BrandCream100,
-                border = if (isSelected) null else BorderStroke(1.dp, BrandBorderLight),
-                modifier = Modifier.height(36.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        stringResource(labelRes),
-                        fontFamily = Inter,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp,
-                        lineHeight = 18.sp,
-                        color = if (isSelected) BrandCream50 else BrandTextPrimary,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                }
-            }
-        }
-    }
 }
 
+/**
+ * Карточка избранного: общий каркас [WineListCard], закрашенное сердечко
+ * справа сверху (убрать из избранного), вместо тега — чип «Хочу»/«Понравилось»
+ * с выбором вида.
+ */
 @Composable
-fun FavoriteKindChip(
+private fun FavoriteWineCard(
+    item: FavoriteItem,
+    onClick: () -> Unit,
+    onRemove: () -> Unit,
+    onSetKind: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val wine = item.wine
+    WineListCard(
+        imageModel = wine.imageUrl?.let { com.wineapp.util.apiImageUrl(it) },
+        imageDescription = wine.name,
+        onClick = onClick,
+        headline = { WineListHeadline(wine) },
+        tagContent = { FavoriteKindChip(kind = item.kind, onSetKind = onSetKind) },
+        topEndAction = {
+            WineListIconButton(
+                icon = AppIcons.HeartFilled,
+                contentDescription = stringResource(R.string.favorites_remove),
+                tint = BrandBurgundy600,
+                onClick = onRemove
+            )
+        },
+        modifier = modifier
+    )
+}
+
+/** Чип вида избранного в стиле Badge / Tag, по тапу — меню смены вида. */
+@Composable
+private fun FavoriteKindChip(
     kind: String,
     onSetKind: (String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val label = if (kind == FavoriteKind.WISH) {
-        stringResource(R.string.favorites_wish)
-    } else {
-        stringResource(R.string.favorites_liked)
-    }
     Box {
         Surface(
+            onClick = { expanded = true },
             shape = RoundedCornerShape(percent = 50),
             color = BrandCream50,
-            border = BorderStroke(1.dp, BrandBorderLight),
-            onClick = { expanded = true }
+            border = BorderStroke(1.dp, BrandBorderDefault)
         ) {
             Text(
-                label,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                stringResource(
+                    if (kind == FavoriteKind.WISH) R.string.favorites_wish else R.string.favorites_liked
+                ),
                 fontFamily = Inter,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 12.sp,
                 lineHeight = 16.sp,
-                color = BrandBurgundy600
+                color = BrandBurgundy600,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
             )
         }
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.favorites_wish)) },
                 onClick = {
@@ -348,169 +337,7 @@ fun FavoriteKindChip(
     }
 }
 
-@Composable
-fun FavoriteWineCard(
-    wine: Wine,
-    kind: String,
-    onClick: () -> Unit,
-    onRemove: () -> Unit,
-    onSetKind: (String) -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = BrandCream100),
-        border = BorderStroke(1.dp, BrandBorderLight),
-        onClick = onClick
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(BrandBorderLight)
-            ) {
-                wine.imageUrl?.let { url ->
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(com.wineapp.util.apiImageUrl(url))
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = wine.name,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    wine.name,
-                    fontFamily = Playfair,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 18.sp,
-                    lineHeight = 22.sp,
-                    color = BrandTextPrimary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                wine.winery?.let {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        it,
-                        fontFamily = Inter,
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
-                        color = BrandTextSecondary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    wine.vintage?.let {
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = BrandCream50,
-                            border = BorderStroke(1.dp, BrandBorderLight)
-                        ) {
-                            Text(
-                                "$it",
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                fontFamily = Inter,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 12.sp,
-                                lineHeight = 16.sp,
-                                color = BrandTextPrimary
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(6.dp))
-                    }
-                    wine.region?.let {
-                        Text(
-                            it,
-                            fontFamily = Inter,
-                            fontSize = 12.sp,
-                            lineHeight = 16.sp,
-                            color = BrandTextSecondary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (wine.rating != null) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                AppIcons.Star,
-                                contentDescription = null,
-                                tint = BrandCream500,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                String.format("%.1f", wine.rating),
-                                fontFamily = Inter,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 14.sp,
-                                lineHeight = 18.sp,
-                                color = BrandTextPrimary
-                            )
-                        }
-                    }
-                    wine.reviewsCount?.let {
-                        if (it > 0) {
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                "(${wine.reviewsCount})",
-                                fontFamily = Inter,
-                                fontSize = 12.sp,
-                                lineHeight = 16.sp,
-                                color = BrandTextSecondary
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.weight(1f))
-                    wine.price?.let {
-                        Text(
-                            "${wine.currency ?: "$"} ${String.format("%.0f", it)}",
-                            fontFamily = Inter,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            lineHeight = 20.sp,
-                            color = BrandBurgundy600
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(6.dp))
-                FavoriteKindChip(kind = kind, onSetKind = onSetKind)
-            }
-            Surface(
-                onClick = onRemove,
-                shape = CircleShape,
-                color = Color.Transparent,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        AppIcons.Trash,
-                        contentDescription = stringResource(R.string.favorites_remove),
-                        tint = BrandTextSecondary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Preview(showBackground = true, heightDp = 800)
+@Preview(showBackground = true, heightDp = 900)
 @Composable
 private fun FavoritesScreenPreview() {
     com.wineapp.ui.theme.WineAppTheme {
@@ -518,12 +345,14 @@ private fun FavoritesScreenPreview() {
         FavoritesScreenContent(
             state = FavoritesState.Success(
                 items = listOf(
-                    FavoriteItem(wine = wines[0], kind = FavoriteKind.LIKED),
+                    FavoriteItem(wine = wines[0], kind = FavoriteKind.LIKED, addedAt = System.currentTimeMillis()),
                     FavoriteItem(
                         wine = wines.getOrElse(1) { wines[0] }.copy(id = "preview-2"),
-                        kind = FavoriteKind.WISH
+                        kind = FavoriteKind.WISH,
+                        addedAt = System.currentTimeMillis() - 90L * 24 * 60 * 60 * 1000
                     )
-                )
+                ),
+                styles = listOfNotNull(wines[0].style)
             )
         )
     }
