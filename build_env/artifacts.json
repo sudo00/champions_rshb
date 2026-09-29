@@ -16,7 +16,7 @@
     "sha256": "8efc61eb06df04a17ce908c759772b97c003163056c223a97369e907fec20cbc",
     "catalog_sha256": "40e6d559fefee605c579e5bc01fde1f943deab7da5f36c9d700c64b7a079a72d"
   },
-  "note": "Resource inventory only; no downloader is implemented. URLs must be supplied by the deployment owner.",
+  "note": "SHA-256 inventory. Public Yandex Disk links go in build_env/yandex.env (see yandex.env.example). make setup, make install, make dev and make prod download missing archives before containers start. A url field here is used when the matching environment variable is empty.",
   "recommendations": {
     "directory": "weights/recommendations-v2",
     "archive": "weights/artifacts/recommendations-v2.tar.gz",

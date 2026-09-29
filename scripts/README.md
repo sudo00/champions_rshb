@@ -17,6 +17,7 @@ API, worker и мобильное приложение не импортирую
 | `export_recognizer_bundle.py` | Экспортировать bundle из локальных ML-артефактов или перепаковать существующий |
 | `package_catalog_images.py` | Упаковать изображения проверенного каталога |
 | `install_api_network.sh` | Установить локальное правило маршрутизации ответов API через провайдера |
+| `download_yandex_weights.py` | Скачать архивы весов с публичных ссылок Яндекс Диска и распаковать их; вызывается из `make install` и `make setup` |
 
 Пример: `python3 scripts/scan_api.py photo.jpg --base http://localhost:8000 --output result.json`.
 Для оценки отправляйте оригинал; подготовка до 2560 предназначена для телефонного сценария.
