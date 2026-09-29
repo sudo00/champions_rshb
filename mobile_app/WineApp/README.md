@@ -1,6 +1,6 @@
 # Своё вино — Android
 
-Клиент на Kotlin, Jetpack Compose, CameraX, Hilt, Room и Retrofit. Сканирование использует общий API; локальный YOLO26n только находит этикетку в preview. Подробнее: [передача мобильному разработчику](../../docs/MOBILE_HANDOFF.md).
+Клиент на Kotlin, Jetpack Compose, CameraX, Hilt, Room и Retrofit. Сканирование использует общий API; локальный YOLO26n только находит этикетку в preview. Подробнее: [архитектура и детектор камеры](../../docs/ARCHITECTURE.md#детектор-камеры).
 
 ## Сборка
 

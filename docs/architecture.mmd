@@ -1,14 +1,20 @@
 flowchart TD
-    Client[Android / evaluator] --> API[FastAPI]
-    API --> Storage[MinIO photo bytes]
-    API --> Queue[RabbitMQ scan]
-    Queue --> Worker[GPU worker]
-    Storage --> Worker
-    Worker --> SAM[SAM 3 and geometry]
-    SAM --> Vision[SigLIP2]
-    SAM --> OCR[PaddleOCR GPU]
-    Vision --> Ranking[Hybrid catalogue ranking]
-    OCR --> Ranking
-    Ranking --> DB[PostgreSQL results]
+    Android["Android: камера или галерея"] --> API["FastAPI"]
+    Eval["Оценочный скрипт"] --> API
+    API --> Photos["MinIO: фото"]
+    API --> Queue["RabbitMQ: scanId и imageKey"]
+    Queue --> Worker["GPU-worker"]
+    Photos --> Worker
+    Worker --> Normalize["EXIF, RGB, белый фон"]
+    Normalize --> SAM["SAM 3: бутылка и этикетка"]
+    SAM --> Views["Кропы и условная цилиндрическая развёртка"]
+    Views --> SigLIP["SigLIP2: эмбеддинги"]
+    SigLIP --> OCR["PaddleOCR: надписи и области"]
+    SigLIP --> Rank["Гибридный поиск по каталогу"]
+    OCR --> Rank
+    Index["Bundle: каталог, векторы, правила"] --> Rank
+    Rank --> Policy["Уточнение сладости, оценки кандидатов, политика отказа"]
+    Policy --> DB["PostgreSQL: результат"]
     DB --> API
-    Catalogue[Reviewed catalogue] --> API
+    Catalogue["Каталог карточек из Git"] --> API
+    API --> Card["Карточка и рекомендации / slug для оценки"]
