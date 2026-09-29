@@ -1,12 +1,11 @@
 ﻿package com.wineapp.presentation.winepath
 
-import com.wineapp.presentation.common.ui.AppIcons
 import android.annotation.SuppressLint
 import android.app.Activity
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -36,8 +35,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.CircularProgressIndicator
@@ -45,7 +42,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RichTooltip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -108,6 +104,7 @@ import com.wineapp.data.local.TerritoryShapes
 import com.wineapp.domain.model.BadgeUi
 import com.wineapp.domain.model.TerritoryProgress
 import com.wineapp.domain.model.WinePathSummary
+import com.wineapp.presentation.common.ui.AppIcons
 import com.wineapp.presentation.common.ui.ErrorMessage
 import com.wineapp.ui.theme.BrandBorderDefault
 import com.wineapp.ui.theme.BrandBurgundy300
