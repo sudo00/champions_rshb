@@ -1,5 +1,6 @@
 package com.wineapp.presentation.favorites
 
+import com.wineapp.presentation.common.ui.BrandLoader
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -20,7 +21,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -70,6 +70,7 @@ import com.wineapp.ui.theme.Inter
 @Composable
 fun FavoritesScreen(
     onNavigateToDetail: (String) -> Unit = {},
+    onFindWine: () -> Unit = {},
     onNavigateBack: () -> Unit = {}
 ) {
     val viewModel: FavoritesViewModel = hiltViewModel()
@@ -84,6 +85,7 @@ fun FavoritesScreen(
         onQuery = { viewModel.sendIntent(FavoritesIntent.SetQuery(it)) },
         onSetKind = { wineId, kind -> viewModel.sendIntent(FavoritesIntent.SetKind(wineId, kind)) },
         onNavigateToDetail = onNavigateToDetail,
+        onFindWine = onFindWine,
         onNavigateBack = onNavigateBack
     )
 }
@@ -98,6 +100,7 @@ fun FavoritesScreenContent(
     onQuery: (String) -> Unit = {},
     onSetKind: (String, String) -> Unit = { _, _ -> },
     onNavigateToDetail: (String) -> Unit = {},
+    onFindWine: () -> Unit = {},
     onNavigateBack: () -> Unit = {}
 ) {
     TransparentSystemBars()
@@ -165,7 +168,7 @@ fun FavoritesScreenContent(
                             .fillMaxWidth()
                             .padding(vertical = 120.dp),
                         contentAlignment = Alignment.Center
-                    ) { CircularProgressIndicator(color = BrandBurgundy600) }
+                    ) { BrandLoader() }
                 }
 
                 is FavoritesState.Error -> item(key = "error") {
@@ -183,6 +186,9 @@ fun FavoritesScreenContent(
                                 icon = AppIcons.Heart,
                                 title = stringResource(R.string.favorites_empty),
                                 message = stringResource(R.string.favorites_empty_hint),
+                                actionText = stringResource(R.string.empty_action_find_wine),
+                                actionIcon = AppIcons.Search,
+                                onAction = onFindWine,
                                 modifier = Modifier.padding(vertical = 80.dp)
                             )
                         }

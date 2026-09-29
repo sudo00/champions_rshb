@@ -105,7 +105,6 @@ fun ScannerScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val state by viewModel.state.collectAsState()
-    val badgeMessage by viewModel.badgeMessage.collectAsState()
     val autoCaptureVm by viewModel.autoCapture.collectAsState()
 
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
@@ -211,8 +210,6 @@ fun ScannerScreen(
         state = state,
         cameraHelper = viewModel.cameraHelper,
         lifecycleOwner = lifecycleOwner,
-        badgeMessage = badgeMessage,
-        onBadgeMessageShown = { viewModel.consumeBadgeMessage() },
         onToggleFlash = { viewModel.sendIntent(ScannerIntent.ToggleFlash) },
         onTakePicture = { path -> viewModel.sendIntent(ScannerIntent.CapturePhoto(path))},
         onRetry = { viewModel.sendIntent(ScannerIntent.RetryScan) },
@@ -233,8 +230,6 @@ fun ScannerScreenContent(
     onToggleFlash: () -> Unit,
     onRetry: () -> Unit,
     onCloseClick: () -> Unit = {},
-    badgeMessage: String? = null,
-    onBadgeMessageShown: () -> Unit = {},
     autoCapture: Boolean = true,
     onAutoClick: () -> Unit = {},
 ) {
@@ -262,13 +257,6 @@ fun ScannerScreenContent(
         if (notFoundMessage != null) {
             snackbarHostState.showSnackbar(notFoundMessage, duration = SnackbarDuration.Short)
             onRetry()
-        }
-    }
-
-    LaunchedEffect(badgeMessage) {
-        if (badgeMessage != null) {
-            snackbarHostState.showSnackbar(badgeMessage, duration = SnackbarDuration.Short)
-            onBadgeMessageShown()
         }
     }
 

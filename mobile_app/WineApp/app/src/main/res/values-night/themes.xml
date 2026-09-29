@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.WineApp" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/brand_burgundy_600</item>
+        <item name="colorAccent">@color/brand_burgundy_600</item>
+        <item name="android:windowBackground">@color/brand_cream_50</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>

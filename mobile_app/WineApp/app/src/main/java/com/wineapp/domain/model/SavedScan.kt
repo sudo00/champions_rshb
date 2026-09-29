@@ -8,4 +8,9 @@ data class SavedScan(
     val conversation: List<SommelierMessage>,
     val scannedAt: Long,
     val recognitionStatus: String = "legacy"
-)
+) {
+    companion object {
+        /** Сохранённый диалог с сомелье, а не скан: очков и наград «Винного пути» не даёт. */
+        const val STATUS_SOMMELIER_CHAT = "sommelier_chat"
+    }
+}

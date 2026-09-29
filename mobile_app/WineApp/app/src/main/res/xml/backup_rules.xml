@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Бэкап отключён (allowBackup=false): переустановка — чистое приложение.
+     Раньше восстанавливалась БД сканов без фото этикеток (они в бэкап не входили). -->
 <full-backup-content>
-    <include domain="database" path="wine_history.db"/>
-    <include domain="sharedpref" path="."/>
-    <exclude domain="file" path="images/"/>
+    <exclude domain="root" path="."/>
+    <exclude domain="file" path="."/>
+    <exclude domain="database" path="."/>
+    <exclude domain="sharedpref" path="."/>
+    <exclude domain="external" path="."/>
 </full-backup-content>

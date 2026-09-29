@@ -10,6 +10,7 @@ import com.wineapp.domain.model.ChatHistoryItem
 import com.wineapp.domain.model.SavedScan
 import com.wineapp.domain.model.SommelierMessage
 import com.wineapp.domain.model.Wine
+import com.wineapp.domain.model.ratingOrDemo
 import com.wineapp.domain.repository.ScanHistoryRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -121,7 +122,7 @@ class ScanHistoryRepositoryImpl @Inject constructor(
                         id = entity.wineId,
                         name = entity.wineName,
                         vintage = entity.vintage,
-                        rating = entity.rating,
+                        rating = ratingOrDemo(entity.rating, entity.wineId),
                         reviewsCount = entity.reviewsCount,
                         price = entity.price,
                         currency = entity.currency,
@@ -172,7 +173,7 @@ class ScanHistoryRepositoryImpl @Inject constructor(
                         id = entity.wineId,
                         name = entity.wineName,
                         vintage = entity.vintage,
-                        rating = entity.rating,
+                        rating = ratingOrDemo(entity.rating, entity.wineId),
                         reviewsCount = entity.reviewsCount,
                         price = entity.price,
                         currency = entity.currency,
@@ -224,7 +225,7 @@ class ScanHistoryRepositoryImpl @Inject constructor(
                 id = entity.wineId,
                 name = entity.wineName,
                 vintage = entity.vintage,
-                rating = entity.rating,
+                rating = ratingOrDemo(entity.rating, entity.wineId),
                 reviewsCount = entity.reviewsCount,
                 price = entity.price,
                 currency = entity.currency,

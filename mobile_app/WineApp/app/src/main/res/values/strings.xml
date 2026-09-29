@@ -154,6 +154,9 @@
     <string name="mywines_scans">Сканы</string>
     <string name="mywines_scans_sub">Ваши сканы вин</string>
     <string name="mywines_roulette">Винная рулетка</string>
+    <string name="mywines_section_empty">Пока здесь пусто</string>
+    <string name="mywines_scans_empty_hint">Отсканируйте этикетку — сканы появятся здесь</string>
+    <string name="empty_action_find_wine">Найти вино</string>
     <string name="nav_search">Поиск</string>
     <string name="nav_sommelier">Сомелье</string>
     <string name="nav_saved_scans">Сохранённые</string>
@@ -212,6 +215,7 @@
     <string name="list_sort_oldest">Сначала старые</string>
     <string name="list_sort_rating">По рейтингу</string>
     <string name="list_sort_name">По названию</string>
+    <string name="list_sort_default">По умолчанию</string>
     <string name="list_filters">Фильтры</string>
     <string name="list_filter_all_styles">Все категории</string>
     <string name="cellar_stat_bottles">Бутылок в коллекции</string>
@@ -257,12 +261,15 @@
 
     <string name="winepath_title">Винный путь</string>
     <string name="winepath_empty">Сканируйте этикетки — открывайте винодельческие регионы России</string>
-    <string name="winepath_points">%d очков</string>
     <string name="winepath_stats">Территорий: %1$d из %2$d · Сканов: %3$d</string>
     <string name="winepath_territories">Территории</string>
     <string name="winepath_progress">%1$d из %2$d вин</string>
     <string name="winepath_celebration_title">Новая награда!</string>
     <string name="winepath_celebration_points">+%d очков</string>
+    <string name="winepath_scan_points_title">Новое вино в «Винном пути»</string>
+    <string name="winepath_scan_points_hint">Очки за первое знакомство с вином</string>
+    <string name="winepath_level_up_title">Новый уровень!</string>
+    <string name="winepath_level_up_name">Уровень %d</string>
     <string name="winepath_new_badge">Новая награда: %s</string>
     <string name="winepath_new_badges">Новых наград: %d — подробнее в «Винном пути»</string>
     <string name="winepath_your_wines">Ваши вина оттуда:</string>
@@ -272,8 +279,19 @@
     <string name="winepath_zoom">К винным регионам</string>
     <string name="winepath_scan">Сканировать вино</string>
     <string name="winepath_level_word">Уровень</string>
-    <string name="winepath_level_progress">%1$d%% до уровня %2$d</string>
     <string name="winepath_level_max">Максимальный уровень</string>
+    <plurals name="winepath_points">
+        <item quantity="one">%d очко</item>
+        <item quantity="few">%d очка</item>
+        <item quantity="many">%d очков</item>
+        <item quantity="other">%d очка</item>
+    </plurals>
+    <plurals name="winepath_points_to_level">
+        <item quantity="one">Ещё %1$d очко до уровня %2$d</item>
+        <item quantity="few">Ещё %1$d очка до уровня %2$d</item>
+        <item quantity="many">Ещё %1$d очков до уровня %2$d</item>
+        <item quantity="other">Ещё %1$d очка до уровня %2$d</item>
+    </plurals>
     <string name="winepath_territories_desc">Открывайте новые винные регионы, сканируйте вина и прокладывайте свой путь по карте России</string>
     <string name="winepath_rewards">Награды</string>
     <string name="winepath_rewards_desc">Получайте награды за открытия новых регионов и достижения в своей винной истории</string>

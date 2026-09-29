@@ -23,6 +23,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,6 +54,8 @@ import com.wineapp.domain.model.SearchResult
 import com.wineapp.domain.model.Wine
 import com.wineapp.presentation.common.ui.BrandButton
 import com.wineapp.presentation.common.ui.BrandSecondaryButton
+import com.wineapp.presentation.common.ui.SortFilterRow
+import com.wineapp.presentation.common.ui.WineListSort
 import com.wineapp.presentation.common.ui.TransparentSystemBars
 import com.wineapp.presentation.common.ui.WinePhotoViewer
 import com.wineapp.ui.theme.BrandBurgundy600
@@ -74,6 +77,7 @@ fun SearchTabScreen(
     val viewModel: SearchViewModel = hiltViewModel()
     val state by viewModel.state.collectAsState()
     val likedIds by viewModel.likedIds.collectAsState()
+    val controls by viewModel.controls.collectAsState()
     var query by remember { mutableStateOf("") }
     var viewerWine by remember { mutableStateOf<Wine?>(null) }
 
@@ -85,12 +89,15 @@ fun SearchTabScreen(
         state = state,
         query = query,
         likedIds = likedIds,
+        controls = controls,
         viewerWine = viewerWine,
         onViewerClose = { viewerWine = null },
         onQueryChange = { query = it },
         onSearch = { q -> viewModel.sendIntent(SearchIntent.Search(q)) },
         onLoadMore = { viewModel.sendIntent(SearchIntent.LoadMore) },
         onToggleFavorite = { wineId -> viewModel.sendIntent(SearchIntent.ToggleFavorite(wineId)) },
+        onSort = { sort -> viewModel.sendIntent(SearchIntent.ChangeSort(sort)) },
+        onStyleFilter = { style -> viewModel.sendIntent(SearchIntent.ChangeStyleFilter(style)) },
         onWineLongClick = { wine -> viewerWine = wine },
         onNavigateToDetail = onNavigateToDetail
     )
@@ -101,12 +108,15 @@ fun SearchTabContent(
     state: SearchState,
     query: String,
     likedIds: Set<String> = emptySet(),
+    controls: SearchControls = SearchControls(),
     viewerWine: Wine? = null,
     onViewerClose: () -> Unit = {},
     onQueryChange: (String) -> Unit = {},
     onSearch: (String) -> Unit = {},
     onLoadMore: () -> Unit = {},
     onToggleFavorite: (String) -> Unit = {},
+    onSort: (WineListSort?) -> Unit = {},
+    onStyleFilter: (String?) -> Unit = {},
     onWineLongClick: (Wine) -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {}
 ) {
@@ -122,6 +132,10 @@ fun SearchTabContent(
             .collect { (value, max) ->
                 if (max > 0 && value > 0 && value >= max - 800) onLoadMore()
             }
+    }
+    // Новый порядок/фильтр — показываем выдачу с начала.
+    LaunchedEffect(controls.sort, controls.styleFilter) {
+        scrollState.scrollTo(0)
     }
 
     Box(
@@ -196,10 +210,8 @@ fun SearchTabContent(
                         }
                         BasicTextField(
                             value = query,
-                            onValueChange = {
-                                onQueryChange(it)
-                                onSearch(it)
-                            },
+                            // Поиск запускает LaunchedEffect(query) в SearchTabScreen.
+                            onValueChange = onQueryChange,
                             modifier = Modifier.weight(1f),
                             singleLine = true,
                             textStyle = androidx.compose.ui.text.TextStyle(
@@ -250,10 +262,7 @@ fun SearchTabContent(
                         androidx.compose.animation.fadeOut()
                 ) {
                     Surface(
-                        onClick = {
-                            onQueryChange("")
-                            onSearch("")
-                        },
+                        onClick = { onQueryChange("") },
                         shape = CircleShape,
                         color = BrandCream50,
                         shadowElevation = 8.dp,
@@ -271,52 +280,29 @@ fun SearchTabContent(
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
-            // Ряд сортировки и фильтра (стабы). В пустом состоянии скрыт.
-            if (!showEmptyBg) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Surface(onClick = {}, color = Color.Transparent) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            AppIcons.Sort,
-                            contentDescription = null,
-                            tint = BrandBurgundy600,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.search_sort),
-                            fontFamily = Inter,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 16.sp,
-                            lineHeight = 20.sp,
-                            color = BrandBurgundy600
-                        )
-                    }
-                }
-                Surface(onClick = {}, color = Color.Transparent) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            AppIcons.Filter,
-                            contentDescription = null,
-                            tint = BrandBurgundy600,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.home_filter),
-                            fontFamily = Inter,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 16.sp,
-                            lineHeight = 20.sp,
-                            color = BrandBurgundy600
-                        )
-                    }
-                }
+            // Ряд сортировки и фильтра. В пустом состоянии скрыт — но не при активном
+            // фильтре/сортировке, иначе их нельзя сбросить.
+            val controlsActive = controls.sort != null || controls.styleFilter != null
+            if (!showEmptyBg || controlsActive) {
+                SortFilterRow(
+                    sort = controls.sort,
+                    sortOptions = listOf(WineListSort.RATING, WineListSort.NAME),
+                    defaultSortLabel = stringResource(R.string.list_sort_default),
+                    styles = controls.styles,
+                    selectedStyle = controls.styleFilter,
+                    onSort = onSort,
+                    onStyleFilter = onStyleFilter
+                )
             }
+            // Полная выдача под сортировку/фильтр грузится заметно — показываем прогресс.
+            if (state is SearchState.Loading && !state.isLoadMore) {
+                LinearProgressIndicator(
+                    color = BrandBurgundy600,
+                    trackColor = Color.Transparent,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp)
+                )
             }
             Spacer(modifier = Modifier.height(12.dp))
             Column(

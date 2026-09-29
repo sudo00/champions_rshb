@@ -4,6 +4,7 @@ import com.wineapp.domain.model.SearchResult
 import com.wineapp.domain.model.Wine
 import com.wineapp.presentation.common.BaseState
 import com.wineapp.presentation.common.BaseIntent
+import com.wineapp.presentation.common.ui.WineListSort
 
 sealed interface SearchState : BaseState {
     data class Idle(val recentSearches: List<String> = emptyList()) : SearchState
@@ -20,4 +21,16 @@ sealed interface SearchIntent : BaseIntent {
     data class SelectWine(val wine: Wine) : SearchIntent
     data class RecentSearchSelected(val query: String) : SearchIntent
     data class ToggleFavorite(val wineId: String) : SearchIntent
+    /** null — порядок сервера. */
+    data class ChangeSort(val sort: WineListSort?) : SearchIntent
+    /** null — все категории. */
+    data class ChangeStyleFilter(val style: String?) : SearchIntent
 }
+
+/** Сортировка и фильтр поиска; живут отдельно от состояния выдачи. */
+data class SearchControls(
+    val sort: WineListSort? = null,
+    val styleFilter: String? = null,
+    /** Категории каталога; дополняются встреченными в выдаче. */
+    val styles: List<String> = listOf("Красное", "Белое", "Розовое", "Оранжевое")
+)

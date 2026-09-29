@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wineapp.R
 import com.wineapp.domain.model.Wine
+import com.wineapp.presentation.common.ui.BrandLoader
 import com.wineapp.presentation.common.ui.WineCard
 import com.wineapp.ui.theme.BrandBurgundy600
 import com.wineapp.ui.theme.BrandTextSecondary
@@ -109,7 +110,7 @@ fun SearchResultsContent(
                         .height(200.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = BrandBurgundy600)
+                    BrandLoader()
                 }
             }
             is SearchState.Empty -> SearchEmptyBlock(

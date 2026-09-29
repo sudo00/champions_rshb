@@ -10,6 +10,7 @@ import com.wineapp.data.local.TerritoryRegistry
 import com.wineapp.data.local.UserBadgeEntity
 import com.wineapp.domain.repository.BadgeRepository
 import com.wineapp.domain.repository.EarnedBadge
+import com.wineapp.domain.repository.WinePathReward
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -23,16 +24,25 @@ class BadgeRepositoryImpl @Inject constructor(
     private val scanHistoryDao: ScanHistoryDao
 ) : BadgeRepository {
 
-    private val _freshBadges = MutableSharedFlow<List<EarnedBadge>>(extraBufferCapacity = 1)
-    override val freshBadges: SharedFlow<List<EarnedBadge>> = _freshBadges.asSharedFlow()
+    private val _freshRewards = MutableSharedFlow<List<WinePathReward>>(extraBufferCapacity = 4)
+    override val freshRewards: SharedFlow<List<WinePathReward>> = _freshRewards.asSharedFlow()
 
     override suspend fun awardForScan(scanId: String): List<EarnedBadge> {
         return withContext(Dispatchers.IO) {
             try {
                 val fresh = mutableListOf<EarnedBadge>()
+                var scanPoints: WinePathReward.ScanPoints? = null
+                val levelBefore = BadgeDefs.levelFor(gameDao.totalPoints()).level
 
-                // Очки за сам скан.
-                gameDao.insertPoints(PointsEntry(delta = BadgeDefs.POINTS_SCAN, reason = "scan", refId = scanId))
+                // Очки за скан — один раз на вино: повторный скан той же бутылки
+                // (в том числе после удаления прошлого скана) очков не даёт.
+                // refId = wineId, поэтому проверка идёт по журналу очков, а не по истории.
+                val scan = scanHistoryDao.getScanById(scanId)
+                val wineId = scan?.wineId?.takeIf { it.isNotBlank() }
+                if (wineId != null && !gameDao.hasPoints(REASON_SCAN, wineId)) {
+                    gameDao.insertPoints(PointsEntry(delta = BadgeDefs.POINTS_SCAN, reason = REASON_SCAN, refId = wineId))
+                    scanPoints = WinePathReward.ScanPoints(BadgeDefs.POINTS_SCAN, scan.wineName)
+                }
 
                 // Первый скан.
                 awardBadge(BadgeDefs.FIRST_SCAN)?.let { fresh.add(it) }
@@ -62,14 +72,30 @@ class BadgeRepositoryImpl @Inject constructor(
 
                 // Пороги по территориям и сканам.
                 val openedCount = scannedByTerritory.size
-                val scans = scanHistoryDao.getScansCount()
+                // «Отсканируйте 10 вин» — разных вин, а не сканов.
+                val scannedWines = scanHistoryDao.getScannedWinesCount()
                 if (openedCount >= 3) awardBadge(BadgeDefs.EXPLORER_3)?.let { fresh.add(it) }
                 if (openedCount >= 5) awardBadge(BadgeDefs.EXPLORER_5)?.let { fresh.add(it) }
                 if (openedCount >= 8) awardBadge(BadgeDefs.EXPLORER_8)?.let { fresh.add(it) }
-                if (scans >= 10) awardBadge(BadgeDefs.TASTER_10)?.let { fresh.add(it) }
-                if (scans >= 50) awardBadge(BadgeDefs.TASTER_50)?.let { fresh.add(it) }
+                if (scannedWines >= 10) awardBadge(BadgeDefs.TASTER_10)?.let { fresh.add(it) }
+                if (scannedWines >= 50) awardBadge(BadgeDefs.TASTER_50)?.let { fresh.add(it) }
 
-                if (fresh.isNotEmpty()) _freshBadges.tryEmit(fresh)
+                // Уровень — итог всех начислений за скан, поэтому показывается последним.
+                // За один скан можно перескочить несколько уровней — сообщаем о достигнутом.
+                val totalAfter = gameDao.totalPoints()
+                val levelAfter = BadgeDefs.levelFor(totalAfter)
+                val levelUp = if (levelAfter.level > levelBefore) {
+                    WinePathReward.LevelUp(
+                        level = levelAfter.level,
+                        pointsToNext = (levelAfter.pointsTo - totalAfter)
+                            .takeIf { levelAfter.pointsTo > levelAfter.pointsFrom }
+                    )
+                } else null
+
+                val rewards = listOfNotNull(scanPoints) +
+                    fresh.map { WinePathReward.Badge(it) } +
+                    listOfNotNull(levelUp)
+                if (rewards.isNotEmpty()) _freshRewards.tryEmit(rewards)
                 fresh
             } catch (e: Exception) {
                 Log.e("BadgeRepo", "awardForScan failed", e)
@@ -90,4 +116,8 @@ class BadgeRepositoryImpl @Inject constructor(
     override fun getBadges(): Flow<List<UserBadgeEntity>> = gameDao.getBadges()
 
     override fun getTotalPoints(): Flow<Int> = gameDao.getTotalPoints()
+
+    private companion object {
+        const val REASON_SCAN = "scan"
+    }
 }

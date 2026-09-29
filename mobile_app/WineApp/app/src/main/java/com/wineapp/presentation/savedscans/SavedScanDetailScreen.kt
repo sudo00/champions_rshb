@@ -1,5 +1,6 @@
 package com.wineapp.presentation.savedscans
 
+import com.wineapp.presentation.common.ui.BrandLoader
 import com.wineapp.presentation.common.ui.AppIcons
 import android.app.Activity
 import androidx.compose.foundation.BorderStroke
@@ -25,7 +26,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -185,7 +185,7 @@ fun SavedScanDetailScreenContent(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = BrandBurgundy600)
+                        BrandLoader()
                     }
                 }
                 is SavedScanDetailState.Error -> {
@@ -339,6 +339,7 @@ private fun ScanResultCard(
                         "user_confirmed" -> "Подтверждено вами"
                         "score_confirmed" -> "Распознано автоматически"
                         "not_in_catalog" -> "Нет в каталоге"
+                        SavedScan.STATUS_SOMMELIER_CHAT -> "Диалог с сомелье"
                         else -> "Не подтверждено · первый кандидат"
                     },
                     fontFamily = Inter,

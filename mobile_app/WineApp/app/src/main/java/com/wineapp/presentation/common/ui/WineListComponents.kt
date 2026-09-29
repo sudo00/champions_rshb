@@ -205,6 +205,32 @@ fun WineListSortFilterRow(
     onSort: (WineListSort) -> Unit,
     onStyleFilter: (String?) -> Unit
 ) {
+    SortFilterRow(
+        sort = sort,
+        sortOptions = WineListSort.entries,
+        defaultSortLabel = null,
+        styles = styles,
+        selectedStyle = selectedStyle,
+        onSort = { it?.let(onSort) },
+        onStyleFilter = onStyleFilter
+    )
+}
+
+/**
+ * Ряд сортировки/фильтра с настраиваемым набором сортировок.
+ * [defaultSortLabel] != null — в меню есть пункт «по умолчанию» (sort = null),
+ * а кнопка без выбранной сортировки подписана «Сортировка».
+ */
+@Composable
+fun SortFilterRow(
+    sort: WineListSort?,
+    sortOptions: List<WineListSort>,
+    defaultSortLabel: String?,
+    styles: List<String>,
+    selectedStyle: String?,
+    onSort: (WineListSort?) -> Unit,
+    onStyleFilter: (String?) -> Unit
+) {
     var sortMenu by remember { mutableStateOf(false) }
     var filterMenu by remember { mutableStateOf(false) }
     Row(
@@ -214,12 +240,21 @@ fun WineListSortFilterRow(
     ) {
         Box {
             WineListTextButton(
-                text = stringResource(sort.labelRes),
+                text = sort?.let { stringResource(it.labelRes) } ?: stringResource(R.string.search_sort),
                 icon = AppIcons.Sort,
                 onClick = { sortMenu = true }
             )
             DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
-                WineListSort.entries.forEach { option ->
+                if (defaultSortLabel != null) {
+                    DropdownMenuItem(
+                        text = { Text(defaultSortLabel) },
+                        onClick = {
+                            onSort(null)
+                            sortMenu = false
+                        }
+                    )
+                }
+                sortOptions.forEach { option ->
                     DropdownMenuItem(
                         text = { Text(stringResource(option.labelRes)) },
                         onClick = {
@@ -525,7 +560,7 @@ fun WineListHeadline(wine: Wine) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    CountryFlag(country = wine.country)
+                    CountryFlag()
                     WineListCaption(place)
                 }
             }

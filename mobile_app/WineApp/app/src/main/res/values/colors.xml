@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_700">#7B61FF</color>
+    <color name="brand_burgundy_600">#8E3C42</color>
+    <color name="brand_cream_50">#FEFDF9</color>
     <color name="teal_200">#03DAC5</color>
     <color name="teal_700">#018786</color>
     <color name="white">#FFFFFF</color>

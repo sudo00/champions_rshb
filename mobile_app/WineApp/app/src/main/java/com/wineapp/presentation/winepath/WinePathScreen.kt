@@ -151,7 +151,6 @@ fun WinePathScreen(
     WinePathScreenContent(
         state = state,
         onRetry = { viewModel.sendIntent(WinePathIntent.LoadPath) },
-        onConsumeCelebration = { viewModel.sendIntent(WinePathIntent.ConsumeCelebration) },
         onNavigateBack = onNavigateBack,
         onNavigateToScanner = onNavigateToScanner
     )
@@ -162,7 +161,6 @@ fun WinePathScreen(
 fun WinePathScreenContent(
     state: WinePathState,
     onRetry: () -> Unit = {},
-    onConsumeCelebration: () -> Unit = {},
     onNavigateBack: () -> Unit = {},
     onNavigateToScanner: () -> Unit = {}
 ) {
@@ -289,41 +287,6 @@ fun WinePathScreenContent(
                 modifier = Modifier.align(Alignment.TopCenter)
             )
         }
-    }
-
-    val celebration = (state as? WinePathState.Success)?.celebration
-    if (celebration != null) {
-        AlertDialog(
-            onDismissRequest = onConsumeCelebration,
-            icon = {
-                androidx.compose.material3.Icon(
-                    Icons.Default.EmojiEvents,
-                    contentDescription = null,
-                    tint = Color(0xFFFFC107),
-                    modifier = Modifier.size(40.dp)
-                )
-            },
-            title = { Text(stringResource(R.string.winepath_celebration_title), textAlign = TextAlign.Center) },
-            text = {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        celebration.def.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        stringResource(R.string.winepath_celebration_points, celebration.def.points),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = BrandBurgundy600,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = onConsumeCelebration) { Text("OK") }
-            }
-        )
     }
 }
 
@@ -572,7 +535,7 @@ private fun MapOverlayTopBar(
                 if (points != null) {
                     Surface(shape = RoundedCornerShape(50), color = WarningBackground) {
                         Text(
-                            text = stringResource(R.string.winepath_points, points),
+                            text = pointsText(points),
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             style = SheetCaptionMediumStyle,
                             color = WarningMain
@@ -834,12 +797,7 @@ private fun TerritoryDetailCard(
     territory: TerritoryProgress,
     onClose: () -> Unit
 ) {
-    val inCatalog = territory.totalWines > 0
-    val percent = if (inCatalog) {
-        (territory.triedWines * 100 / territory.totalWines).coerceIn(0, 100)
-    } else {
-        0
-    }
+    val percent = territoryPercent(territory)
     val description = if (territory.locked) {
         stringResource(R.string.winepath_locked_hint)
     } else {
@@ -867,7 +825,7 @@ private fun TerritoryDetailCard(
                 ) {
                     CircularTerritoryProgress(
                         progress = percent / 100f,
-                        percent = percent
+                        percentText = formatPercent(percent)
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(
@@ -910,9 +868,28 @@ private fun TerritoryDetailCard(
     }
 }
 
+/** Доля попробованных вин территории в процентах (0–100). */
+private fun territoryPercent(territory: TerritoryProgress): Float =
+    if (territory.totalWines > 0) {
+        (territory.triedWines * 100f / territory.totalWines).coerceIn(0f, 100f)
+    } else {
+        0f
+    }
+
+/**
+ * Процент с одной десятой: каталог регионов большой, и целые проценты
+ * показывали «0%» даже при нескольких винах. Ненулевой прогресс не округляем
+ * до «0», неполный — до «100».
+ */
+private fun formatPercent(percent: Float): String = when {
+    percent <= 0f -> "0%"
+    percent >= 100f -> "100%"
+    else -> String.format(java.util.Locale("ru"), "%.1f%%", percent.coerceIn(0.1f, 99.9f))
+}
+
 /** Circular Progress indicator из макета: трек Burgundy 300, заливка Burgundy 600, процент по центру. */
 @Composable
-private fun CircularTerritoryProgress(progress: Float, percent: Int) {
+private fun CircularTerritoryProgress(progress: Float, percentText: String) {
     Box(modifier = Modifier.size(76.dp), contentAlignment = Alignment.Center) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val strokeWidth = 6.dp.toPx()
@@ -941,7 +918,7 @@ private fun CircularTerritoryProgress(progress: Float, percent: Int) {
             }
         }
         Text(
-            text = "$percent%",
+            text = percentText,
             style = SheetTitleStyle,
             color = BrandTextPrimary
         )
@@ -996,8 +973,16 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawLabel(
 
 /* ------------------------------- Шторка «прогресс» ------------------------------- */
 
-/** Метки-вехи на шкале уровня: доли пройденного пути, в которые попадает маркер. */
-private val LevelMilestones = listOf(0.125f, 0.25f, 0.5f, 0.75f)
+/**
+ * Метки-вехи на шкале уровня: равные шаги по 20% очков уровня. Раньше были
+ * 12,5/25/50/75% — неравномерные засечки ни к чему не привязаны и путали.
+ */
+private val LevelMilestones = listOf(0.2f, 0.4f, 0.6f, 0.8f)
+
+/** «1 очко», «2 очка», «10 очков» — сумма очков бывает любой. */
+@Composable
+private fun pointsText(points: Int): String =
+    LocalContext.current.resources.getQuantityString(R.plurals.winepath_points, points, points)
 
 /**
  * Свёрнутая высота шторки. От неё зависит и сам BottomSheetScaffold, и отступ
@@ -1127,10 +1112,11 @@ private fun LevelProgressCard(summary: WinePathSummary) {
                     text = if (summary.isMaxLevel) {
                         stringResource(R.string.winepath_level_max)
                     } else {
-                        stringResource(
-                            R.string.winepath_level_progress,
-                            (summary.levelProgress * 100).toInt(),
-                            summary.level + 1
+                        // Раньше тут был «N% до уровня X», где N — уже пройденная доля:
+                        // «90% до уровня 2» читалось как «осталось 90%». Показываем остаток в очках.
+                        val left = (summary.levelPointsTo - summary.totalPoints).coerceAtLeast(0)
+                        LocalContext.current.resources.getQuantityString(
+                            R.plurals.winepath_points_to_level, left, left, summary.level + 1
                         )
                     },
                     style = SheetCaptionMediumStyle,
@@ -1146,15 +1132,18 @@ private fun LevelProgressCard(summary: WinePathSummary) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = stringResource(R.string.winepath_points, summary.levelPointsFrom),
+                    text = pointsText(summary.levelPointsFrom),
                     style = SheetCaptionStyle,
                     color = BrandTextTertiary
                 )
-                Text(
-                    text = stringResource(R.string.winepath_points, summary.levelPointsTo),
-                    style = SheetCaptionStyle,
-                    color = BrandTextTertiary
-                )
+                // На максимуме обе границы совпадают — вторую не дублируем.
+                if (!summary.isMaxLevel) {
+                    Text(
+                        text = pointsText(summary.levelPointsTo),
+                        style = SheetCaptionStyle,
+                        color = BrandTextTertiary
+                    )
+                }
             }
 
             Surface(
@@ -1228,12 +1217,7 @@ private fun WinePathSection(title: String, description: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TerritoryProgressCard(territory: TerritoryProgress, onClick: () -> Unit) {
-    val inCatalog = territory.totalWines > 0
-    val percent = if (inCatalog) {
-        (territory.triedWines * 100 / territory.totalWines).coerceAtMost(100)
-    } else {
-        0
-    }
+    val percent = territoryPercent(territory)
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -1257,7 +1241,7 @@ private fun TerritoryProgressCard(territory: TerritoryProgress, onClick: () -> U
                 )
             }
             Text(
-                text = "$percent%",
+                text = formatPercent(percent),
                 style = SheetTitleStyle,
                 color = BrandTextPrimary
             )
@@ -1438,7 +1422,7 @@ private fun MedalPointsChip(points: Int, tier: MedalTier?) {
 }
 
 /** Уровень награды определяет иконку медали, цвет тени, чип очков и тост. */
-private enum class MedalTier(
+internal enum class MedalTier(
     val accent: Color,
     val accentSoft: Color,
     @DrawableRes val iconRes: Int,

@@ -424,7 +424,7 @@ private fun DetailHero(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        AppIcons.Star,
+                        AppIcons.AiStarFilled,
                         contentDescription = stringResource(R.string.detail_ask_sommelier),
                         tint = BrandCream50,
                         modifier = Modifier.size(24.dp)

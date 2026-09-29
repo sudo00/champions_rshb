@@ -137,7 +137,10 @@ class SommelierViewModel @Inject constructor(
                 labelPhotoPath = photoPath,
                 confidence = confidence,
                 conversation = conversation,
-                scannedAt = System.currentTimeMillis()
+                scannedAt = System.currentTimeMillis(),
+                // Не скан: без этого статус по умолчанию «legacy» засчитывал каждый
+                // диалог как подтверждённый скан — +10 очков, «Первый глоток», «Дегустатор».
+                recognitionStatus = SavedScan.STATUS_SOMMELIER_CHAT
             )
             saveScanUseCase(scan)
                 .onFailure { error ->

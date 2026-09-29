@@ -1,5 +1,6 @@
 package com.wineapp.presentation.cellar
 
+import com.wineapp.presentation.common.ui.BrandLoader
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -32,7 +33,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -97,6 +97,7 @@ import java.util.Locale
 @Composable
 fun CellarScreen(
     onNavigateToDetail: (String) -> Unit = {},
+    onFindWine: () -> Unit = {},
     onAskSommelier: (String) -> Unit = {},
     onNavigateBack: () -> Unit = {}
 ) {
@@ -115,6 +116,7 @@ fun CellarScreen(
         onRemove = { viewModel.sendIntent(CellarIntent.Remove(it)) },
         onAskSommelier = onAskSommelier,
         onNavigateToDetail = onNavigateToDetail,
+        onFindWine = onFindWine,
         onNavigateBack = onNavigateBack
     )
 }
@@ -132,6 +134,7 @@ fun CellarScreenContent(
     onRemove: (String) -> Unit = {},
     onAskSommelier: (String) -> Unit = {},
     onNavigateToDetail: (String) -> Unit = {},
+    onFindWine: () -> Unit = {},
     onNavigateBack: () -> Unit = {}
 ) {
     TransparentSystemBars()
@@ -202,7 +205,7 @@ fun CellarScreenContent(
                             .fillMaxWidth()
                             .padding(vertical = 120.dp),
                         contentAlignment = Alignment.Center
-                    ) { CircularProgressIndicator(color = BrandBurgundy600) }
+                    ) { BrandLoader() }
                 }
 
                 is CellarState.Error -> item(key = "error") {
@@ -213,9 +216,12 @@ fun CellarScreenContent(
                     if (state.isCollectionEmpty) {
                         item(key = "empty") {
                             EmptyState(
-                                icon = Icons.Default.Inventory2,
+                                icon = AppIcons.WineBottle,
                                 title = stringResource(R.string.cellar_empty),
                                 message = stringResource(R.string.cellar_empty_hint),
+                                actionText = stringResource(R.string.empty_action_find_wine),
+                                actionIcon = AppIcons.Search,
+                                onAction = onFindWine,
                                 modifier = Modifier.padding(vertical = 80.dp)
                             )
                         }

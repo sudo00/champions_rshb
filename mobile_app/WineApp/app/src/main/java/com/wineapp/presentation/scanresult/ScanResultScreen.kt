@@ -1,5 +1,6 @@
 package com.wineapp.presentation.scanresult
 
+import com.wineapp.presentation.common.ui.BrandLoader
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -131,7 +131,7 @@ fun ScanResultContent(
                             .padding(vertical = 120.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = BrandBurgundy600)
+                        BrandLoader()
                     }
                 }
                 is ScanResultState.Error -> item {

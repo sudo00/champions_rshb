@@ -1,6 +1,7 @@
 ﻿package com.wineapp.presentation.sommelier
 
 import androidx.compose.ui.graphics.graphicsLayer
+import com.wineapp.presentation.common.ui.CountryFlag
 import com.wineapp.presentation.common.ui.AppIcons
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
@@ -445,7 +446,7 @@ private fun SommelierScanCard(wine: Wine) {
                     val regionText = listOfNotNull(wine.region, wine.country).joinToString(", ")
                     if (regionText.isNotEmpty()) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = countryFlagEmoji(wine.country), fontSize = 20.sp)
+                            CountryFlag(size = 20.dp)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = regionText,
@@ -549,17 +550,6 @@ private fun WinePhotoPlaceholder() {
     )
 }
 
-private fun countryFlagEmoji(country: String?): String = when (country?.lowercase()) {
-    "россия", "russia" -> "🇷🇺"
-    "франция", "france" -> "🇫🇷"
-    "италия", "italy" -> "🇮🇹"
-    "испания", "spain" -> "🇪🇸"
-    "грузия", "georgia" -> "🇬🇪"
-    "чили", "chile" -> "🇨🇱"
-    "аргентина", "argentina" -> "🇦🇷"
-    else -> "🌍"
-}
-
 /**
  * Блок дефолтных вопросов над вводом — только пустое состояние.
  * Короткие подписи для компактных рядов; по тапу уходит полный вопрос.
@@ -624,25 +614,11 @@ private fun SommelierInputBar(
             .imePadding()
     ) {
         Row(
-            modifier = Modifier.padding(8.dp),
+            // Слева отступ больше: текст не должен прилипать к скруглению пилюли.
+            modifier = Modifier.padding(start = 24.dp, top = 8.dp, end = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            Surface(
-                onClick = { },
-                shape = CircleShape,
-                color = Color.Transparent,
-                modifier = Modifier.size(44.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        AppIcons.Plus,
-                        contentDescription = null,
-                        tint = BrandTextPrimary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
             androidx.compose.foundation.text.BasicTextField(
                 value = inputText,
                 onValueChange = onInputChange,

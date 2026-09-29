@@ -23,8 +23,12 @@ interface ScanHistoryDao {
     @Query("SELECT * FROM scan_history WHERE id = :id")
     suspend fun getScanById(id: String): ScanHistoryEntity?
 
-    @Query("SELECT COUNT(*) FROM scan_history WHERE recognitionStatus IN ('legacy', 'user_confirmed', 'score_confirmed')")
-    suspend fun getScansCount(): Int
+    /** Сколько разных вин отсканировано (подтверждённые сканы): повторы одного вина не считаются. */
+    @Query(
+        """SELECT COUNT(DISTINCT wineId) FROM scan_history
+           WHERE recognitionStatus IN ('legacy', 'user_confirmed', 'score_confirmed') AND wineId != ''"""
+    )
+    suspend fun getScannedWinesCount(): Int
 
     /**
      * Подтверждённые сканы в проекции для подсчёта вин по территориям.
