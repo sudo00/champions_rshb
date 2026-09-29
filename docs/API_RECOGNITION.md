@@ -211,7 +211,7 @@ Denisov Riesling всё ещё получает заниженную оценк�
 | Скрипт оценки метрик | Исходный файл, без resize и повторного JPEG-сжатия, с сохранённым EXIF | Дополнительная клиентская подготовка отсутствует |
 
 Для телефона выбран компромисс `lanczos2560_q90`; это профиль по умолчанию
-`scripts/prepare_scan_image.py`. Интеграция Android получена в коммите `ba18184`.
+`local_scripts/prepare_scan_image.py`. Интеграция Android получена в коммите `ba18184`.
 В Android `ImageOrientationHelper` и отправка используют 2560 px и JPEG quality 90.
 После предварительного декодирования выполняется точный пропорциональный resize
 через `Bitmap.createScaledBitmap` с фильтрацией; маленькие фото не увеличиваются.
@@ -250,14 +250,14 @@ API сохраняет полученные байты. Обе ручки исп
 5. Передать полученные байты как Base64 в существующий POST `/v1/wines/scan`.
 
 Эталонная реализация — `worker/image_preprocessing.py` (Pillow Lanczos),
-отдельная CLI-команда — `scripts/prepare_scan_image.py`. Android
+локальная CLI-команда на ML-машине — `local_scripts/prepare_scan_image.py` (не входит в Git). Android
 с другим декодером/фильтром/JPEG-кодировщиком не гарантирует те же байты даже при
 quality=90; порт нужно сравнить с сохранёнными примерами перед сменой настроек.
 Потерянный до этого шага EXIF восстановить из метаданных уже нельзя.
 
 ```bash
-# Воспроизвести телефонную подготовку: профиль 2560/JPEG 90 по умолчанию.
-.venv/bin/python scripts/prepare_scan_image.py photo.jpg \
+# На ML-машине: воспроизвести телефонную подготовку локальной командой.
+.venv/bin/python local_scripts/prepare_scan_image.py photo.jpg \
   --output data/prepared/photo-2560.jpg
 
 python3 scripts/scan_api.py data/prepared/photo-2560.jpg --output data/prepared/result.json
@@ -336,16 +336,18 @@ python3 scripts/scan_api.py data/live_shop_photos/abrau-dyurso-risling-beloe-suh
   --base http://127.0.0.1:8000 --output data/audit/my_scan.json
 ```
 
-Для одного кандидата добавить `--no-alternatives`. Оригинальный скрипт организаторов используется без изменений:
+Для одного кандидата добавить `--no-alternatives`. На ML-машине оригинальный скрипт организаторов сохранён без изменений в `local_scripts/participant_test.sh`. Скрипт, фотографии и `queries.tsv` не входят в Git. Для локального запуска нужны Bash, `curl`, `jq`, `awk` и `sha256sum` (либо `shasum`):
 
 ```bash
-bash data/eval/participant_test.sh \
+bash local_scripts/participant_test.sh \
   --images-dir data/eval/queries --manifest data/eval/queries.tsv \
   --endpoint http://127.0.0.1:8000/v1/eval/predict \
   --output data/audit/eval_predictions.jsonl
 ```
 
 Выходной файл не должен существовать. Скрипт ограничивает запрос десятью секундами; запускать последовательно после `/ready` и без конкурирующей GPU-нагрузки. API ждёт до девяти секунд (`EVAL_WAIT_SECONDS`), при превышении возвращает 504. Задание в очереди может завершиться позже. Для пользовательского интерфейса использовать асинхронный путь, не увеличивать таймаут оценщика молча.
+
+Оценочный маршрут проверяет согласованность каталога и формат результата, но не вычисляет рекомендации. Недоступность рекомендательного индекса не должна блокировать возврат уже распознанного `slug`.
 
 ## Android
 
@@ -357,12 +359,12 @@ API в host-профиле слушает порт 8000. На роутере н�
 
 Личные внешние и LAN-адреса не записываются в исходники или шаблоны. Swagger использует относительный адрес `/`, поэтому работает через тот же хост, на котором открыт. Внешний IP не нужен серверу для прослушивания `0.0.0.0:8000`.
 
-При активном VPN исходящие ответы API могут требовать отдельного правила маршрутизации. Для этой машины подготовлена служба `build_env/network/wine-api-routing.service`: она направляет IPv4-ответы с TCP-порта 8000 через основную таблицу маршрутов. Сам адрес берётся из локального `.env.network`, исключённого из Git:
+При активном VPN исходящие ответы API могут требовать отдельного правила маршрутизации. Установщик `local_scripts/install_api_network.sh` сохранён только на ML-машине и в Git не входит. Для этой машины подготовлена служба `build_env/network/wine-api-routing.service`: она направляет IPv4-ответы с TCP-порта 8000 через основную таблицу маршрутов. Сам адрес берётся из локального `.env.network`, исключённого из Git:
 
 ```bash
 cp build_env/network.env.example .env.network
 # Вписать зарезервированный LAN IPv4 в WINE_API_SOURCE_IP.
-bash scripts/install_api_network.sh
+bash local_scripts/install_api_network.sh
 ```
 
 Установщик требует локальный sudo-пароль, проверяет конфигурацию, сохраняет её в `/etc/wine-api-network.env` с правами 0600 и включает systemd-службу. Он не меняет firewall и не отключает VPN. Уже созданный `.env.network` не перезаписывать командой копирования. Одноразовое правило `ip rule add` без установки службы исчезает при перезагрузке. Установка службы не заменяет закрепление LAN-адреса на роутере.

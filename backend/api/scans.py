@@ -110,7 +110,7 @@ def confirm_job(scan_id: str, slug: str) -> ScanJob | None:
         return job
 
 
-def to_status_response(job: ScanJob) -> ScanStatusResponse:
+def to_status_response(job: ScanJob, *, include_recommendations: bool = True) -> ScanStatusResponse:
     wine: WineDto | None = None
     alternatives: list[WineDto] = []
     details = {}
@@ -128,7 +128,7 @@ def to_status_response(job: ScanJob) -> ScanStatusResponse:
             details["candidates"] = candidates
             wine = get_wine(candidates[0]["slug"]) if candidates else None
             alternatives = [get_wine(c["slug"]) for c in candidates[1:]]
-            if job.result.get("recognitionStatus") in ("not_in_catalog", "candidates_unverified", "confirmed"):
+            if include_recommendations and job.result.get("recognitionStatus") in ("not_in_catalog", "candidates_unverified", "confirmed"):
                 recommendation_source = job.result
                 confirmation = job.result.get("userConfirmation")
                 if confirmation:

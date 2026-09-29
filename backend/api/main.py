@@ -145,8 +145,9 @@ def eval_predict(image: UploadFile = File(...)) -> dict[str, str]:
     while time.monotonic() < deadline:
         job = get_job(accepted.scanId)
         if job and job.status == "done":
-            # Validate catalogue/contract using the same mapping as mobile polling.
-            result = to_status_response(job)
+            # Retain catalogue/contract validation without loading recommendations:
+            # their availability must not block an already recognized evaluation slug.
+            result = to_status_response(job, include_recommendations=False)
             return {"slug":result.slug or "unknown"}
         if job and job.status == "failed":
             raise HTTPException(500, "Recognition failed")

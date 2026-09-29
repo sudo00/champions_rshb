@@ -4,8 +4,14 @@ import base64
 import json
 from pathlib import Path
 import time
+import urllib.request
 
-from check_recognition_api import request
+
+def request(base: str, route: str, payload: dict | None = None) -> dict:
+    data = None if payload is None else json.dumps(payload).encode()
+    req = urllib.request.Request(base+route, data=data, headers={'Content-Type':'application/json'})
+    with urllib.request.urlopen(req, timeout=30) as response:
+        return json.load(response)
 
 
 def main():

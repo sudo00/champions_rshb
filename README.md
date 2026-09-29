@@ -12,7 +12,7 @@ Android-приложение и GPU-сервис для поиска вина п
 | API, очередь и развёртывание | [Передача бэкендеру](docs/BACKEND_HANDOFF.md) |
 | Полный HTTP-контракт | [API_RECOGNITION.md](docs/API_RECOGNITION.md), `/docs` работающего сервера |
 | Зависимости и локальные проверки | [DEPENDENCIES.md](docs/DEPENDENCIES.md), [DEVELOPMENT.md](docs/DEVELOPMENT.md) |
-| Стек и архитектура для презентации | [PRESENTATION.md](docs/PRESENTATION.md) |
+| Стек и архитектура для презентации | [ARCHITECTURE.md](docs/ARCHITECTURE.md), [диаграмма](docs/architecture.mmd) |
 | Служебные CLI | [scripts/README.md](scripts/README.md) |
 
 ## Что показывает приложение
@@ -77,10 +77,10 @@ mobile_app/WineApp/       Android, локальный детектор каме�
 backend/api/             FastAPI, карточки, рекомендации, подтверждение пользователя
 backend/worker/          очередь и recognition.run(image, includeAlternatives)
 worker/pipeline/         численное ядро: WineRecognizer.predict
-worker/image_preprocessing.py  общая подготовка фото для явного вызова из CLI
+worker/image_preprocessing.py  общая подготовка фото для локальных проверок
 backend/catalog/         проверенный каталог и контрольные суммы
 build_env/               Dockerfiles, шаблоны конфигурации, манифест ресурсов
-scripts/                 CLI запуска, проверки, подготовки фото, упаковки и настройки сети
+scripts/                 четыре CLI: API, прямой запуск ML, упаковка моделей и изображений
 ```
 
 Фото → API → MinIO / RabbitMQ → worker → PostgreSQL → polling результата. API не загружает GPU-модели. `worker/pipeline/` входит в проверяемый bundle: изменение численного кода требует согласованной пересборки ресурсов.
@@ -98,6 +98,6 @@ cd mobile_app/WineApp
 
 ## Что хранится в Git
 
-Рабочий код, backend/Android-тесты, каталог, lock-файлы, общая документация, Gradle Wrapper и **одна выбранная мобильная модель**. Серверные веса, фотографии, отчёты, исследовательские скрипты и окружения остаются локально. Для `docs/` и `scripts/` действует явный разрешённый список в `.gitignore`; локальных файлов на ML-машине больше, чем попадает в репозиторий.
+Рабочий код, backend/Android-тесты, каталог, lock-файлы, общая документация, Gradle Wrapper и **одна выбранная мобильная модель**. Серверные веса, фотографии, отчёты и окружения остаются локально; исследовательские скрипты и шаблоны находятся в `local_scripts/`, локальные ML-тесты — в `tests/`. Для `docs/` и `scripts/` действует явный разрешённый список в `.gitignore`; локальных файлов на ML-машине больше, чем попадает в репозиторий.
 
 Не добавлять адрес развёртывания, `local.properties`, `.env`, ключи и локальные пути. `make down` останавливает стек; `make ddown` также удаляет тома базы и хранилища.
