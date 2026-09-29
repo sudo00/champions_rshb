@@ -18,6 +18,8 @@ venv/
 pgvector_data/
 /data/
 AGENTS.md
+# Default evaluation output; datasets and reports belong under data/.
+/predictions.jsonl
 others/
 # Only shared integration/deployment documentation belongs in Git.
 # Research notes and new documents stay local unless explicitly allowlisted.
@@ -50,17 +52,14 @@ backend/.venv/
 
 /weights/
 /tests/
+/local_scripts/
 
-# Shared operational tools only; research stays local at its existing paths.
+# Shared operational tools only; research lives in ignored local_scripts/.
 /scripts/*
 !/scripts/scan_api.py
-!/scripts/check_recognition_api.py
 !/scripts/recognize_photo.py
-!/scripts/install_api_network.sh
-!/scripts/export_recognizer_bundle.py
 !/scripts/package_recognizer.py
 !/scripts/package_catalog_images.py
-!/scripts/prepare_scan_image.py
 !/scripts/README.md
 
 # Offline ML experiments, not production imports.

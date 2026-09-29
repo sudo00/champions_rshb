@@ -1,6 +1,6 @@
 # Architecture
 
-Текст для слайдов — [PRESENTATION.md](PRESENTATION.md). Актуальная схема распознавания, API-контракты, ресурсы и запуск описаны в [API_RECOGNITION.md](API_RECOGNITION.md).
+Диаграмма компонентов — [architecture.mmd](architecture.mmd). Актуальная схема распознавания, API-контракты, ресурсы и запуск описаны в [API_RECOGNITION.md](API_RECOGNITION.md).
 
 - Android: `mobile_app/WineApp`; polling подключён; результат, рекомендации и подтверждение описаны в [MOBILE_HANDOFF.md](MOBILE_HANDOFF.md).
 - FastAPI: `backend/api`; очередь заданий, настоящий каталог, оценочный multipart endpoint.

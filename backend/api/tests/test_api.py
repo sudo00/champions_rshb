@@ -182,6 +182,19 @@ def test_eval_refusal_bypass_is_forwarded_to_queue():
     assert publish.call_args.args[0]['useReviewedSweetness'] is True
 
 
+def test_eval_returns_recognized_slug_without_loading_recommendations():
+    from api.contracts import ScanAcceptedResponse
+    accepted = ScanAcceptedResponse(success=True, scanId='id', status='pending')
+    job = ScanJob('id', 'done', False, result=result([SLUG]))
+    with patch('api.main.recognition_ready', return_value=True), \
+         patch('api.main.submit_scan', return_value=accepted), \
+         patch('api.main.get_job', return_value=job), \
+         patch('api.scans.recommendation_index', side_effect=RuntimeError('recommendations unavailable')) as recommend:
+        response = client.post('/v1/eval/predict', files={'image': ('photo.png', image_bytes(), 'image/png')})
+    assert response.status_code == 200 and response.json() == {'slug': SLUG}
+    recommend.assert_not_called()
+
+
 def test_eval_cold_worker_fails_before_enqueue():
     with patch('api.main.recognition_ready',return_value=False), patch('api.main.submit_scan') as submit:
         response=client.post('/v1/eval/predict',files={'image':('photo.png',image_bytes())})

@@ -23,10 +23,14 @@ tests
 .env.*
 **/.env
 **/.env.*
+/claude_token.txt
+/cli_test_cmd.txt
+/predictions.jsonl
 
 # Local research must not enter production build contexts.
 .cache
 scripts
+local_scripts
 worker/pipeline/catalog_membership.py
 worker/pipeline/confidence.py
 worker/pipeline/confirmation.py
