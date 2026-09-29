@@ -1,20 +1,20 @@
 package com.wineapp.presentation.roulette
 
 import com.wineapp.presentation.common.ui.AppIcons
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.scaleIn
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -67,6 +67,10 @@ import com.wineapp.ui.theme.WineAppTheme
 
 /** Высота бордовой полосы под статус-баром — из макета. */
 private val PanelTopInset = 56.dp
+/** Высота слота под подсказку/карточку победителя — одинаковая, чтобы не прыгал барабан. */
+private val ResultSlotHeight = 202.dp
+/** Инсет навигации не больше этого — навигация жестами, а не кнопками. */
+private val GestureNavMaxInset = 32.dp
 private val PanelShape = RoundedCornerShape(topStart = 44.dp, topEnd = 44.dp)
 private val PanelBrush = Brush.verticalGradient(
     // Градиент ослаблен против макера: на полностью прозрачном низе
@@ -210,23 +214,26 @@ private fun RouletteBody(
             modifier = Modifier.padding(horizontal = 16.dp)
         )
         Spacer(modifier = Modifier.height(24.dp))
-        AnimatedVisibility(
-            visible = state.result != null,
-            enter = fadeIn() + scaleIn(initialScale = 0.94f),
-            modifier = Modifier.padding(horizontal = 16.dp)
-        ) {
-            RouletteResultCard(
-                wine = state.result,
-                isFavorite = state.result?.let { state.likedIds.contains(it.id) } == true,
-                onClick = { state.result?.let { onOpenDetail(it.id) } },
-                onToggleFavorite = { state.result?.let { onToggleFavorite(it.id) } }
-            )
-        }
-        if (state.result == null) {
-            RouletteHintCard(
-                poolIsEmpty = state.pool.isEmpty(),
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
+        // Слот фиксированной высоты: подсказка и карточка победителя сменяют
+        // друг друга кроссфейдом на месте, поэтому барабан под ними не прыгает.
+        Crossfade(
+            targetState = state.result,
+            label = "rouletteResult",
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .fillMaxWidth()
+                .height(ResultSlotHeight)
+        ) { result ->
+            if (result != null) {
+                RouletteResultCard(
+                    wine = result,
+                    isFavorite = state.likedIds.contains(result.id),
+                    onClick = { onOpenDetail(result.id) },
+                    onToggleFavorite = { onToggleFavorite(result.id) }
+                )
+            } else {
+                RouletteHintCard(poolIsEmpty = state.pool.isEmpty())
+            }
         }
         Spacer(modifier = Modifier.height(8.dp))
         // Барабан прижат к низу экрана и уходит под системные кнопки,
@@ -376,7 +383,7 @@ private fun RouletteHintCard(
         border = BorderStroke(1.dp, BrandBorderLight),
         modifier = modifier
             .fillMaxWidth()
-            .height(202.dp)
+            .height(ResultSlotHeight)
     ) {
         Box(
             contentAlignment = Alignment.Center,
@@ -434,7 +441,7 @@ private fun RouletteResultCard(
         border = BorderStroke(1.dp, BrandBorderLight),
         modifier = modifier
             .fillMaxWidth()
-            .height(202.dp)
+            .height(ResultSlotHeight)
     ) {
         val current = wine ?: return@Surface
         Box {
@@ -557,12 +564,16 @@ private fun RouletteSpinFooter(
     onSpin: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // При навигации жестами (узкий инсет) кнопка заходит на верхнюю половину
+    // инсета — полоска жеста у самого края. С трёхкнопочной панелью инсет
+    // соблюдаем целиком, иначе «Крутить» ляжет на системные кнопки.
+    val navInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val bottomPadding = if (navInset <= GestureNavMaxInset) navInset / 2 else navInset
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(top = 8.dp, bottom = 12.dp)
+            .padding(top = 8.dp, bottom = bottomPadding)
     ) {
         Surface(
             onClick = onSpin,
@@ -574,7 +585,6 @@ private fun RouletteSpinFooter(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(horizontal = 20.dp)
             ) {
                 Icon(
                     imageVector = AppIcons.Rotate,

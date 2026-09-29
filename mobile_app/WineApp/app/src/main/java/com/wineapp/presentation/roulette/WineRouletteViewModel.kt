@@ -84,7 +84,9 @@ class WineRouletteViewModel @Inject constructor(
         val sectorIndex = candidates.random()
         val winner: Wine = current.sectors[sectorIndex]
         previousWinnerId = winner.id
-        updateState(current.copy(isSpinning = true, result = null))
+        // Прошлый победитель остаётся на экране, пока крутится барабан:
+        // карточка меняется один раз — сразу на нового.
+        updateState(current.copy(isSpinning = true))
         viewModelScope.launch { _effects.emit(WineRouletteEffect.Roll(sectorIndex, winner)) }
     }
 
